@@ -1,0 +1,134 @@
+# ═══════════════════════════════════════════════════════════════════
+# CareerCore — Development Stack
+#
+#   mongo       :27017   database
+#   ml-service  :5000    Flask + scikit-learn
+#   server      :4000    Express API
+#   client      :5173    React + Vite
+#
+# Usage:
+#   docker compose up -d mongo        start ONLY the database (do this now)
+#   docker compose up -d --build      start everything (after Phase 1)
+#   docker compose logs -f server     follow one service's logs
+#   docker compose down               stop (data survives)
+#   docker compose down -v            stop AND wipe the database
+#
+# NOTE: server, client and ml-service each expect a Dockerfile.
+#       Those are created in Phase 1. Until then only `mongo` will start.
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+
+  # ─────────────────────────────────────────────────────────────
+  # MongoDB
+  # Comment this service out if you use MongoDB Atlas, and point
+  # MONGO_URI in server/.env at your Atlas connection string.
+  # ─────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: careercore-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"          # exposed so MongoDB Compass can connect
+    environment:
+      MONGO_INITDB_DATABASE: careercore
+    volumes:
+      - mongo-data:/data/db    # named volume — survives `docker compose down`
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - careercore-net
+
+  # ─────────────────────────────────────────────────────────────
+  # Flask ML service — career prediction, skill gap, candidate ranking
+  # ─────────────────────────────────────────────────────────────
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: careercore-ml
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      FLASK_ENV: development
+      MODEL_PATH: /app/artifacts/career_rf_v1.joblib
+    volumes:
+      - ./ml-service:/app
+      - ./ml-service/artifacts:/app/artifacts
+      - ./server/seed:/app/seed:ro    # read-only access to careerPaths.json
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s               # model loading takes time
+    networks:
+      - careercore-net
+
+  # ─────────────────────────────────────────────────────────────
+  # Express API — auth, profiles, jobs, PRS, matching
+  # ─────────────────────────────────────────────────────────────
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: careercore-api
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      # Service names resolve as hostnames on the shared network
+      MONGO_URI: mongodb://mongo:27017/careercore
+      ML_SERVICE_URL: http://ml-service:5000
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_EXPIRES_IN: 7d
+      CLIENT_URL: http://localhost:5173
+    volumes:
+      - ./server:/app
+      - /app/node_modules      # anonymous volume: keeps container's node_modules
+    depends_on:
+      mongo:
+        condition: service_healthy
+      ml-service:
+        condition: service_started
+    networks:
+      - careercore-net
+
+  # ─────────────────────────────────────────────────────────────
+  # React frontend (Vite dev server)
+  # ─────────────────────────────────────────────────────────────
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: careercore-client
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      # Browser-side variable — must be localhost, NOT the service name
+      VITE_API_URL: http://localhost:4000/api
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    depends_on:
+      - server
+    networks:
+      - careercore-net
+
+# ═══════════════════════════════════════════════════════════════════
+
+volumes:
+  mongo-data:
+    driver: local
+
+networks:
+  careercore-net:
+    driver: bridge
