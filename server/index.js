@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import authRoutes from "./routes/auth.routes.js";
 
 import connectDB from "./config/db.js";
 
@@ -32,7 +33,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // ─── Routes (added in later steps) ───────────────────────────
-// app.use("/api/auth", authRoutes);
+app.use("/api/auth", authRoutes);
 // app.use("/api/student", studentRoutes);
 
 // ─── 404 handler ─────────────────────────────────────────────
