@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/auth/Login";
+import StudentDashboard from "./pages/student/Dashboard";
 
 function Home() {
   const { user, loading } = useAuth();
@@ -23,8 +24,12 @@ function Placeholder({ title }) {
         </button>
       </div>
       <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <p className="text-slate-600">Signed in as <strong>{user?.name}</strong> ({user?.email})</p>
-        <p className="text-slate-600 mt-1">Role: <strong>{user?.role}</strong></p>
+        <p className="text-slate-600">
+          Signed in as <strong>{user?.name}</strong> ({user?.email})
+        </p>
+        <p className="text-slate-600 mt-1">
+          Role: <strong>{user?.role}</strong>
+        </p>
       </div>
     </div>
   );
@@ -38,18 +43,38 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
 
-          <Route path="/student" element={
-            <ProtectedRoute roles={["student"]}><Placeholder title="Student Dashboard" /></ProtectedRoute>
-          } />
-          <Route path="/recruiter" element={
-            <ProtectedRoute roles={["recruiter"]}><Placeholder title="Recruiter Portal" /></ProtectedRoute>
-          } />
-          <Route path="/faculty" element={
-            <ProtectedRoute roles={["faculty"]}><Placeholder title="Faculty Analytics" /></ProtectedRoute>
-          } />
-          <Route path="/admin" element={
-            <ProtectedRoute roles={["admin"]}><Placeholder title="Admin Panel" /></ProtectedRoute>
-          } />
+          <Route
+            path="/student"
+            element={
+              <ProtectedRoute roles={["student"]}>
+                <StudentDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/recruiter"
+            element={
+              <ProtectedRoute roles={["recruiter"]}>
+                <Placeholder title="Recruiter Portal" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/faculty"
+            element={
+              <ProtectedRoute roles={["faculty"]}>
+                <Placeholder title="Faculty Analytics" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <Placeholder title="Admin Panel" />
+              </ProtectedRoute>
+            }
+          />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
