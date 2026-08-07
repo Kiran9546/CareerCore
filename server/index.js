@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import authRoutes from "./routes/auth.routes.js";
+import studentRoutes from "./routes/student.routes.js";
 
 import connectDB from "./config/db.js";
 
@@ -34,7 +35,7 @@ app.get("/api/health", (req, res) => {
 
 // ─── Routes (added in later steps) ───────────────────────────
 app.use("/api/auth", authRoutes);
-// app.use("/api/student", studentRoutes);
+app.use("/api/student", studentRoutes);
 
 // ─── 404 handler ─────────────────────────────────────────────
 app.use((req, res) => {
