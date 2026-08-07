@@ -10,6 +10,10 @@ import {
   getCareerPaths,
 } from "../controllers/student.controller.js";
 
+import {
+  startTest, submitTest, getHistory, reviewAttempt,
+} from "../controllers/aptitude.controller.js";
+
 const router = express.Router();
 
 // Every route below requires a logged-in student
@@ -29,5 +33,11 @@ router.post("/certifications", addCertification);
 router.delete("/certifications/:id", deleteCertification);
 
 router.get("/career-paths", getCareerPaths);
+
+// ─── Aptitude ────────────────────────────────────────────────
+router.post("/aptitude/start", startTest);
+router.post("/aptitude/submit", submitTest);
+router.get("/aptitude/history", getHistory);
+router.get("/aptitude/review/:attemptId", reviewAttempt);
 
 export default router;
