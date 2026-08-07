@@ -21,28 +21,32 @@ const normalize = (s) => s.toLowerCase().trim().replace(/\s+/g, " ");
 const seedAptitudeQuestions = async () => {
   const data = readJSON("aptitudeQuestions.json");
 
-  await AptitudeQuestion.deleteMany({});
-  const inserted = await AptitudeQuestion.insertMany(data);
+  const ops = data.map((q) => ({
+    updateOne: {
+      filter: { questionText: q.questionText },
+      update: { $set: q },
+      upsert: true,
+    },
+  }));
 
-  console.log(`  Questions inserted: ${inserted.length}`);
+  const result = await AptitudeQuestion.bulkWrite(ops);
+  const all = await AptitudeQuestion.find({});
+
+  console.log(
+    `  Upserted: ${result.upsertedCount} new, ${result.modifiedCount} updated`,
+  );
   const bySection = {};
-  for (const q of inserted)
-    bySection[q.section] = (bySection[q.section] || 0) + 1;
+  for (const q of all) bySection[q.section] = (bySection[q.section] || 0) + 1;
   for (const [s, n] of Object.entries(bySection)) {
     console.log(`    ${s.padEnd(14)} ${n}`);
   }
 
-  return inserted;
+  return all;
 };
 
 const seedSkills = async () => {
   const data = readJSON("skills.json");
 
-  // ─── Collision check BEFORE inserting ─────────────────────
-  // A duplicate alias silently corrupts skill resolution: the second
-  // skill claiming a key overwrites the first in the lookup map, so
-  // student input resolves to the wrong skill with no error anywhere.
-  // Catching it here is far cheaper than debugging wrong PRS scores later.
   const seen = new Map();
   const collisions = [];
 
@@ -66,31 +70,52 @@ const seedSkills = async () => {
     );
   }
 
-  await Skill.deleteMany({});
-  const docs = data.map((s) => ({
-    name: s.name,
-    normalizedName: normalize(s.name),
-    aliases: s.aliases.map(normalize),
-    category: s.category,
+  const ops = data.map((s) => ({
+    updateOne: {
+      filter: { normalizedName: normalize(s.name) },
+      update: {
+        $set: {
+          name: s.name,
+          normalizedName: normalize(s.name),
+          aliases: s.aliases.map(normalize),
+          category: s.category,
+        },
+      },
+      upsert: true,
+    },
   }));
 
-  const inserted = await Skill.insertMany(docs);
-  console.log(`  Skills inserted: ${inserted.length}`);
+  const result = await Skill.bulkWrite(ops);
+
+  const jsonNames = new Set(data.map((s) => normalize(s.name)));
+  const stale = await Skill.find({
+    normalizedName: { $nin: [...jsonNames] },
+  }).select("name");
+
+  console.log(
+    `  Upserted: ${result.upsertedCount} new, ${result.modifiedCount} updated`,
+  );
   console.log(`  Alias lookup keys: ${seen.size} (no collisions)`);
 
-  return inserted;
+  if (stale.length) {
+    console.warn(
+      `  WARNING: ${stale.length} skill(s) in DB but not in skills.json:`,
+    );
+    stale.forEach((s) => console.warn(`    ${s.name}`));
+    console.warn(
+      `  Not deleted — students may reference them. Remove manually if intended.`,
+    );
+  }
+
+  return Skill.find({});
 };
 
 const seedCareerPaths = async (skills) => {
   const data = readJSON("careerPaths.json");
-
-  // name -> ObjectId lookup
   const skillMap = new Map(skills.map((s) => [s.name, s._id]));
 
-  await CareerPath.deleteMany({});
-
-  const docs = [];
   const missing = [];
+  const ops = [];
 
   for (const p of data) {
     const requiredSkills = [];
@@ -103,17 +128,24 @@ const seedCareerPaths = async (skills) => {
       requiredSkills.push({ skillId: id, name: rs.skill, weight: rs.weight });
     }
 
-    docs.push({
-      name: p.name,
-      code: p.code,
-      description: p.description,
-      requiredSkills,
-      typicalCgpaRange: p.typicalCgpaRange,
-      isActive: true,
+    ops.push({
+      updateOne: {
+        filter: { code: p.code },
+        update: {
+          $set: {
+            name: p.name,
+            code: p.code,
+            description: p.description,
+            requiredSkills,
+            typicalCgpaRange: p.typicalCgpaRange,
+            isActive: true,
+          },
+        },
+        upsert: true,
+      },
     });
   }
 
-  // Referential integrity check — a silent miss corrupts every skill vector
   if (missing.length) {
     console.error("\n  BROKEN SKILL REFERENCES:");
     missing.forEach((m) => console.error(`    ${m}`));
@@ -122,15 +154,19 @@ const seedCareerPaths = async (skills) => {
     );
   }
 
-  const inserted = await CareerPath.insertMany(docs);
-  console.log(`  Career paths inserted: ${inserted.length}`);
-  inserted.forEach((p) =>
+  const result = await CareerPath.bulkWrite(ops);
+  const paths = await CareerPath.find({}).sort("name");
+
+  console.log(
+    `  Upserted: ${result.upsertedCount} new, ${result.modifiedCount} updated`,
+  );
+  paths.forEach((p) =>
     console.log(
       `    ${p.code.padEnd(8)} ${p.name.padEnd(24)} ${p.requiredSkills.length} skills`,
     ),
   );
 
-  return inserted;
+  return paths;
 };
 
 const run = async () => {
