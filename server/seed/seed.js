@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import AptitudeQuestion from "../models/AptitudeQuestion.js";
 
 import Skill from "../models/Skill.js";
 import CareerPath from "../models/CareerPath.js";
@@ -16,6 +17,22 @@ const readJSON = (file) =>
 
 /** Canonical lookup key: lowercase, trimmed, collapsed whitespace */
 const normalize = (s) => s.toLowerCase().trim().replace(/\s+/g, " ");
+
+const seedAptitudeQuestions = async () => {
+  const data = readJSON("aptitudeQuestions.json");
+
+  await AptitudeQuestion.deleteMany({});
+  const inserted = await AptitudeQuestion.insertMany(data);
+
+  console.log(`  Questions inserted: ${inserted.length}`);
+  const bySection = {};
+  for (const q of inserted) bySection[q.section] = (bySection[q.section] || 0) + 1;
+  for (const [s, n] of Object.entries(bySection)) {
+    console.log(`    ${s.padEnd(14)} ${n}`);
+  }
+
+  return inserted;
+};
 
 const seedSkills = async () => {
   const data = readJSON("skills.json");
@@ -95,6 +112,9 @@ const run = async () => {
 
     console.log("\nSeeding career paths...");
     await seedCareerPaths(skills);
+
+    console.log("\nSeeding aptitude questions...");
+    await seedAptitudeQuestions();
 
     console.log("\nSeed complete.\n");
     process.exit(0);
