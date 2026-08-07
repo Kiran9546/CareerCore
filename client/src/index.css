@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --color-prs-notready: #dc2626;
+  --color-prs-developing: #f59e0b;
+  --color-prs-ready: #10b981;
+  --color-prs-high: #059669;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  background: #f8fafc;
+  color: #0f172a;
+}
