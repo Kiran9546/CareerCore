@@ -20,12 +20,23 @@ export const buildAliasMap = async (force = false) => {
     for (const a of s.aliases) aliasMap.set(normalize(a), s);
   }
 
-  console.log(`Skill alias map built: ${aliasMap.size} keys -> ${skills.length} skills`);
+  console.log(
+    `Skill alias map built: ${aliasMap.size} keys -> ${skills.length} skills`,
+  );
   return aliasMap;
 };
 
-/** Call after any admin edit to the skill taxonomy */
-export const invalidateAliasMap = () => { aliasMap = null; };
+/**
+ * Call after any admin edit to the skill taxonomy.
+ *
+ * TODO (Phase 6): the admin controller must call this after any
+ * create/update/delete on Skill. Until then the cached map goes stale
+ * after a taxonomy edit and only refreshes on server restart —
+ * meaning newly added skills resolve to null until then.
+ */
+export const invalidateAliasMap = () => {
+  aliasMap = null;
+};
 
 /**
  * Resolve a user-typed string to a canonical Skill document.
@@ -47,11 +58,11 @@ export const resolveSkills = async (inputs) => {
   const map = await buildAliasMap();
   const resolved = [];
   const unresolved = [];
-  const seen = new Set();   // dedupe: "react" and "reactjs" collapse to one
+  const seen = new Set(); // dedupe: "react" and "reactjs" collapse to one
 
   for (const item of inputs) {
     const raw = typeof item === "string" ? item : item.name;
-    const proficiency = typeof item === "string" ? 3 : item.proficiency ?? 3;
+    const proficiency = typeof item === "string" ? 3 : (item.proficiency ?? 3);
 
     const skill = map.get(normalize(raw));
     if (!skill) {
@@ -64,7 +75,7 @@ export const resolveSkills = async (inputs) => {
 
     resolved.push({
       skillId: skill._id,
-      name: skill.name,                                  // canonical, not what the user typed
+      name: skill.name, // canonical, not what the user typed
       proficiency: Math.max(1, Math.min(5, Number(proficiency) || 3)),
     });
   }
@@ -93,6 +104,9 @@ export const searchSkills = async (query, limit = 10) => {
   }
 
   return [...hits.values()]
-    .sort((a, b) => (b.exact ? 1 : 0) - (a.exact ? 1 : 0) || a.name.localeCompare(b.name))
+    .sort(
+      (a, b) =>
+        (b.exact ? 1 : 0) - (a.exact ? 1 : 0) || a.name.localeCompare(b.name),
+    )
     .slice(0, limit);
 };

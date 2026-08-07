@@ -23,7 +23,9 @@ export const startTest = async (req, res, next) => {
   try {
     const student = await Student.findOne({ userId: req.user._id });
     if (!student) {
-      return res.status(404).json({ message: "Create your profile before taking the test" });
+      return res
+        .status(404)
+        .json({ message: "Create your profile before taking the test" });
     }
 
     // Resume an unexpired in-progress attempt rather than starting fresh
@@ -53,8 +55,10 @@ export const startTest = async (req, res, next) => {
     // Draw a random set per section
     const selected = [];
     for (const section of APTITUDE_SECTIONS) {
-      const pool = await AptitudeQuestion.find({ section, isActive: true })
-        .select("-correctOption -explanation");
+      const pool = await AptitudeQuestion.find({
+        section,
+        isActive: true,
+      }).select("-correctOption -explanation");
 
       if (pool.length < QUESTIONS_PER_SECTION) {
         return res.status(503).json({
@@ -78,7 +82,9 @@ export const startTest = async (req, res, next) => {
       totalQuestions: selected.length,
       resumed: false,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 /**
@@ -94,24 +100,51 @@ export const submitTest = async (req, res, next) => {
     const { attemptId, answers } = req.body;
 
     if (!attemptId || !Array.isArray(answers)) {
-      return res.status(400).json({ message: "attemptId and answers[] are required" });
+      return res
+        .status(400)
+        .json({ message: "attemptId and answers[] are required" });
     }
 
     const student = await Student.findOne({ userId: req.user._id });
     if (!student) return res.status(404).json({ message: "Profile not found" });
 
-    const attempt = await AptitudeAttempt.findOne({ _id: attemptId, studentId: student._id });
+    const attempt = await AptitudeAttempt.findOne({
+      _id: attemptId,
+      studentId: student._id,
+    });
     if (!attempt) return res.status(404).json({ message: "Attempt not found" });
     if (attempt.status !== "in_progress") {
-      return res.status(409).json({ message: `This attempt is already ${attempt.status}` });
+      return res
+        .status(409)
+        .json({ message: `This attempt is already ${attempt.status}` });
+    }
+
+    // Enforce the time limit at submission, not just at start.
+    // Without this an abandoned attempt stays in_progress indefinitely
+    // and could be submitted days later, defeating the timed test.
+    const elapsedSeconds = (Date.now() - attempt.startedAt.getTime()) / 1000;
+    const GRACE_SECONDS = 60; // allows for network latency on submit
+
+    if (elapsedSeconds > attempt.timeLimitSeconds + GRACE_SECONDS) {
+      attempt.status = "expired";
+      await attempt.save();
+      return res.status(410).json({
+        message:
+          "Time limit exceeded — this attempt has expired. Please start a new test.",
+        elapsedSeconds: Math.round(elapsedSeconds),
+        timeLimitSeconds: attempt.timeLimitSeconds,
+      });
     }
 
     // Answer key — correctOption is select:false, so request it explicitly
-    const questions = await AptitudeQuestion.find({ _id: { $in: attempt.questionsServed } })
-      .select("+correctOption");
+    const questions = await AptitudeQuestion.find({
+      _id: { $in: attempt.questionsServed },
+    }).select("+correctOption");
     const keyMap = new Map(questions.map((q) => [String(q._id), q]));
 
-    const answerMap = new Map(answers.map((a) => [String(a.questionId), a.selected]));
+    const answerMap = new Map(
+      answers.map((a) => [String(a.questionId), a.selected]),
+    );
 
     const responses = [];
     const tally = {};
@@ -127,7 +160,12 @@ export const submitTest = async (req, res, next) => {
       tally[q.section].total += 1;
       if (isCorrect) tally[q.section].correct += 1;
 
-      responses.push({ questionId: q._id, section: q.section, selected, isCorrect });
+      responses.push({
+        questionId: q._id,
+        section: q.section,
+        selected,
+        isCorrect,
+      });
     }
 
     const sectionScores = {};
@@ -139,7 +177,8 @@ export const submitTest = async (req, res, next) => {
 
     // T = (Q + L + V + Tech) / 4
     const totalScore = Math.round(
-      APTITUDE_SECTIONS.reduce((sum, s) => sum + sectionScores[s], 0) / APTITUDE_SECTIONS.length
+      APTITUDE_SECTIONS.reduce((sum, s) => sum + sectionScores[s], 0) /
+        APTITUDE_SECTIONS.length,
     );
 
     attempt.responses = responses;
@@ -147,7 +186,9 @@ export const submitTest = async (req, res, next) => {
     attempt.totalScore = totalScore;
     attempt.status = "submitted";
     attempt.submittedAt = new Date();
-    attempt.durationSeconds = Math.round((Date.now() - attempt.startedAt.getTime()) / 1000);
+    attempt.durationSeconds = Math.round(
+      (Date.now() - attempt.startedAt.getTime()) / 1000,
+    );
     await attempt.save();
 
     // Cache T on the student so PRS can read it without a join
@@ -161,9 +202,12 @@ export const submitTest = async (req, res, next) => {
       correctCount: responses.filter((r) => r.isCorrect).length,
       totalQuestions: responses.length,
       durationSeconds: attempt.durationSeconds,
-      message: "Test submitted. Your aptitude score now contributes to your PRS.",
+      message:
+        "Test submitted. Your aptitude score now contributes to your PRS.",
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 /** GET /api/student/aptitude/history */
@@ -185,7 +229,9 @@ export const getHistory = async (req, res, next) => {
       latestScore: attempts[0]?.totalScore ?? null,
       attemptCount: attempts.length,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 /** GET /api/student/aptitude/review/:attemptId — answers revealed AFTER submission */
@@ -199,10 +245,12 @@ export const reviewAttempt = async (req, res, next) => {
       studentId: student._id,
       status: "submitted",
     });
-    if (!attempt) return res.status(404).json({ message: "Submitted attempt not found" });
+    if (!attempt)
+      return res.status(404).json({ message: "Submitted attempt not found" });
 
-    const questions = await AptitudeQuestion.find({ _id: { $in: attempt.questionsServed } })
-      .select("+correctOption +explanation");
+    const questions = await AptitudeQuestion.find({
+      _id: { $in: attempt.questionsServed },
+    }).select("+correctOption +explanation");
     const qMap = new Map(questions.map((q) => [String(q._id), q]));
 
     const review = attempt.responses.map((r) => {
@@ -218,6 +266,12 @@ export const reviewAttempt = async (req, res, next) => {
       };
     });
 
-    res.json({ sectionScores: attempt.sectionScores, totalScore: attempt.totalScore, review });
-  } catch (err) { next(err); }
+    res.json({
+      sectionScores: attempt.sectionScores,
+      totalScore: attempt.totalScore,
+      review,
+    });
+  } catch (err) {
+    next(err);
+  }
 };

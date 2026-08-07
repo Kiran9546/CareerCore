@@ -17,8 +17,12 @@ import { PRS_HISTORY_CAP, MAX_SKILL_PROFICIENCY } from "../config/constants.js";
 
 const studentSkillSchema = new mongoose.Schema(
   {
-    skillId: { type: mongoose.Schema.Types.ObjectId, ref: "Skill", required: true },
-    name: { type: String, required: true },   // denormalized — avoids populate on every render
+    skillId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Skill",
+      required: true,
+    },
+    name: { type: String, required: true }, // denormalized — avoids populate on every render
     proficiency: {
       type: Number,
       required: true,
@@ -27,18 +31,18 @@ const studentSkillSchema = new mongoose.Schema(
     },
     verifiedByGithub: { type: Boolean, default: false },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const projectSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
     description: { type: String, maxlength: 1000 },
-    techStack: { type: [String], default: [] },   // used for P relevance (Blueprint 5.1)
+    techStack: { type: [String], default: [] }, // used for P relevance (Blueprint 5.1)
     githubUrl: String,
     liveUrl: String,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const certificationSchema = new mongoose.Schema(
@@ -49,7 +53,7 @@ const certificationSchema = new mongoose.Schema(
     expiryDate: Date,
     credentialUrl: String,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const prsSnapshotSchema = new mongoose.Schema(
@@ -64,7 +68,7 @@ const prsSnapshotSchema = new mongoose.Schema(
     },
     computedAt: { type: Date, default: Date.now },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // ─── Main schema ─────────────────────────────────────────────
@@ -79,9 +83,15 @@ const studentSchema = new mongoose.Schema(
     },
 
     // ── Academic ──
-    usn: { type: String, required: true, unique: true, uppercase: true, trim: true },
-    batch: { type: String, required: true },        // "2026"
-    branch: { type: String, required: true },       // "ISE"
+    usn: {
+      type: String,
+      required: true,
+      unique: true,
+      uppercase: true,
+      trim: true,
+    },
+    batch: { type: String, required: true }, // "2026"
+    branch: { type: String, required: true }, // "ISE"
     cgpa: { type: Number, required: true, min: 0, max: 10 },
     backlogs: { type: Number, default: 0, min: 0 },
     phone: String,
@@ -123,13 +133,14 @@ const studentSchema = new mongoose.Schema(
 
     profileCompleteness: { type: Number, default: 0, min: 0, max: 100 },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // ─── Indexes ─────────────────────────────────────────────────
-studentSchema.index({ batch: 1, branch: 1 });      // faculty batch analytics
-studentSchema.index({ currentPRS: -1 });           // recruiter ranking, leaderboard
-studentSchema.index({ "skills.skillId": 1 });      // candidate search by skill
+studentSchema.index({ batch: 1, branch: 1 }); // faculty batch analytics
+studentSchema.index({ currentPRS: -1 }); // recruiter ranking, leaderboard
+studentSchema.index({ "skills.skillId": 1 }); // candidate search by skill
+studentSchema.index({ updatedAt: -1 }); // "recently active students" queries
 
 // ─── Methods ─────────────────────────────────────────────────
 

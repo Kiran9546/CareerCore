@@ -26,7 +26,8 @@ const seedAptitudeQuestions = async () => {
 
   console.log(`  Questions inserted: ${inserted.length}`);
   const bySection = {};
-  for (const q of inserted) bySection[q.section] = (bySection[q.section] || 0) + 1;
+  for (const q of inserted)
+    bySection[q.section] = (bySection[q.section] || 0) + 1;
   for (const [s, n] of Object.entries(bySection)) {
     console.log(`    ${s.padEnd(14)} ${n}`);
   }
@@ -36,6 +37,34 @@ const seedAptitudeQuestions = async () => {
 
 const seedSkills = async () => {
   const data = readJSON("skills.json");
+
+  // ─── Collision check BEFORE inserting ─────────────────────
+  // A duplicate alias silently corrupts skill resolution: the second
+  // skill claiming a key overwrites the first in the lookup map, so
+  // student input resolves to the wrong skill with no error anywhere.
+  // Catching it here is far cheaper than debugging wrong PRS scores later.
+  const seen = new Map();
+  const collisions = [];
+
+  for (const s of data) {
+    const keys = [normalize(s.name), ...s.aliases.map(normalize)];
+    for (const k of keys) {
+      if (seen.has(k) && seen.get(k) !== s.name) {
+        collisions.push(
+          `"${k}" claimed by both "${seen.get(k)}" and "${s.name}"`,
+        );
+      }
+      seen.set(k, s.name);
+    }
+  }
+
+  if (collisions.length) {
+    console.error("\n  ALIAS COLLISIONS DETECTED:");
+    collisions.forEach((c) => console.error(`    ${c}`));
+    throw new Error(
+      `${collisions.length} alias collision(s) — fix skills.json before seeding`,
+    );
+  }
 
   await Skill.deleteMany({});
   const docs = data.map((s) => ({
@@ -47,9 +76,7 @@ const seedSkills = async () => {
 
   const inserted = await Skill.insertMany(docs);
   console.log(`  Skills inserted: ${inserted.length}`);
-
-  const aliasCount = inserted.reduce((n, s) => n + s.aliases.length, 0);
-  console.log(`  Alias lookup keys: ${inserted.length + aliasCount}`);
+  console.log(`  Alias lookup keys: ${seen.size} (no collisions)`);
 
   return inserted;
 };
@@ -90,13 +117,17 @@ const seedCareerPaths = async (skills) => {
   if (missing.length) {
     console.error("\n  BROKEN SKILL REFERENCES:");
     missing.forEach((m) => console.error(`    ${m}`));
-    throw new Error(`${missing.length} skill reference(s) not found in taxonomy`);
+    throw new Error(
+      `${missing.length} skill reference(s) not found in taxonomy`,
+    );
   }
 
   const inserted = await CareerPath.insertMany(docs);
   console.log(`  Career paths inserted: ${inserted.length}`);
   inserted.forEach((p) =>
-    console.log(`    ${p.code.padEnd(8)} ${p.name.padEnd(24)} ${p.requiredSkills.length} skills`)
+    console.log(
+      `    ${p.code.padEnd(8)} ${p.name.padEnd(24)} ${p.requiredSkills.length} skills`,
+    ),
   );
 
   return inserted;
