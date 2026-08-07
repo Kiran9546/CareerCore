@@ -3,16 +3,33 @@ import { protect } from "../middleware/auth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { ROLES } from "../config/constants.js";
 import {
-  getProfile, createProfile, updateProfile,
-  updateSkills, searchSkills,
-  addProject, deleteProject,
-  addCertification, deleteCertification,
+  getProfile,
+  createProfile,
+  updateProfile,
+  updateSkills,
+  searchSkills,
+  addProject,
+  deleteProject,
+  addCertification,
+  deleteCertification,
   getCareerPaths,
 } from "../controllers/student.controller.js";
 
 import {
-  startTest, submitTest, getHistory, reviewAttempt,
+  startTest,
+  submitTest,
+  getHistory,
+  reviewAttempt,
 } from "../controllers/aptitude.controller.js";
+
+import {
+  getPRS,
+  getPRSHistory,
+  getPRSSensitivity,
+  getSkillGapAnalysis,
+  getCareerPrediction,
+  getDashboard,
+} from "../controllers/student.controller.js";
 
 const router = express.Router();
 
@@ -39,5 +56,11 @@ router.post("/aptitude/start", startTest);
 router.post("/aptitude/submit", submitTest);
 router.get("/aptitude/history", getHistory);
 router.get("/aptitude/review/:attemptId", reviewAttempt);
+router.get("/dashboard", getDashboard);
+router.get("/prs", getPRS);
+router.get("/prs/history", getPRSHistory);
+router.get("/prs/sensitivity", getPRSSensitivity);
+router.get("/skill-gap", getSkillGapAnalysis);
+router.get("/career-prediction", getCareerPrediction);
 
 export default router;

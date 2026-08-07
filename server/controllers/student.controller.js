@@ -1,12 +1,24 @@
 import Student from "../models/Student.js";
 import CareerPath from "../models/CareerPath.js";
-import { resolveSkills, searchSkills as searchSkillsService } from "../services/skillNormalizer.js";
+import {
+  resolveSkills,
+  searchSkills as searchSkillsService,
+} from "../services/skillNormalizer.js";
+import {
+  computePRS,
+  computeAndSavePRS,
+  computePRSAllSchemes,
+} from "../services/prsService.js";
+import { predictCareer } from "../services/mlClient.js";
+import AptitudeAttempt from "../models/AptitudeAttempt.js";
 
 /** GET /api/student/profile */
 export const getProfile = async (req, res, next) => {
   try {
-    const student = await Student.findOne({ userId: req.user._id })
-      .populate("careerInterest", "name code description");
+    const student = await Student.findOne({ userId: req.user._id }).populate(
+      "careerInterest",
+      "name code description",
+    );
 
     if (!student) {
       return res.status(404).json({
@@ -16,7 +28,9 @@ export const getProfile = async (req, res, next) => {
     }
 
     res.json({ student, hasProfile: true });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 /** POST /api/student/profile — create the profile (once per user) */
@@ -24,13 +38,17 @@ export const createProfile = async (req, res, next) => {
   try {
     const existing = await Student.findOne({ userId: req.user._id });
     if (existing) {
-      return res.status(409).json({ message: "Profile already exists — use PUT to update" });
+      return res
+        .status(409)
+        .json({ message: "Profile already exists — use PUT to update" });
     }
 
     const { usn, batch, branch, cgpa, backlogs, phone } = req.body;
 
     if (!usn || !batch || !branch || cgpa === undefined) {
-      return res.status(400).json({ message: "usn, batch, branch and cgpa are required" });
+      return res
+        .status(400)
+        .json({ message: "usn, batch, branch and cgpa are required" });
     }
     if (cgpa < 0 || cgpa > 10) {
       return res.status(400).json({ message: "cgpa must be between 0 and 10" });
@@ -38,12 +56,17 @@ export const createProfile = async (req, res, next) => {
 
     const usnTaken = await Student.findOne({ usn: usn.toUpperCase() });
     if (usnTaken) {
-      return res.status(409).json({ message: "This USN is already registered" });
+      return res
+        .status(409)
+        .json({ message: "This USN is already registered" });
     }
 
     const student = await Student.create({
       userId: req.user._id,
-      usn, batch, branch, cgpa,
+      usn,
+      batch,
+      branch,
+      cgpa,
       backlogs: backlogs ?? 0,
       phone,
     });
@@ -52,7 +75,9 @@ export const createProfile = async (req, res, next) => {
     await student.save();
 
     res.status(201).json({ student });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 /** PUT /api/student/profile — update academic details */
@@ -61,14 +86,23 @@ export const updateProfile = async (req, res, next) => {
     const student = await Student.findOne({ userId: req.user._id });
     if (!student) return res.status(404).json({ message: "Profile not found" });
 
-    const allowed = ["batch", "branch", "cgpa", "backlogs", "phone", "githubUsername", "linkedinUrl"];
+    const allowed = [
+      "batch",
+      "branch",
+      "cgpa",
+      "backlogs",
+      "phone",
+      "githubUsername",
+      "linkedinUrl",
+    ];
     for (const f of allowed) {
       if (req.body[f] !== undefined) student[f] = req.body[f];
     }
 
     if (req.body.careerInterest) {
       const path = await CareerPath.findById(req.body.careerInterest);
-      if (!path) return res.status(400).json({ message: "Invalid career path" });
+      if (!path)
+        return res.status(400).json({ message: "Invalid career path" });
       student.careerInterest = path._id;
     }
 
@@ -76,7 +110,9 @@ export const updateProfile = async (req, res, next) => {
     await student.save();
 
     res.json({ student });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -103,12 +139,14 @@ export const updateSkills = async (req, res, next) => {
 
     res.json({
       skills: student.skills,
-      unresolved,                            // UI shows "we didn't recognise these"
+      unresolved, // UI shows "we didn't recognise these"
       message: unresolved.length
         ? `${resolved.length} skills saved, ${unresolved.length} not recognised`
         : `${resolved.length} skills saved`,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 /** GET /api/student/skills/search?q=reac */
@@ -116,7 +154,9 @@ export const searchSkills = async (req, res, next) => {
   try {
     const results = await searchSkillsService(req.query.q || "", 10);
     res.json({ results });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -133,16 +173,20 @@ export const addProject = async (req, res, next) => {
     if (!title) return res.status(400).json({ message: "title is required" });
 
     student.projects.push({
-      title, description,
+      title,
+      description,
       techStack: Array.isArray(techStack) ? techStack : [],
-      githubUrl, liveUrl,
+      githubUrl,
+      liveUrl,
     });
 
     student.profileCompleteness = student.computeCompleteness();
     await student.save();
 
     res.status(201).json({ projects: student.projects });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 /** DELETE /api/student/projects/:id */
@@ -161,7 +205,9 @@ export const deleteProject = async (req, res, next) => {
     await student.save();
 
     res.json({ projects: student.projects });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -179,12 +225,20 @@ export const addCertification = async (req, res, next) => {
       return res.status(400).json({ message: "name and issuer are required" });
     }
 
-    student.certifications.push({ name, issuer, issueDate, expiryDate, credentialUrl });
+    student.certifications.push({
+      name,
+      issuer,
+      issueDate,
+      expiryDate,
+      credentialUrl,
+    });
     student.profileCompleteness = student.computeCompleteness();
     await student.save();
 
     res.status(201).json({ certifications: student.certifications });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 /** DELETE /api/student/certifications/:id */
@@ -203,7 +257,9 @@ export const deleteCertification = async (req, res, next) => {
     await student.save();
 
     res.json({ certifications: student.certifications });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -215,5 +271,152 @@ export const getCareerPaths = async (req, res, next) => {
       .select("name code description typicalCgpaRange")
       .sort("name");
     res.json({ careerPaths: paths });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getPRS = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id });
+    if (!student) return res.status(404).json({ message: "Profile not found" });
+
+    const result = await computeAndSavePRS(student);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getPRSHistory = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id }).select(
+      "prsHistory currentPRS readinessLevel lastPrsComputedAt",
+    );
+    if (!student) return res.status(404).json({ message: "Profile not found" });
+
+    res.json({
+      currentPRS: student.currentPRS,
+      readinessLevel: student.readinessLevel,
+      lastComputedAt: student.lastPrsComputedAt,
+      history: student.prsHistory,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getPRSSensitivity = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id });
+    if (!student) return res.status(404).json({ message: "Profile not found" });
+
+    const result = await computePRSAllSchemes(student);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getSkillGapAnalysis = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id });
+    if (!student) return res.status(404).json({ message: "Profile not found" });
+
+    const result = await computePRS(student);
+    if (!result.computable) {
+      return res.status(400).json({ message: result.message });
+    }
+
+    res.json({
+      careerPath: result.careerPath,
+      ...result.skillAnalysis,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getCareerPrediction = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id });
+    if (!student) return res.status(404).json({ message: "Profile not found" });
+
+    const attempt = await AptitudeAttempt.findOne({
+      studentId: student._id,
+      status: "submitted",
+    }).sort("-submittedAt");
+
+    const profile = {
+      cgpa: student.cgpa,
+      backlogs: student.backlogs,
+      aptQuantitative: attempt?.sectionScores?.quantitative ?? 0,
+      aptLogical: attempt?.sectionScores?.logical ?? 0,
+      aptVerbal: attempt?.sectionScores?.verbal ?? 0,
+      aptTechnical: attempt?.sectionScores?.technical ?? 0,
+      numProjects: student.projects?.length ?? 0,
+      numCertifications: student.certifications?.length ?? 0,
+      skills: (student.skills || []).map((s) => ({
+        name: s.name,
+        proficiency: s.proficiency,
+      })),
+    };
+
+    const result = await predictCareer(profile);
+
+    if (result.available && result.predictions?.length) {
+      const paths = await CareerPath.find({
+        name: { $in: result.predictions.map((p) => p.careerPath) },
+      }).select("name code");
+
+      const pathMap = new Map(paths.map((p) => [p.name, p]));
+
+      student.predictedCareers = result.predictions.map((p) => ({
+        pathId: pathMap.get(p.careerPath)?._id,
+        name: p.careerPath,
+        confidence: p.confidence,
+      }));
+      student.lastPredictionAt = new Date();
+      await student.save();
+    }
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getDashboard = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id }).populate(
+      "careerInterest",
+      "name code",
+    );
+    if (!student) return res.status(404).json({ message: "Profile not found" });
+
+    const prs = await computeAndSavePRS(student);
+
+    res.json({
+      profile: {
+        name: req.user.name,
+        usn: student.usn,
+        batch: student.batch,
+        branch: student.branch,
+        cgpa: student.cgpa,
+        backlogs: student.backlogs,
+        completeness: student.profileCompleteness,
+        careerInterest: student.careerInterest,
+      },
+      counts: {
+        skills: student.skills?.length ?? 0,
+        projects: student.projects?.length ?? 0,
+        certifications: student.certifications?.length ?? 0,
+      },
+      prs,
+      predictedCareers: student.predictedCareers,
+      prsHistory: student.prsHistory.slice(-10),
+    });
+  } catch (err) {
+    next(err);
+  }
 };
