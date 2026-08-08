@@ -7,6 +7,10 @@ import StudentDashboard from "./pages/student/Dashboard";
 import Profile from "./pages/student/Profile";
 import Skills from "./pages/student/Skills";
 import Aptitude from "./pages/student/Aptitude";
+import RecruiterLayout from "./components/RecruiterLayout";
+import RecruiterJobs from "./pages/recruiter/Jobs";
+import PostJob from "./pages/recruiter/PostJob";
+import Company from "./pages/recruiter/Company";
 
 function Home() {
   const { user, loading } = useAuth();
@@ -65,10 +69,15 @@ export default function App() {
             path="/recruiter"
             element={
               <ProtectedRoute roles={["recruiter"]}>
-                <Placeholder title="Recruiter Portal" />
+                <RecruiterLayout />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<RecruiterJobs />} />
+            <Route path="post" element={<PostJob />} />
+            <Route path="company" element={<Company />} />
+          </Route>
+          
           <Route
             path="/faculty"
             element={
