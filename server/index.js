@@ -5,6 +5,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import authRoutes from "./routes/auth.routes.js";
 import studentRoutes from "./routes/student.routes.js";
+import recruiterRoutes from "./routes/recruiter.routes.js";
 
 import connectDB from "./config/db.js";
 
@@ -16,10 +17,12 @@ const PORT = process.env.PORT || 4000;
 
 // ─── Middleware ──────────────────────────────────────────────
 app.use(helmet());
-app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:5173",
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true,
+  }),
+);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
@@ -36,6 +39,7 @@ app.get("/api/health", (req, res) => {
 // ─── Routes (added in later steps) ───────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/api/student", studentRoutes);
+app.use("/api/recruiter", recruiterRoutes);
 
 // ─── 404 handler ─────────────────────────────────────────────
 app.use((req, res) => {

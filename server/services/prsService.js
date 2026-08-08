@@ -49,13 +49,13 @@ export const projectScore = (projects = [], careerPathSkills = []) => {
   return Math.min(100, countPart + relevance * PROJECT_RELEVANCE_WEIGHT);
 };
 
-// T = latest submitted attempt's totalScore
+// T = highest submitted attempt (best-of, not latest)
 export const aptitudeScore = async (studentId) => {
   const attempt = await AptitudeAttempt.findOne({
     studentId,
     status: "submitted",
   })
-    .sort("-submittedAt")
+    .sort("-totalScore -submittedAt")
     .select("totalScore sectionScores submittedAt");
 
   if (!attempt) return { score: 0, attempted: false, attemptedAt: null };
@@ -137,18 +137,11 @@ export const computePRS = async (student, options = {}) => {
       T * weights.aptitude,
   );
 
-  const weightKey = {
-    academic: "academic",
-    skills: "skills",
-    certifications: "certifications",
-    projects: "projects",
-    aptitude: "aptitude",
-  };
   const weakest = Object.entries(breakdown)
     .map(([k, v]) => ({
       name: k,
       score: v,
-      pointsLost: round((100 - v) * weights[weightKey[k]]),
+      pointsLost: round((100 - v) * weights[k]),
     }))
     .sort((a, b) => b.pointsLost - a.pointsLost)[0];
 

@@ -5,7 +5,6 @@ import { APTITUDE_SECTIONS } from "../config/constants.js";
 
 const QUESTIONS_PER_SECTION = 5;
 
-/** Fisher-Yates shuffle */
 const shuffle = (arr) => {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -15,10 +14,6 @@ const shuffle = (arr) => {
   return a;
 };
 
-/**
- * POST /api/student/aptitude/start
- * Creates an attempt and serves questions WITHOUT correct answers.
- */
 export const startTest = async (req, res, next) => {
   try {
     const student = await Student.findOne({ userId: req.user._id });
@@ -28,7 +23,6 @@ export const startTest = async (req, res, next) => {
         .json({ message: "Create your profile before taking the test" });
     }
 
-    // Resume an unexpired in-progress attempt rather than starting fresh
     const existing = await AptitudeAttempt.findOne({
       studentId: student._id,
       status: "in_progress",
@@ -52,7 +46,6 @@ export const startTest = async (req, res, next) => {
       await existing.save();
     }
 
-    // Draw a random set per section
     const selected = [];
     for (const section of APTITUDE_SECTIONS) {
       const pool = await AptitudeQuestion.find({
@@ -87,14 +80,6 @@ export const startTest = async (req, res, next) => {
   }
 };
 
-/**
- * POST /api/student/aptitude/submit
- * Body: { attemptId, answers: [{ questionId, selected }] }
- *
- * Scoring (Blueprint 5.1):
- *   section score = (correct / served in that section) * 100
- *   T = mean of the four section scores
- */
 export const submitTest = async (req, res, next) => {
   try {
     const { attemptId, answers } = req.body;
@@ -119,11 +104,8 @@ export const submitTest = async (req, res, next) => {
         .json({ message: `This attempt is already ${attempt.status}` });
     }
 
-    // Enforce the time limit at submission, not just at start.
-    // Without this an abandoned attempt stays in_progress indefinitely
-    // and could be submitted days later, defeating the timed test.
     const elapsedSeconds = (Date.now() - attempt.startedAt.getTime()) / 1000;
-    const GRACE_SECONDS = 60; // allows for network latency on submit
+    const GRACE_SECONDS = 60;
 
     if (elapsedSeconds > attempt.timeLimitSeconds + GRACE_SECONDS) {
       attempt.status = "expired";
@@ -136,12 +118,10 @@ export const submitTest = async (req, res, next) => {
       });
     }
 
-    // Answer key — correctOption is select:false, so request it explicitly
     const questions = await AptitudeQuestion.find({
       _id: { $in: attempt.questionsServed },
     }).select("+correctOption");
     const keyMap = new Map(questions.map((q) => [String(q._id), q]));
-
     const answerMap = new Map(
       answers.map((a) => [String(a.questionId), a.selected]),
     );
@@ -168,6 +148,15 @@ export const submitTest = async (req, res, next) => {
       });
     }
 
+    const answeredCount = responses.filter((r) => r.selected !== null).length;
+    if (answeredCount === 0) {
+      attempt.status = "expired";
+      await attempt.save();
+      return res.status(400).json({
+        message: "No questions answered — attempt discarded",
+      });
+    }
+
     const sectionScores = {};
     for (const s of APTITUDE_SECTIONS) {
       sectionScores[s] = tally[s].total
@@ -175,7 +164,6 @@ export const submitTest = async (req, res, next) => {
         : 0;
     }
 
-    // T = (Q + L + V + Tech) / 4
     const totalScore = Math.round(
       APTITUDE_SECTIONS.reduce((sum, s) => sum + sectionScores[s], 0) /
         APTITUDE_SECTIONS.length,
@@ -186,31 +174,35 @@ export const submitTest = async (req, res, next) => {
     attempt.totalScore = totalScore;
     attempt.status = "submitted";
     attempt.submittedAt = new Date();
-    attempt.durationSeconds = Math.round(
-      (Date.now() - attempt.startedAt.getTime()) / 1000,
-    );
+    attempt.durationSeconds = Math.round(elapsedSeconds);
     await attempt.save();
 
-    // Cache T on the student so PRS can read it without a join
-    student.prsBreakdown.aptitude = totalScore;
+    const best = await AptitudeAttempt.findOne({
+      studentId: student._id,
+      status: "submitted",
+    })
+      .sort("-totalScore")
+      .select("totalScore");
+
+    student.prsBreakdown.aptitude = best?.totalScore ?? totalScore;
     await student.save();
 
     res.json({
       attemptId: attempt._id,
       sectionScores,
       totalScore,
+      bestScore: best?.totalScore ?? totalScore,
       correctCount: responses.filter((r) => r.isCorrect).length,
+      answeredCount,
       totalQuestions: responses.length,
       durationSeconds: attempt.durationSeconds,
-      message:
-        "Test submitted. Your aptitude score now contributes to your PRS.",
+      message: "Test submitted. Your best score contributes to your PRS.",
     });
   } catch (err) {
     next(err);
   }
 };
 
-/** GET /api/student/aptitude/history */
 export const getHistory = async (req, res, next) => {
   try {
     const student = await Student.findOne({ userId: req.user._id });
@@ -224,8 +216,14 @@ export const getHistory = async (req, res, next) => {
       .sort("-submittedAt")
       .limit(10);
 
+    const best = attempts.reduce(
+      (max, a) => (a.totalScore > max ? a.totalScore : max),
+      0,
+    );
+
     res.json({
       attempts,
+      bestScore: attempts.length ? best : null,
       latestScore: attempts[0]?.totalScore ?? null,
       attemptCount: attempts.length,
     });
@@ -234,7 +232,6 @@ export const getHistory = async (req, res, next) => {
   }
 };
 
-/** GET /api/student/aptitude/review/:attemptId — answers revealed AFTER submission */
 export const reviewAttempt = async (req, res, next) => {
   try {
     const student = await Student.findOne({ userId: req.user._id });
