@@ -1,8 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Layout from "./components/Layout";
 import Login from "./pages/auth/Login";
 import StudentDashboard from "./pages/student/Dashboard";
+import Profile from "./pages/student/Profile";
+import Skills from "./pages/student/Skills";
+import Aptitude from "./pages/student/Aptitude";
 
 function Home() {
   const { user, loading } = useAuth();
@@ -47,10 +51,16 @@ export default function App() {
             path="/student"
             element={
               <ProtectedRoute roles={["student"]}>
-                <StudentDashboard />
+                <Layout />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<StudentDashboard />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="skills" element={<Skills />} />
+            <Route path="aptitude" element={<Aptitude />} />
+          </Route>
+
           <Route
             path="/recruiter"
             element={

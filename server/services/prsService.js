@@ -137,7 +137,20 @@ export const computePRS = async (student, options = {}) => {
       T * weights.aptitude,
   );
 
-  const weakest = Object.entries(breakdown).sort((a, b) => a[1] - b[1])[0];
+  const weightKey = {
+    academic: "academic",
+    skills: "skills",
+    certifications: "certifications",
+    projects: "projects",
+    aptitude: "aptitude",
+  };
+  const weakest = Object.entries(breakdown)
+    .map(([k, v]) => ({
+      name: k,
+      score: v,
+      pointsLost: round((100 - v) * weights[weightKey[k]]),
+    }))
+    .sort((a, b) => b.pointsLost - a.pointsLost)[0];
 
   return {
     total,
@@ -158,7 +171,7 @@ export const computePRS = async (student, options = {}) => {
       totalGaps: gapResult.totalGaps,
     },
     aptitudeAttempted: aptitude.attempted,
-    weakestComponent: { name: weakest[0], score: weakest[1] },
+    weakestComponent: weakest,
     computedAt: new Date(),
   };
 };
