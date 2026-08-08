@@ -11,6 +11,9 @@ import {
 } from "../services/prsService.js";
 import { predictCareer } from "../services/mlClient.js";
 import AptitudeAttempt from "../models/AptitudeAttempt.js";
+import Job from "../models/Job.js";
+import Application from "../models/Application.js";
+import { computeMatch } from "../services/matchingService.js";
 
 /** GET /api/student/profile */
 export const getProfile = async (req, res, next) => {
@@ -416,6 +419,124 @@ export const getDashboard = async (req, res, next) => {
       predictedCareers: student.predictedCareers,
       prsHistory: student.prsHistory.slice(-10),
     });
+  } catch (err) {
+    next(err);
+  }
+};
+export const browseJobs = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id });
+    if (!student) return res.status(404).json({ message: "Profile not found" });
+
+    const jobs = await Job.find({
+      isActive: true,
+      $or: [{ deadline: null }, { deadline: { $gte: new Date() } }],
+    }).populate("companyId", "name industry location logoUrl");
+
+    const applications = await Application.find({
+      studentId: student._id,
+    }).select("jobId status");
+    const appMap = new Map(
+      applications.map((a) => [String(a.jobId), a.status]),
+    );
+
+    const scored = jobs
+      .map((job) => {
+        const m = computeMatch(student, job);
+        return {
+          _id: job._id,
+          title: job.title,
+          description: job.description,
+          location: job.location,
+          ctc: job.ctc,
+          deadline: job.deadline,
+          openings: job.openings,
+          company: job.companyId,
+          minCgpa: job.minCgpa,
+          maxBacklogs: job.maxBacklogs,
+          requiredSkills: job.requiredSkills,
+          ...m,
+          applicationStatus: appMap.get(String(job._id)) || null,
+        };
+      })
+      .sort((a, b) => b.matchPercent - a.matchPercent);
+
+    res.json({
+      jobs: scored,
+      eligibleCount: scored.filter((j) => j.eligible).length,
+      totalCount: scored.length,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const applyToJob = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id });
+    if (!student) return res.status(404).json({ message: "Profile not found" });
+
+    const job = await Job.findById(req.params.jobId);
+    if (!job) return res.status(404).json({ message: "Job not found" });
+    if (!job.isActive)
+      return res
+        .status(400)
+        .json({ message: "This job is no longer accepting applications" });
+    if (job.deadline && job.deadline < new Date()) {
+      return res
+        .status(400)
+        .json({ message: "The application deadline has passed" });
+    }
+
+    const match = computeMatch(student, job);
+    if (!match.eligible) {
+      return res.status(403).json({
+        message: `You are not eligible for this role — ${match.ineligibleReason}`,
+      });
+    }
+
+    const existing = await Application.findOne({
+      studentId: student._id,
+      jobId: job._id,
+    });
+    if (existing)
+      return res
+        .status(409)
+        .json({ message: "You have already applied to this job" });
+
+    const application = await Application.create({
+      studentId: student._id,
+      jobId: job._id,
+      matchPercent: match.matchPercent,
+      prsAtApplication: student.currentPRS,
+      statusHistory: [{ status: "applied", changedAt: new Date() }],
+    });
+
+    res.status(201).json({ application, matchPercent: match.matchPercent });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const myApplications = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id });
+    if (!student) return res.status(404).json({ message: "Profile not found" });
+
+    const applications = await Application.find({ studentId: student._id })
+      .populate({
+        path: "jobId",
+        select: "title location ctc deadline isActive",
+        populate: { path: "companyId", select: "name industry" },
+      })
+      .sort("-appliedAt");
+
+    const byStatus = applications.reduce((acc, a) => {
+      acc[a.status] = (acc[a.status] || 0) + 1;
+      return acc;
+    }, {});
+
+    res.json({ applications, total: applications.length, byStatus });
   } catch (err) {
     next(err);
   }

@@ -2,6 +2,13 @@ import express from "express";
 import { protect } from "../middleware/auth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { ROLES } from "../config/constants.js";
+
+import {
+  browseJobs,
+  applyToJob,
+  myApplications,
+} from "../controllers/student.controller.js";
+
 import {
   getProfile,
   createProfile,
@@ -62,5 +69,8 @@ router.get("/prs/history", getPRSHistory);
 router.get("/prs/sensitivity", getPRSSensitivity);
 router.get("/skill-gap", getSkillGapAnalysis);
 router.get("/career-prediction", getCareerPrediction);
+router.get("/jobs", browseJobs);
+router.post("/jobs/:jobId/apply", applyToJob);
+router.get("/applications", myApplications);
 
 export default router;
