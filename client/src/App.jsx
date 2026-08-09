@@ -13,6 +13,10 @@ import PostJob from "./pages/recruiter/PostJob";
 import Company from "./pages/recruiter/Company";
 import StudentJobs from "./pages/student/Jobs";
 import Applications from "./pages/student/Applications";
+import FacultyLayout from "./components/FacultyLayout";
+import Analytics from "./pages/faculty/Analytics";
+import FacultyStudents from "./pages/faculty/Students";
+
 function Home() {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -81,14 +85,12 @@ export default function App() {
             <Route path="company" element={<Company />} />
           </Route>
           
-          <Route
-            path="/faculty"
-            element={
-              <ProtectedRoute roles={["faculty"]}>
-                <Placeholder title="Faculty Analytics" />
-              </ProtectedRoute>
-            }
-          />
+         <Route path="/faculty" element={
+            <ProtectedRoute roles={["faculty", "admin"]}><FacultyLayout /></ProtectedRoute>
+          }>
+            <Route index element={<Analytics />} />
+            <Route path="students" element={<FacultyStudents />} />
+          </Route>
           <Route
             path="/admin"
             element={
