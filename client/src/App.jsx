@@ -16,6 +16,11 @@ import Applications from "./pages/student/Applications";
 import FacultyLayout from "./components/FacultyLayout";
 import Analytics from "./pages/faculty/Analytics";
 import FacultyStudents from "./pages/faculty/Students";
+import AdminLayout from "./components/AdminLayout";
+import AdminOverview from "./pages/admin/Overview";
+import AdminUsers from "./pages/admin/Users";
+import AdminSkills from "./pages/admin/Skills";
+import AdminQuestions from "./pages/admin/Questions";
 
 function Home() {
   const { user, loading } = useAuth();
@@ -91,14 +96,14 @@ export default function App() {
             <Route index element={<Analytics />} />
             <Route path="students" element={<FacultyStudents />} />
           </Route>
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute roles={["admin"]}>
-                <Placeholder title="Admin Panel" />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/admin" element={
+            <ProtectedRoute roles={["admin"]}><AdminLayout /></ProtectedRoute>
+          }>
+            <Route index element={<AdminOverview />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="skills" element={<AdminSkills />} />
+            <Route path="questions" element={<AdminQuestions />} />
+          </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
