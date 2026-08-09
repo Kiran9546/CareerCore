@@ -14,7 +14,7 @@ import AptitudeAttempt from "../models/AptitudeAttempt.js";
 import Job from "../models/Job.js";
 import Application from "../models/Application.js";
 import { computeMatch } from "../services/matchingService.js";
-
+import { getRecommendations } from "../services/recommendationService.js";
 /** GET /api/student/profile */
 export const getProfile = async (req, res, next) => {
   try {
@@ -540,4 +540,27 @@ export const myApplications = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+export const getRecommendationsForStudent = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id });
+    if (!student) return res.status(404).json({ message: "Profile not found" });
+
+    const prs = await computePRS(student);
+    if (!prs.computable) {
+      return res.status(400).json({ message: prs.message });
+    }
+    if (!prs.skillAnalysis.available) {
+      return res.status(503).json({ message: "Skill analysis unavailable — ML service is not responding" });
+    }
+
+    const recommendations = await getRecommendations(prs.skillAnalysis.gaps, 12);
+
+    res.json({
+      careerPath: prs.careerPath,
+      topGaps: prs.skillAnalysis.gaps.slice(0, 5),
+      recommendations,
+      total: recommendations.length,
+    });
+  } catch (err) { next(err); }
 };

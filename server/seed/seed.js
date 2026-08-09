@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import AptitudeQuestion from "../models/AptitudeQuestion.js";
-
+import LearningResource from "../models/LearningResource.js";
 import Skill from "../models/Skill.js";
 import CareerPath from "../models/CareerPath.js";
 
@@ -168,7 +168,40 @@ const seedCareerPaths = async (skills) => {
 
   return paths;
 };
+const seedLearningResources = async (skills) => {
+  const data = readJSON("learningResources.json");
+  const skillMap = new Map(skills.map((s) => [s.name, s._id]));
 
+  const missing = new Set();
+  const ops = data.map((r) => {
+    const ids = [];
+    for (const n of r.skillNames) {
+      const id = skillMap.get(n);
+      if (id) ids.push(id);
+      else missing.add(n);
+    }
+    return {
+      updateOne: {
+        filter: { url: r.url },
+        update: { $set: { ...r, skillIds: ids, isActive: true } },
+        upsert: true,
+      },
+    };
+  });
+
+  const result = await LearningResource.bulkWrite(ops);
+  console.log(`  Upserted: ${result.upsertedCount} new, ${result.modifiedCount} updated`);
+
+  if (missing.size) {
+    console.warn(`  WARNING: unknown skill names referenced: ${[...missing].join(", ")}`);
+  }
+
+  const bySkill = await LearningResource.aggregate([
+    { $unwind: "$skillNames" },
+    { $group: { _id: null, distinct: { $addToSet: "$skillNames" } } },
+  ]);
+  console.log(`  Covering ${bySkill[0]?.distinct.length || 0} distinct skills`);
+};
 const run = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
@@ -182,6 +215,9 @@ const run = async () => {
 
     console.log("\nSeeding aptitude questions...");
     await seedAptitudeQuestions();
+
+    console.log("\nSeeding learning resources...");
+    await seedLearningResources(skills);
 
     console.log("\nSeed complete.\n");
     process.exit(0);

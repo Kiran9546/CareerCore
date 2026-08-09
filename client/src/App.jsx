@@ -21,6 +21,7 @@ import AdminOverview from "./pages/admin/Overview";
 import AdminUsers from "./pages/admin/Users";
 import AdminSkills from "./pages/admin/Skills";
 import AdminQuestions from "./pages/admin/Questions";
+import Recommendations from "./pages/student/Recommendations";
 
 function Home() {
   const { user, loading } = useAuth();
@@ -75,6 +76,7 @@ export default function App() {
             <Route path="aptitude" element={<Aptitude />} />
             <Route path="jobs" element={<StudentJobs />} />
             <Route path="applications" element={<Applications />} />
+            <Route path="learn" element={<Recommendations />} />
           </Route>
 
           <Route
