@@ -11,7 +11,8 @@ import RecruiterLayout from "./components/RecruiterLayout";
 import RecruiterJobs from "./pages/recruiter/Jobs";
 import PostJob from "./pages/recruiter/PostJob";
 import Company from "./pages/recruiter/Company";
-
+import StudentJobs from "./pages/student/Jobs";
+import Applications from "./pages/student/Applications";
 function Home() {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -63,6 +64,8 @@ export default function App() {
             <Route path="profile" element={<Profile />} />
             <Route path="skills" element={<Skills />} />
             <Route path="aptitude" element={<Aptitude />} />
+            <Route path="jobs" element={<StudentJobs />} />
+            <Route path="applications" element={<Applications />} />
           </Route>
 
           <Route
