@@ -6,7 +6,7 @@ import morgan from "morgan";
 import authRoutes from "./routes/auth.routes.js";
 import studentRoutes from "./routes/student.routes.js";
 import recruiterRoutes from "./routes/recruiter.routes.js";
-
+import facultyRoutes from "./routes/faculty.routes.js";
 import connectDB from "./config/db.js";
 
 // Load .env before anything reads process.env
@@ -40,7 +40,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/student", studentRoutes);
 app.use("/api/recruiter", recruiterRoutes);
-
+app.use("/api/faculty", facultyRoutes);
 // ─── 404 handler ─────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ message: `Route not found: ${req.originalUrl}` });

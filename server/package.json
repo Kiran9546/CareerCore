@@ -8,7 +8,8 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "seed": "node seed/seed.js",
-    "seed:fresh": "node seed/seed.js --fresh"
+    "seed:fresh": "node seed/seed.js --fresh",
+    "seed:demo": "node seed/seedDemoStudents.js"
   },
   "keywords": ["placement", "career", "mern"],
   "author": "CareerCore Team — MITE ISE 2026-27",
