@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import NotificationBell from "./NotificationBell";
 
 const NAV = [
   { to: "/recruiter", label: "Jobs", end: true },
@@ -25,12 +26,13 @@ export default function RecruiterLayout() {
               <h1 className="text-xl font-bold text-slate-900">CareerCore</h1>
               <p className="text-sm text-slate-500">{user?.name} · Recruiter</p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 hover:bg-slate-50"
-            >
-              Sign out
-            </button>
+            <div className="flex items-center gap-3">
+              <NotificationBell />
+              <button onClick={handleLogout}
+                className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 hover:bg-slate-50">
+                Sign out
+              </button>
+            </div>
           </div>
           <nav className="flex gap-1 -mb-px">
             {NAV.map((n) => (
