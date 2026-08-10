@@ -1,0 +1,26 @@
+﻿COMPONENT AVERAGES (n=101)
+Academic       75.84
+Skills         41.75
+Certifications 56.44
+Projects       60.28
+Aptitude       54.03
+
+GAP RANKING ABLATION
+WEIGHTED:   SQL > Statistics > Power BI > Excel > R > Python
+UNWEIGHTED: SQL > Statistics > Power BI > R > Excel > Python
+Rankings differ: True
+
+SENSITIVITY ANALYSIS
+default        58.47  Developing
+balanced       55.78  Developing
+skillsHeavy    55.80  Developing
+academicHeavy  66.03  Placement Ready
+Range: 10.25
+
+INTEGRITY GUARDS
+ALIAS:  Conflicts with existing skill "React" - aliases must be unique
+DELETE: Cannot delete - used by 6 student(s) and 1 career path(s)
+
+PLATFORM STATS
+users 104 | students 101 | companies 1 | jobs 2
+applications 1 | skills 112 | careerPaths 8 | questions 20
