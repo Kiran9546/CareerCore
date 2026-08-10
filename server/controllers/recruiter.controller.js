@@ -5,6 +5,7 @@ import Student from "../models/Student.js";
 import { computeMatch } from "../services/matchingService.js";
 import { resolveSkills } from "../services/skillNormalizer.js";
 import { APPLICATION_STATUS } from "../config/constants.js";
+import { notifyMatchingStudents, notifyApplicationStatus } from "../jobs/cronTasks.js";
 
 export const getCompany = async (req, res, next) => {
   try {
@@ -148,7 +149,8 @@ export const createJob = async (req, res, next) => {
       openings: openings ?? 1,
     });
 
-    res.status(201).json({ job, unresolvedSkills: unresolved });
+    const notified = await notifyMatchingStudents(job);
+    res.status(201).json({ job, unresolvedSkills: unresolved, studentsNotified: notified });
   } catch (err) {
     next(err);
   }
@@ -283,6 +285,9 @@ export const updateApplicationStatus = async (req, res, next) => {
     app.status = status;
     app.statusHistory.push({ status, note, changedAt: new Date() });
     await app.save();
+
+   const companyDoc = await Company.findById(app.jobId.companyId).select("name");
+   await notifyApplicationStatus(app, app.jobId, companyDoc?.name || "The company");
 
     res.json({ application: app });
   } catch (err) {

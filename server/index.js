@@ -9,6 +9,8 @@ import recruiterRoutes from "./routes/recruiter.routes.js";
 import facultyRoutes from "./routes/faculty.routes.js";
 import connectDB from "./config/db.js";
 import adminRoutes from "./routes/admin.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
+import { startCronJobs } from "./jobs/cronTasks.js";
 // Load .env before anything reads process.env
 dotenv.config();
 
@@ -42,6 +44,7 @@ app.use("/api/student", studentRoutes);
 app.use("/api/recruiter", recruiterRoutes);
 app.use("/api/faculty", facultyRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/notifications", notificationRoutes);
 // ─── 404 handler ─────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ message: `Route not found: ${req.originalUrl}` });
@@ -62,6 +65,8 @@ const start = async () => {
     console.log(`CareerCore API running on http://localhost:${PORT}`);
     console.log(`Health check: http://localhost:${PORT}/api/health`);
   });
+  startCronJobs();
 };
 
 start();
+
