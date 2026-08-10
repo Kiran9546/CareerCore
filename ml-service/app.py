@@ -244,8 +244,9 @@ def rank_candidates():
         return jsonify({"error": str(e)}), 400
 
 
+load_artifacts()
+
 if __name__ == "__main__":
-    load_artifacts()
-    port = int(os.getenv("ML_PORT", 5000))
+    port = int(os.getenv("PORT", 5000))
     print(f"CareerCore ML service running on http://localhost:{port}")
-    app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False)
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)

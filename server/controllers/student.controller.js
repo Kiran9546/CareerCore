@@ -99,7 +99,9 @@ export const updateProfile = async (req, res, next) => {
       "linkedinUrl",
     ];
     for (const f of allowed) {
-      if (req.body[f] !== undefined) student[f] = req.body[f];
+      if (req.body[f] !== undefined && req.body[f] !== null && req.body[f] !== "") {
+        student[f] = req.body[f];
+      }
     }
 
     if (req.body.careerInterest) {

@@ -188,17 +188,17 @@
     "Logistic Regression": {
       "accuracy": 0.92,
       "macro_f1": 0.92,
-      "train_seconds": 0.16
+      "train_seconds": 0.12
     },
     "Decision Tree": {
       "accuracy": 0.799,
       "macro_f1": 0.8011,
-      "train_seconds": 0.1
+      "train_seconds": 0.06
     },
     "Random Forest": {
       "accuracy": 0.925,
       "macro_f1": 0.925,
-      "train_seconds": 0.95
+      "train_seconds": 0.69
     }
   },
   "classes": [
