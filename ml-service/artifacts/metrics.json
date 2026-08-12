@@ -7,21 +7,21 @@
       "support": 125.0
     },
     "Cybersecurity Analyst": {
-      "precision": 0.9504132231404959,
-      "recall": 0.92,
-      "f1-score": 0.9349593495934959,
+      "precision": 0.9586776859504132,
+      "recall": 0.928,
+      "f1-score": 0.943089430894309,
       "support": 125.0
     },
     "Data Analyst": {
-      "precision": 0.9444444444444444,
+      "precision": 0.952,
       "recall": 0.952,
-      "f1-score": 0.9482071713147411,
+      "f1-score": 0.952,
       "support": 125.0
     },
     "DevOps Engineer": {
-      "precision": 0.8582089552238806,
-      "recall": 0.92,
-      "f1-score": 0.888030888030888,
+      "precision": 0.8444444444444444,
+      "recall": 0.912,
+      "f1-score": 0.8769230769230769,
       "support": 125.0
     },
     "ML Engineer": {
@@ -31,34 +31,34 @@
       "support": 125.0
     },
     "QA Engineer": {
-      "precision": 0.9448818897637795,
+      "precision": 0.96,
       "recall": 0.96,
-      "f1-score": 0.9523809523809523,
+      "f1-score": 0.96,
       "support": 125.0
     },
     "Software Engineer": {
-      "precision": 0.943089430894309,
-      "recall": 0.928,
-      "f1-score": 0.9354838709677419,
+      "precision": 0.9426229508196722,
+      "recall": 0.92,
+      "f1-score": 0.9311740890688259,
       "support": 125.0
     },
     "Web Developer": {
-      "precision": 0.9354838709677419,
-      "recall": 0.928,
-      "f1-score": 0.9317269076305221,
+      "precision": 0.937007874015748,
+      "recall": 0.952,
+      "f1-score": 0.9444444444444444,
       "support": 125.0
     },
-    "accuracy": 0.925,
+    "accuracy": 0.927,
     "macro avg": {
-      "precision": 0.9254402268043314,
-      "recall": 0.9249999999999999,
-      "f1-score": 0.9249914996326498,
+      "precision": 0.9277191194037847,
+      "recall": 0.9269999999999999,
+      "f1-score": 0.9270967373091892,
       "support": 1000.0
     },
     "weighted avg": {
-      "precision": 0.9254402268043315,
-      "recall": 0.925,
-      "f1-score": 0.9249914996326497,
+      "precision": 0.9277191194037848,
+      "recall": 0.927,
+      "f1-score": 0.9270967373091892,
       "support": 1000.0
     }
   },
@@ -76,17 +76,17 @@
     "matrix": [
       [
         105,
-        4,
+        3,
         0,
-        16,
+        17,
         0,
         0,
         0,
         0
       ],
       [
-        7,
-        115,
+        6,
+        116,
         0,
         3,
         0,
@@ -105,10 +105,10 @@
         0
       ],
       [
-        8,
+        9,
         2,
         0,
-        115,
+        114,
         0,
         0,
         0,
@@ -131,8 +131,8 @@
         0,
         0,
         120,
-        2,
-        3
+        3,
+        2
       ],
       [
         0,
@@ -141,54 +141,54 @@
         0,
         0,
         4,
-        116,
-        5
+        115,
+        6
       ],
       [
         0,
         0,
+        0,
         1,
         0,
-        0,
-        3,
-        5,
-        116
+        1,
+        4,
+        119
       ]
     ]
   },
   "cross_validation": {
-    "mean": 0.9428,
-    "std": 0.0042,
+    "mean": 0.9426,
+    "std": 0.0062,
     "folds": [
-      0.939,
-      0.942,
+      0.943,
       0.949,
-      0.938,
-      0.946
+      0.947,
+      0.931,
+      0.943
     ]
   },
   "top_features": {
-    "skill_Manual Testing": 0.0395,
-    "skill_AWS": 0.0336,
-    "skill_Data Structures": 0.0304,
-    "skill_Machine Learning": 0.0296,
-    "skill_Network Security": 0.0295,
-    "skill_Test Case Design": 0.0279,
-    "skill_Statistics": 0.0277,
-    "skill_CSS": 0.0266,
-    "skill_HTML": 0.0262,
-    "skill_Object Oriented Programming": 0.025,
-    "skill_Cloud Architecture": 0.0245,
-    "skill_Excel": 0.0244,
-    "skill_Algorithms": 0.0223,
-    "skill_Vulnerability Assessment": 0.0223,
-    "skill_Ethical Hacking": 0.021
+    "skill_Manual Testing": 0.0387,
+    "skill_AWS": 0.0338,
+    "skill_Machine Learning": 0.0306,
+    "skill_Data Structures": 0.0296,
+    "skill_Statistics": 0.0283,
+    "skill_HTML": 0.0279,
+    "skill_Test Case Design": 0.0276,
+    "skill_Network Security": 0.0275,
+    "skill_Excel": 0.0263,
+    "skill_CSS": 0.0259,
+    "skill_Object Oriented Programming": 0.0254,
+    "skill_Cloud Architecture": 0.0243,
+    "skill_Vulnerability Assessment": 0.0238,
+    "skill_Scikit-learn": 0.0221,
+    "skill_Ethical Hacking": 0.0219
   },
   "baselines": {
     "Logistic Regression": {
       "accuracy": 0.92,
       "macro_f1": 0.92,
-      "train_seconds": 0.12
+      "train_seconds": 0.27
     },
     "Decision Tree": {
       "accuracy": 0.799,
@@ -196,9 +196,9 @@
       "train_seconds": 0.06
     },
     "Random Forest": {
-      "accuracy": 0.925,
-      "macro_f1": 0.925,
-      "train_seconds": 0.69
+      "accuracy": 0.927,
+      "macro_f1": 0.9271,
+      "train_seconds": 0.73
     }
   },
   "classes": [
