@@ -5,6 +5,7 @@ import NotificationBell from "./NotificationBell";
 const NAV = [
   { to: "/student", label: "Dashboard", end: true },
   { to: "/student/profile", label: "Profile" },
+  { to: "/student/resume", label: "Resume" },
   { to: "/student/skills", label: "Skills" },
   { to: "/student/aptitude", label: "Aptitude" },
   { to: "/student/learn", label: "Learn" },
@@ -30,10 +31,12 @@ export default function Layout() {
               <h1 className="text-xl font-bold text-slate-900">CareerCore</h1>
               <p className="text-sm text-slate-500">{user?.name}</p>
             </div>
-           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
               <NotificationBell />
-              <button onClick={handleLogout}
-                className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 hover:bg-slate-50">
+              <button
+                onClick={handleLogout}
+                className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 hover:bg-slate-50"
+              >
                 Sign out
               </button>
             </div>

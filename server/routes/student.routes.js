@@ -2,6 +2,11 @@ import express from "express";
 import { protect } from "../middleware/auth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { ROLES } from "../config/constants.js";
+import {
+  getResume,
+  updateResume,
+  resetSection,
+} from "../controllers/resume.controller.js";
 
 import {
   getProfile,
@@ -41,6 +46,10 @@ router.use(protect, requireRole(ROLES.STUDENT));
 router.get("/profile", getProfile);
 router.post("/profile", createProfile);
 router.put("/profile", updateProfile);
+
+router.get("/resume", getResume);
+router.put("/resume", updateResume);
+router.post("/resume/reset/:section", resetSection);
 
 // ─── Skills ──────────────────────────────────────────────────
 router.put("/skills", updateSkills);

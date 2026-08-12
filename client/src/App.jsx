@@ -22,6 +22,8 @@ import AdminUsers from "./pages/admin/Users";
 import AdminSkills from "./pages/admin/Skills";
 import AdminQuestions from "./pages/admin/Questions";
 import Recommendations from "./pages/student/Recommendations";
+import Register from "./pages/auth/Register";
+import Resume from "./pages/student/Resume";
 
 function Home() {
   const { user, loading } = useAuth();
@@ -61,6 +63,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
           <Route
             path="/student"
@@ -72,6 +75,7 @@ export default function App() {
           >
             <Route index element={<StudentDashboard />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="resume" element={<Resume />} />
             <Route path="skills" element={<Skills />} />
             <Route path="aptitude" element={<Aptitude />} />
             <Route path="jobs" element={<StudentJobs />} />
@@ -91,16 +95,26 @@ export default function App() {
             <Route path="post" element={<PostJob />} />
             <Route path="company" element={<Company />} />
           </Route>
-          
-         <Route path="/faculty" element={
-            <ProtectedRoute roles={["faculty", "admin"]}><FacultyLayout /></ProtectedRoute>
-          }>
+
+          <Route
+            path="/faculty"
+            element={
+              <ProtectedRoute roles={["faculty", "admin"]}>
+                <FacultyLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<Analytics />} />
             <Route path="students" element={<FacultyStudents />} />
           </Route>
-          <Route path="/admin" element={
-            <ProtectedRoute roles={["admin"]}><AdminLayout /></ProtectedRoute>
-          }>
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute roles={["admin"]}>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<AdminOverview />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="skills" element={<AdminSkills />} />
