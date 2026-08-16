@@ -194,7 +194,7 @@ export default function Resume() {
 
     html2pdf()
       .set({
-        margin: [10, 12, 10, 12],
+        margin: [10, 12, 6, 12],
         filename: `${data.profile.usn}_${data.profile.name.replace(/\s+/g, "_").toUpperCase()}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, windowWidth: 794, width: 794 },
@@ -731,7 +731,7 @@ export default function Resume() {
           />
         </Card>
 
-        <div className="h-8" />
+        <div className="h-2" />
       </div>
 
       {/* ─────────────── PREVIEW ─────────────── */}
@@ -751,65 +751,75 @@ export default function Resume() {
             }}
           >
             {/* Header */}
-            <div
+            <table
               style={{
-                fontFamily: "'Times New Roman', Times, serif",
-                fontSize: "10.5pt",
-                lineHeight: 1.45,
-                color: "#000",
-                fontVariantNumeric: "lining-nums",
+                width: "100%",
+                borderCollapse: "collapse",
+                marginBottom: "4px",
               }}
             >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h1
-                  style={{
-                    fontSize: "20pt",
-                    fontWeight: "bold",
-                    margin: "0 0 6px",
-                  }}
-                >
-                  {p.name}
-                </h1>
-                {form.phone && (
-                  <p style={contactLine}>
-                    <b>Phone No:</b> {form.phone}
-                  </p>
-                )}
-                <p style={contactLine}>
-                  <b>Gmail :</b> <span style={linkStyle}>{p.email}</span>
-                </p>
-                {form.linkedinUrl && (
-                  <p style={contactLine}>
-                    <b>LinkedIn:</b>{" "}
-                    <span style={linkStyle}>{form.linkedinUrl}</span>
-                  </p>
-                )}
-                {form.githubUrl && (
-                  <p style={contactLine}>
-                    <b>Git Hub :</b>{" "}
-                    <span style={linkStyle}>{form.githubUrl}</span>
-                  </p>
-                )}
-                {form.address && (
-                  <p style={{ margin: "1px 0" }}>
-                    <b>Address :</b> {form.address}
-                  </p>
-                )}
-              </div>
-              {form.photoUrl && (
-                <img
-                  src={form.photoUrl}
-                  alt=""
-                  style={{
-                    width: "82px",
-                    height: "100px",
-                    objectFit: "cover",
-                    border: "1px solid #999",
-                    flexShrink: 0,
-                  }}
-                />
-              )}
-            </div>
+              <tbody>
+                <tr>
+                  <td style={{ verticalAlign: "top", padding: 0 }}>
+                    <h1
+                      style={{
+                        fontSize: "20pt",
+                        fontWeight: "bold",
+                        margin: "0 0 6px",
+                      }}
+                    >
+                      {p.name}
+                    </h1>
+                    {form.phone && (
+                      <p style={contactLine}>
+                        <b>Phone No:</b> {form.phone}
+                      </p>
+                    )}
+                    <p style={contactLine}>
+                      <b>Gmail :</b> <span style={linkStyle}>{p.email}</span>
+                    </p>
+                    {form.linkedinUrl && (
+                      <p style={contactLine}>
+                        <b>LinkedIn:</b>{" "}
+                        <span style={linkStyle}>{form.linkedinUrl}</span>
+                      </p>
+                    )}
+                    {form.githubUrl && (
+                      <p style={contactLine}>
+                        <b>Git Hub :</b>{" "}
+                        <span style={linkStyle}>{form.githubUrl}</span>
+                      </p>
+                    )}
+                    {form.address && (
+                      <p style={{ margin: "1px 0" }}>
+                        <b>Address :</b> {form.address}
+                      </p>
+                    )}
+                  </td>
+                  {form.photoUrl && (
+                    <td
+                      style={{
+                        verticalAlign: "top",
+                        width: "90px",
+                        padding: 0,
+                        textAlign: "right",
+                      }}
+                    >
+                      <img
+                        src={form.photoUrl}
+                        alt=""
+                        style={{
+                          width: "82px",
+                          height: "100px",
+                          objectFit: "cover",
+                          border: "1px solid #999",
+                        }}
+                      />
+                    </td>
+                  )}
+                </tr>
+              </tbody>
+            </table>
 
             <hr
               style={{
