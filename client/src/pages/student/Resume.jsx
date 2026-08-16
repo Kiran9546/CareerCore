@@ -287,7 +287,9 @@ export default function Resume() {
               </button>
             )}
 
-            {photoError && <p className="text-xs text-red-600 mt-2">{photoError}</p>}
+            {photoError && (
+              <p className="text-xs text-red-600 mt-2">{photoError}</p>
+            )}
           </Field>
           <Field label="Phone">
             <input
@@ -744,10 +746,11 @@ export default function Resume() {
             ref={previewRef}
             className="p-8"
             style={{
-              fontFamily: "Georgia, 'Times New Roman', serif",
+              fontFamily: "'Times New Roman', Times, serif",
               fontSize: "10.5pt",
               lineHeight: 1.45,
               color: "#000",
+              fontVariantNumeric: "lining-nums",
             }}
           >
             {/* Header */}
