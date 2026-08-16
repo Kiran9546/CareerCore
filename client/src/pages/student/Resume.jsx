@@ -88,6 +88,9 @@ export default function Resume() {
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const previewRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [photoError, setPhotoError] = useState("");
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     api
@@ -138,6 +141,52 @@ export default function Resume() {
     setTimeout(() => setMsg(""), 2000);
   };
 
+  const handlePhotoSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setPhotoError("");
+
+    const allowed = ["image/jpeg", "image/jpg", "image/png"];
+    if (!allowed.includes(file.type)) {
+      setPhotoError("Only JPG, JPEG or PNG files are allowed");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setPhotoError("Photo must be under 2 MB");
+      e.target.value = "";
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("photo", file);
+
+      const res = await api.post("/student/resume/photo", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      set("photoUrl", res.data.photoUrl);
+    } catch (err) {
+      setPhotoError(err.response?.data?.message || "Upload failed");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const removePhoto = async () => {
+    setPhotoError("");
+    try {
+      await api.delete("/student/resume/photo");
+      set("photoUrl", "");
+    } catch (err) {
+      setPhotoError(err.response?.data?.message || "Could not remove photo");
+    }
+  };
+
   const download = () => {
     const el = previewRef.current;
     const prevWidth = el.style.width;
@@ -155,7 +204,7 @@ export default function Resume() {
       .from(el)
       .save()
       .then(() => {
-        el.style.width = "794px";
+        el.style.width = prevWidth;
       });
   };
 
@@ -195,16 +244,50 @@ export default function Resume() {
         </div>
 
         <Card title="Contact" subtitle="Appears in the header of your resume">
-          <Field
-            label="Photo URL"
-            hint="Optional — paste a direct link to your photo"
-          >
+          <Field label="Photo" hint="Optional — JPG or PNG, under 2 MB">
             <input
-              value={form.photoUrl || ""}
-              onChange={(e) => set("photoUrl", e.target.value)}
-              className={inputCls}
-              placeholder="https://…"
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png"
+              onChange={handlePhotoSelect}
+              style={{ display: "none" }}
             />
+
+            {form.photoUrl ? (
+              <div className="flex items-center gap-4">
+                <img
+                  src={form.photoUrl}
+                  alt="Resume photo"
+                  className="w-20 h-24 object-cover rounded border border-slate-300"
+                />
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    {uploading ? "Uploading…" : "Replace photo"}
+                  </button>
+                  <button
+                    onClick={removePhoto}
+                    disabled={uploading}
+                    className="px-3 py-1.5 text-sm rounded-lg text-slate-500 hover:text-red-600 disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="w-full px-4 py-6 rounded-lg border-2 border-dashed border-slate-300 text-sm text-slate-500 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-50"
+              >
+                {uploading ? "Uploading…" : "Click to upload your photo"}
+              </button>
+            )}
+
+            {photoError && <p className="text-xs text-red-600 mt-2">{photoError}</p>}
           </Field>
           <Field label="Phone">
             <input
@@ -717,7 +800,6 @@ export default function Resume() {
                 <img
                   src={form.photoUrl}
                   alt=""
-                  crossOrigin="anonymous"
                   style={{
                     width: "82px",
                     height: "100px",

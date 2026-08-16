@@ -1,4 +1,5 @@
 import express from "express";
+import { handlePhotoUpload } from "../middleware/upload.js";
 import { protect } from "../middleware/auth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { ROLES } from "../config/constants.js";
@@ -6,6 +7,8 @@ import {
   getResume,
   updateResume,
   resetSection,
+  uploadPhoto,
+  deletePhoto,
 } from "../controllers/resume.controller.js";
 
 import {
@@ -50,6 +53,8 @@ router.put("/profile", updateProfile);
 router.get("/resume", getResume);
 router.put("/resume", updateResume);
 router.post("/resume/reset/:section", resetSection);
+router.post("/resume/photo", handlePhotoUpload, uploadPhoto);
+router.delete("/resume/photo", deletePhoto);
 
 // ─── Skills ──────────────────────────────────────────────────
 router.put("/skills", updateSkills);

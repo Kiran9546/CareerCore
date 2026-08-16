@@ -10,6 +10,7 @@ const resumeSchema = new mongoose.Schema(
     },
 
     photoUrl: String,
+    photoFilename: String,
     phone: String,
     address: String,
     linkedinUrl: String,

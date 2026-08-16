@@ -11,6 +11,8 @@ import connectDB from "./config/db.js";
 import adminRoutes from "./routes/admin.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import { startCronJobs } from "./jobs/cronTasks.js";
+import path from "path";
+import { fileURLToPath } from "url";
 // Load .env before anything reads process.env
 dotenv.config();
 
@@ -18,10 +20,11 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // ─── Middleware ──────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: false }));
 const allowedOrigins = [
   process.env.CLIENT_URL,
   "http://localhost:5173",
+  "http://localhost:5174",
 ].filter(Boolean);
 
 app.use(cors({
@@ -34,6 +37,17 @@ app.use(cors({
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+app.use(
+  "/uploads",
+  (req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    next();
+  },
+  express.static(path.join(__dirname, "uploads"))
+);
 
 // ─── Health check ────────────────────────────────────────────
 app.get("/api/health", (req, res) => {

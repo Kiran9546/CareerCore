@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+import { UPLOAD_DIR } from "../middleware/upload.js";
 import Resume from "../models/Resume.js";
 import Student from "../models/Student.js";
 import {
@@ -89,7 +92,6 @@ export const updateResume = async (req, res, next) => {
       return res.status(404).json({ message: "Resume not initialised" });
 
     const fields = [
-      "photoUrl",
       "phone",
       "address",
       "linkedinUrl",
@@ -160,4 +162,54 @@ export const resetSection = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+export const uploadPhoto = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file received" });
+    }
+
+    const student = await Student.findOne({ userId: req.user._id });
+    if (!student) return res.status(404).json({ message: "Profile not found" });
+
+    const resume = await Resume.findOne({ studentId: student._id });
+    if (!resume) return res.status(404).json({ message: "Resume not initialised" });
+
+    // Remove an older file with a different extension
+    if (resume.photoFilename && resume.photoFilename !== req.file.filename) {
+      const oldPath = path.join(UPLOAD_DIR, resume.photoFilename);
+      if (fs.existsSync(oldPath)) {
+        try { fs.unlinkSync(oldPath); } catch { /* ignore */ }
+      }
+    }
+
+    resume.photoFilename = req.file.filename;
+    resume.photoUrl = `/uploads/resume-photos/${req.file.filename}?v=${Date.now()}`;
+    await resume.save();
+
+    res.json({ photoUrl: resume.photoUrl, message: "Photo uploaded" });
+  } catch (err) { next(err); }
+};
+
+export const deletePhoto = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id });
+    if (!student) return res.status(404).json({ message: "Profile not found" });
+
+    const resume = await Resume.findOne({ studentId: student._id });
+    if (!resume) return res.status(404).json({ message: "Resume not initialised" });
+
+    if (resume.photoFilename) {
+      const filePath = path.join(UPLOAD_DIR, resume.photoFilename);
+      if (fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch { /* ignore */ }
+      }
+    }
+
+    resume.photoUrl = undefined;
+    resume.photoFilename = undefined;
+    await resume.save();
+
+    res.json({ message: "Photo removed" });
+  } catch (err) { next(err); }
 };
