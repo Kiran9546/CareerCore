@@ -36,6 +36,46 @@ export const notifyMatchingStudents = async (job) => {
   return sent;
 };
 
+/**
+ * Announce a placement-cell posting to every ELIGIBLE student.
+ *
+ * Deliberately different from notifyMatchingStudents() above, which only
+ * reaches students clearing JOB_ALERT_MATCH_THRESHOLD. That gate is right
+ * for a recruiter's own advert — a low-match student does not want it. It
+ * is wrong for the placement cell, whose job is to tell everyone eligible
+ * that a drive is open; filtering by skill match would quietly hide the
+ * announcement from exactly the students who most need to see it.
+ *
+ * Match percent is still computed and carried in the notification so the
+ * student sees how well they fit, but it never decides who is told.
+ */
+export const notifyEligibleStudents = async (job, companyName) => {
+  const students = await Student.find({})
+    .select("userId cgpa backlogs branch batch skills currentPRS");
+
+  const items = [];
+  for (const s of students) {
+    const m = computeMatch(s, job);
+    if (!m.eligible) continue;
+    items.push({
+      userId: s.userId,
+      type: "new_job",
+      title: `New opening — ${companyName}`,
+      body:
+        `The placement cell has posted ${job.title} at ${companyName}` +
+        `${job.ctc ? ` (₹${(job.ctc / 100000).toFixed(1)} LPA)` : ""}. ` +
+        `You meet the eligibility criteria and are a ${m.matchPercent}% skill match.`,
+      link: "/student/jobs",
+      metadata: { jobId: job._id, matchPercent: m.matchPercent, source: job.source },
+    });
+  }
+
+  // Settled in parallel: one student's failed email must not stop the rest
+  // of the batch from being told.
+  const results = await Promise.allSettled(items.map((i) => notify(i)));
+  return results.filter((r) => r.status === "fulfilled").length;
+};
+
 export const notifyApplicationStatus = async (application, job, companyName) => {
   const student = await Student.findById(application.studentId).select("userId");
   if (!student) return;

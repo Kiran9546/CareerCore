@@ -8,6 +8,7 @@ const TYPE_ICON = {
   skill_reminder: "●",
   application_status: "✓",
   recommendation_update: "◇",
+  placement_update: "★",
   system: "■",
 };
 
@@ -17,6 +18,7 @@ const TYPE_COLOR = {
   skill_reminder: "text-slate-500",
   application_status: "text-green-600",
   recommendation_update: "text-purple-600",
+  placement_update: "text-emerald-600",
   system: "text-slate-400",
 };
 
@@ -24,6 +26,9 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
+  // Reading Date.now() straight from render makes the component impure and
+  // its timestamps drift out of sync with React. Keep "now" in state instead.
+  const [now, setNow] = useState(() => Date.now());
   const ref = useRef(null);
   const navigate = useNavigate();
 
@@ -36,6 +41,7 @@ export default function NotificationBell() {
   useEffect(() => {
     load();
     const t = setInterval(() => {
+      setNow(Date.now());
       api.get("/notifications/unread")
         .then((r) => setUnread(r.data.unread))
         .catch(() => {});
@@ -52,24 +58,33 @@ export default function NotificationBell() {
   }, []);
 
   const toggle = () => {
-    if (!open) load();
+    if (!open) {
+      setNow(Date.now());
+      load();
+    }
     setOpen(!open);
   };
 
   const markAllRead = async () => {
-    await api.patch("/notifications/read", {});
+    try {
+      await api.patch("/notifications/read", {});
+    } catch { /* the reload below will resync the badge */ }
     load();
   };
 
   const openItem = async (n) => {
-    if (!n.isRead) await api.patch("/notifications/read", { ids: [n._id] });
+    if (!n.isRead) {
+      try {
+        await api.patch("/notifications/read", { ids: [n._id] });
+      } catch { /* navigating away anyway */ }
+    }
     setOpen(false);
     if (n.link) navigate(n.link);
     else load();
   };
 
   const timeAgo = (d) => {
-    const mins = Math.floor((Date.now() - new Date(d)) / 60000);
+    const mins = Math.floor((now - new Date(d)) / 60000);
     if (mins < 1) return "just now";
     if (mins < 60) return `${mins}m ago`;
     const hrs = Math.floor(mins / 60);

@@ -11,6 +11,7 @@ const NAV = [
   { to: "/student/learn", label: "Learn" },
   { to: "/student/jobs", label: "Jobs" },
   { to: "/student/applications", label: "Applications" },
+  { to: "/student/placement", label: "Placement" },
 ];
 
 export default function Layout() {

@@ -9,7 +9,8 @@
     "dev": "nodemon index.js",
     "seed": "node seed/seed.js",
     "seed:fresh": "node seed/seed.js --fresh",
-    "seed:demo": "node seed/seedDemoStudents.js"
+    "seed:demo": "node seed/seedDemoStudents.js",
+    "seed:placement": "node seed/seedPlacementDemo.js"
   },
   "keywords": [
     "placement",
@@ -24,6 +25,7 @@
     "cloudinary": "^2.3.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
     "express": "^4.19.2",
     "express-rate-limit": "^7.4.0",
     "express-validator": "^7.1.0",

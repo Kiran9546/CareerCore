@@ -5,31 +5,45 @@ const AuthContext = createContext(null);
 
 export const useAuth = () => useContext(AuthContext);
 
+/**
+ * Read the cached user out of localStorage. A corrupt `cc_user` value used to
+ * throw straight out of JSON.parse inside the effect and blank the whole app,
+ * so a parse failure clears the cache and falls back to signed-out.
+ */
+const readStoredUser = () => {
+  const stored = localStorage.getItem("cc_user");
+  const token = localStorage.getItem("cc_token");
+  if (!stored || !token) return null;
+  try {
+    return JSON.parse(stored);
+  } catch {
+    localStorage.removeItem("cc_user");
+    localStorage.removeItem("cc_token");
+    return null;
+  }
+};
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Hydrate on the first render instead of via setState in an effect — that
+  // avoided a cascading render and the signed-out flash on reload.
+  const [user, setUser] = useState(readStoredUser);
+  const [loading, setLoading] = useState(() => !!readStoredUser());
 
   useEffect(() => {
-    const stored = localStorage.getItem("cc_user");
-    const token = localStorage.getItem("cc_token");
+    if (!readStoredUser()) return;
 
-    if (stored && token) {
-      setUser(JSON.parse(stored));
-      api
-        .get("/auth/me")
-        .then((res) => {
-          setUser(res.data.user);
-          localStorage.setItem("cc_user", JSON.stringify(res.data.user));
-        })
-        .catch(() => {
-          localStorage.removeItem("cc_token");
-          localStorage.removeItem("cc_user");
-          setUser(null);
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    api
+      .get("/auth/me")
+      .then((res) => {
+        setUser(res.data.user);
+        localStorage.setItem("cc_user", JSON.stringify(res.data.user));
+      })
+      .catch(() => {
+        localStorage.removeItem("cc_token");
+        localStorage.removeItem("cc_user");
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const login = async (email, password) => {

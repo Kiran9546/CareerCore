@@ -14,9 +14,13 @@ export default function Analytics() {
   const [components, setComponents] = useState([]);
   const [gaps, setGaps] = useState(null);
   const [loadingGaps, setLoadingGaps] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    api.get("/faculty/filters").then((r) => setFilters(r.data));
+    api
+      .get("/faculty/filters")
+      .then((r) => setFilters(r.data))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -25,9 +29,20 @@ export default function Analytics() {
     if (branch) q.set("branch", branch);
     const qs = q.toString() ? `?${q}` : "";
 
-    api.get(`/faculty/overview${qs}`).then((r) => setOverview(r.data));
-    api.get(`/faculty/components${qs}`).then((r) => setComponents(r.data.components));
-    api.get(`/faculty/branches${batch ? `?batch=${batch}` : ""}`).then((r) => setBranches(r.data.branches));
+    // Without these catches a single failed request left the whole page on
+    // "Loading…" with an unhandled rejection in the console.
+    api
+      .get(`/faculty/overview${qs}`)
+      .then((r) => { setOverview(r.data); setError(""); })
+      .catch((e) => setError(e.response?.data?.message || "Could not load analytics"));
+    api
+      .get(`/faculty/components${qs}`)
+      .then((r) => setComponents(r.data.components))
+      .catch(() => setComponents([]));
+    api
+      .get(`/faculty/branches${batch ? `?batch=${batch}` : ""}`)
+      .then((r) => setBranches(r.data.branches))
+      .catch(() => setBranches([]));
   }, [batch, branch]);
 
   const loadGaps = async () => {
@@ -35,11 +50,23 @@ export default function Analytics() {
     const q = new URLSearchParams();
     if (batch) q.set("batch", batch);
     if (branch) q.set("branch", branch);
-    const res = await api.get(`/faculty/skill-gaps${q.toString() ? `?${q}` : ""}`);
-    setGaps(res.data);
-    setLoadingGaps(false);
+    try {
+      const res = await api.get(`/faculty/skill-gaps${q.toString() ? `?${q}` : ""}`);
+      setGaps(res.data);
+    } catch (e) {
+      setGaps({ gaps: [] });
+      setError(e.response?.data?.message || "Could not load skill gaps");
+    } finally {
+      setLoadingGaps(false);
+    }
   };
 
+  if (error && !overview)
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+        <p className="text-slate-500">{error}</p>
+      </div>
+    );
   if (!overview) return <p className="text-slate-400">Loading…</p>;
 
   const s = overview.summary;

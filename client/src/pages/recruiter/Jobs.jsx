@@ -17,51 +17,99 @@ const STATUSES = [
   "rejected",
 ];
 
+const errMsg = (e, fallback) => e.response?.data?.message || fallback;
+
 export default function Jobs() {
   const [jobs, setJobs] = useState([]);
   const [selected, setSelected] = useState(null);
   const [tab, setTab] = useState("candidates");
   const [candidates, setCandidates] = useState(null);
   const [applicants, setApplicants] = useState(null);
-
-  useEffect(() => {
-    loadJobs();
-  }, []);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const loadJobs = async () => {
-    const res = await api.get("/recruiter/jobs");
-    setJobs(res.data.jobs);
+    try {
+      const res = await api.get("/recruiter/jobs");
+      setJobs(res.data.jobs);
+      setError("");
+    } catch (e) {
+      // 404 = no company profile yet, 403 = still awaiting admin approval.
+      // Without this the page sat on an empty list with no explanation.
+      setJobs([]);
+      setError(errMsg(e, "Could not load your jobs"));
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    // loadJobs only touches state after awaiting the request, so this is not
+    // the synchronous cascade the rule is guarding against.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadJobs();
+  }, []);
 
   const openJob = async (job) => {
     setSelected(job);
     setTab("candidates");
     setCandidates(null);
     setApplicants(null);
-    const res = await api.get(`/recruiter/jobs/${job._id}/candidates`);
-    setCandidates(res.data);
+    setError("");
+    try {
+      const res = await api.get(`/recruiter/jobs/${job._id}/candidates`);
+      setCandidates(res.data);
+    } catch (e) {
+      setCandidates({ candidates: [], eligibleCount: 0, totalCount: 0 });
+      setError(errMsg(e, "Could not load candidates"));
+    }
+  };
+
+  const fetchApplicants = async () => {
+    try {
+      const res = await api.get(`/recruiter/jobs/${selected._id}/applicants`);
+      setApplicants(res.data);
+      setError("");
+    } catch (e) {
+      setApplicants({ applications: [] });
+      setError(errMsg(e, "Could not load applicants"));
+    }
   };
 
   const loadApplicants = async () => {
     setTab("applicants");
-    const res = await api.get(`/recruiter/jobs/${selected._id}/applicants`);
-    setApplicants(res.data);
+    setApplicants(null);
+    await fetchApplicants();
   };
 
   const changeStatus = async (appId, status) => {
-    await api.patch(`/recruiter/applications/${appId}/status`, { status });
-    const res = await api.get(`/recruiter/jobs/${selected._id}/applicants`);
-    setApplicants(res.data);
+    try {
+      await api.patch(`/recruiter/applications/${appId}/status`, { status });
+    } catch (e) {
+      setError(errMsg(e, "Could not update the application status"));
+    }
+    await fetchApplicants();
   };
 
   const toggle = async (id) => {
-    await api.patch(`/recruiter/jobs/${id}/toggle`);
+    try {
+      await api.patch(`/recruiter/jobs/${id}/toggle`);
+    } catch (e) {
+      setError(errMsg(e, "Could not update the job"));
+    }
     loadJobs();
   };
+
+  const banner = error && (
+    <div className="px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-900">
+      {error}
+    </div>
+  );
 
   if (selected) {
     return (
       <div className="space-y-4">
+        {banner}
         <button
           onClick={() => setSelected(null)}
           className="text-sm text-slate-500 hover:text-slate-800"
@@ -213,8 +261,11 @@ export default function Jobs() {
     );
   }
 
+  if (loading) return <p className="text-slate-400">Loading…</p>;
+
   return (
     <div className="space-y-3">
+      {banner}
       {jobs.map((j) => (
         <div
           key={j._id}
@@ -242,7 +293,7 @@ export default function Jobs() {
           </button>
         </div>
       ))}
-      {!jobs.length && (
+      {!jobs.length && !error && (
         <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
           <p className="text-slate-500">No jobs posted yet.</p>
         </div>

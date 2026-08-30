@@ -12,21 +12,31 @@ export default function Skills() {
   useEffect(() => {
     api
       .get("/student/profile")
-      .then((res) => setSkills(res.data.student.skills || []));
+      .then((res) => setSkills(res.data.student?.skills || []))
+      .catch((e) =>
+        // 404 = profile not created yet. Reading res.data.student.skills off a
+        // rejected request left this page silently broken.
+        setMsg(e.response?.data?.message || "Could not load your skills"),
+      );
   }, []);
 
   useEffect(() => {
-    if (query.trim().length < 2) {
-      setResults([]);
-      return;
-    }
+    if (query.trim().length < 2) return;
     const t = setTimeout(() => {
       api
         .get(`/student/skills/search?q=${encodeURIComponent(query)}`)
-        .then((res) => setResults(res.data.results));
+        .then((res) => setResults(res.data.results))
+        .catch(() => setResults([]));
     }, 250);
     return () => clearTimeout(t);
   }, [query]);
+
+  // Clearing here rather than inside the effect keeps the effect body free of
+  // synchronous setState, which React flags as a cascading render.
+  const onQueryChange = (v) => {
+    setQuery(v);
+    if (v.trim().length < 2) setResults([]);
+  };
 
   const add = (skill) => {
     if (skills.some((s) => s.name === skill.name)) {
@@ -85,7 +95,7 @@ export default function Skills() {
         <div className="relative mb-6">
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => onQueryChange(e.target.value)}
             placeholder="Search skills — try 'reactjs' or 'mongo db'"
             className={input}
           />

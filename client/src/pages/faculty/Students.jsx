@@ -17,7 +17,10 @@ export default function Students() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    api.get("/faculty/filters").then((r) => setFilters(r.data));
+    api
+      .get("/faculty/filters")
+      .then((r) => setFilters(r.data))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -26,7 +29,8 @@ export default function Students() {
     if (branch) q.set("branch", branch);
     if (level) q.set("level", level);
     api.get(`/faculty/students${q.toString() ? `?${q}` : ""}`)
-      .then((r) => setStudents(r.data.students));
+      .then((r) => setStudents(r.data.students))
+      .catch(() => setStudents([]));
   }, [batch, branch, level]);
 
   const shown = students.filter((s) =>

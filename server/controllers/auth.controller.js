@@ -2,6 +2,31 @@ import User from "../models/User.js";
 import { signToken } from "../utils/jwt.js";
 import { ROLES } from "../config/constants.js";
 
+/**
+ * Roles the public /register endpoint is allowed to create.
+ *
+ * Recruiter was removed when job posting moved to the placement cell:
+ * openings now reach students through the placement officer, so there is
+ * nothing for a new self-registered recruiter to do. Existing recruiter
+ * accounts still sign in and keep their company and job records — the role
+ * is retired from sign-up, not deleted.
+ *
+ * Placement officer IS self-registerable, by product decision. Note what
+ * that grants: an officer can record official stage results and download
+ * every student's contact details and academic record. The account is
+ * created active, so there is no approval step between signing up and
+ * holding that access. The `isVerified` flag and the `requireVerified`
+ * middleware already exist and could gate the placement routes the way they
+ * gate the recruiter routes, if that trade is ever revisited.
+ *
+ * Admin remains absent and is provisioned directly against the database.
+ */
+const SELF_REGISTERABLE_ROLES = [
+  ROLES.STUDENT,
+  ROLES.FACULTY,
+  ROLES.PLACEMENT_OFFICER,
+];
+
 /** POST /api/auth/register */
 export const register = async (req, res, next) => {
   try {
@@ -15,6 +40,13 @@ export const register = async (req, res, next) => {
     }
     if (!Object.values(ROLES).includes(role)) {
       return res.status(400).json({ message: `role must be one of: ${Object.values(ROLES).join(", ")}` });
+    }
+    // Admin accounts are provisioned directly against the database, never
+    // self-served — otherwise anyone could POST role:"admin" and take over.
+    if (!SELF_REGISTERABLE_ROLES.includes(role)) {
+      return res.status(403).json({
+        message: "This role cannot be self-registered — contact the placement cell",
+      });
     }
 
     const exists = await User.findOne({ email: email.toLowerCase() });

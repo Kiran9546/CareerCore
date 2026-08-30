@@ -13,11 +13,25 @@ const STATUS_STYLE = {
 
 export default function Applications() {
   const [data, setData] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    api.get("/student/applications").then((res) => setData(res.data));
+    api
+      .get("/student/applications")
+      .then((res) => setData(res.data))
+      .catch((e) =>
+        // 404 here means the student has not created a profile yet; without a
+        // catch the page sat on "Loading…" forever.
+        setError(e.response?.data?.message || "Could not load your applications"),
+      );
   }, []);
 
+  if (error)
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+        <p className="text-slate-500">{error}</p>
+      </div>
+    );
   if (!data) return <p className="text-slate-400">Loading…</p>;
 
   return (
@@ -42,7 +56,7 @@ export default function Applications() {
                 <div>
                   <h3 className="font-semibold text-slate-900">{a.jobId?.title}</h3>
                   <p className="text-sm text-slate-500 mt-0.5">
-                    {a.jobId?.companyId?.name} · {a.jobId?.location}
+                    {a.jobId?.companyId?.name || a.jobId?.companyName} · {a.jobId?.location}
                   </p>
                   <p className="text-xs text-slate-400 mt-1">
                     Applied {new Date(a.appliedAt).toLocaleDateString()} · Match {a.matchPercent}% · PRS {a.prsAtApplication}

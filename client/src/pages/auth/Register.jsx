@@ -9,14 +9,14 @@ const ROLES = [
     hint: "Build your profile and track placement readiness",
   },
   {
-    value: "recruiter",
-    label: "Recruiter",
-    hint: "Post jobs and find matching candidates",
-  },
-  {
     value: "faculty",
     label: "Faculty",
     hint: "Monitor batch-level placement analytics",
+  },
+  {
+    value: "placement_officer",
+    label: "Placement Officer",
+    hint: "Post openings, run drives and record official results",
   },
 ];
 

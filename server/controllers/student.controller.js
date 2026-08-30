@@ -15,6 +15,7 @@ import Job from "../models/Job.js";
 import Application from "../models/Application.js";
 import { computeMatch } from "../services/matchingService.js";
 import { getRecommendations } from "../services/recommendationService.js";
+import { buildPlacementProfile } from "../services/placementProfileService.js";
 /** GET /api/student/profile */
 export const getProfile = async (req, res, next) => {
   try {
@@ -432,7 +433,11 @@ export const browseJobs = async (req, res, next) => {
 
     const jobs = await Job.find({
       isActive: true,
-      $or: [{ deadline: null }, { deadline: { $gte: new Date() } }],
+      $or: [
+        { deadline: null },
+        { deadline: { $exists: false } },
+        { deadline: { $gte: new Date() } },
+      ],
     }).populate("companyId", "name industry location logoUrl");
 
     const applications = await Application.find({
@@ -453,7 +458,14 @@ export const browseJobs = async (req, res, next) => {
           ctc: job.ctc,
           deadline: job.deadline,
           openings: job.openings,
-          company: job.companyId,
+          // Placement-cell postings carry a plain companyName instead of a
+          // Company document, so fall back to it rather than rendering null.
+          company: job.companyId || { name: job.companyName },
+          source: job.source,
+          companyLevel: job.companyLevel,
+          companyAbout: job.companyAbout,
+          requirements: job.requirements,
+          attachments: job.attachments,
           minCgpa: job.minCgpa,
           maxBacklogs: job.maxBacklogs,
           requiredSkills: job.requiredSkills,
@@ -528,7 +540,7 @@ export const myApplications = async (req, res, next) => {
     const applications = await Application.find({ studentId: student._id })
       .populate({
         path: "jobId",
-        select: "title location ctc deadline isActive",
+        select: "title location ctc deadline isActive companyName source",
         populate: { path: "companyId", select: "name industry" },
       })
       .sort("-appliedAt");
@@ -565,4 +577,27 @@ export const getRecommendationsForStudent = async (req, res, next) => {
       total: recommendations.length,
     });
   } catch (err) { next(err); }
+};
+/**
+ * GET /api/student/placement
+ *
+ * The student's own placement journey — official drive history and the
+ * metrics derived from it.
+ *
+ * READ ONLY, BY CONSTRUCTION. This is the only placement endpoint the
+ * student router exposes; there is no student-facing write path to stage
+ * results anywhere in the API. The lookup is scoped by req.user._id rather
+ * than by any id in the request, so a student cannot read another student's
+ * record by changing a parameter — there is no parameter to change.
+ */
+export const getMyPlacementJourney = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id }).select("_id");
+    if (!student) return res.status(404).json({ message: "Profile not found" });
+
+    const profile = await buildPlacementProfile(student._id);
+    res.json({ ...profile, readOnly: true });
+  } catch (err) {
+    next(err);
+  }
 };

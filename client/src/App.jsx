@@ -24,36 +24,20 @@ import AdminQuestions from "./pages/admin/Questions";
 import Recommendations from "./pages/student/Recommendations";
 import Register from "./pages/auth/Register";
 import Resume from "./pages/student/Resume";
+import StudentPlacement from "./pages/student/Placement";
+import PlacementLayout from "./components/PlacementLayout";
+import PlacementOverview from "./pages/placement/Overview";
+import PlacementDrives from "./pages/placement/Drives";
+import PlacementDriveDetail from "./pages/placement/DriveDetail";
+import PlacementJobs from "./pages/placement/Jobs";
+import PlacementStudents from "./pages/placement/Students";
+import PlacementProfile from "./pages/placement/PlacementProfile";
+import PlacementCompare from "./pages/placement/Compare";
 
 function Home() {
   const { user, loading } = useAuth();
   if (loading) return null;
   return <Navigate to={user ? `/${user.role}` : "/login"} replace />;
-}
-
-function Placeholder({ title }) {
-  const { user, logout } = useAuth();
-  return (
-    <div className="min-h-screen p-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-        <button
-          onClick={logout}
-          className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 hover:bg-slate-50"
-        >
-          Sign out
-        </button>
-      </div>
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <p className="text-slate-600">
-          Signed in as <strong>{user?.name}</strong> ({user?.email})
-        </p>
-        <p className="text-slate-600 mt-1">
-          Role: <strong>{user?.role}</strong>
-        </p>
-      </div>
-    </div>
-  );
 }
 
 export default function App() {
@@ -81,6 +65,7 @@ export default function App() {
             <Route path="jobs" element={<StudentJobs />} />
             <Route path="applications" element={<Applications />} />
             <Route path="learn" element={<Recommendations />} />
+            <Route path="placement" element={<StudentPlacement />} />
           </Route>
 
           <Route
@@ -106,6 +91,25 @@ export default function App() {
           >
             <Route index element={<Analytics />} />
             <Route path="students" element={<FacultyStudents />} />
+          </Route>
+
+          {/* The path must equal the role string — Home and ProtectedRoute
+              both redirect to `/${user.role}`. */}
+          <Route
+            path="/placement_officer"
+            element={
+              <ProtectedRoute roles={["placement_officer", "admin"]}>
+                <PlacementLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<PlacementOverview />} />
+            <Route path="drives" element={<PlacementDrives />} />
+            <Route path="drives/:id" element={<PlacementDriveDetail />} />
+            <Route path="jobs" element={<PlacementJobs />} />
+            <Route path="students" element={<PlacementStudents />} />
+            <Route path="students/:id" element={<PlacementProfile />} />
+            <Route path="compare" element={<PlacementCompare />} />
           </Route>
           <Route
             path="/admin"

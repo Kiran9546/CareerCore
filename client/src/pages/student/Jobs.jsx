@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
 
+const LEVEL_LABEL = {
+  mass: "Mass recruiter",
+  mid: "Mid tier",
+  dream: "Dream",
+  super_dream: "Super dream",
+};
+
 export default function Jobs() {
   const [data, setData] = useState(null);
   const [msg, setMsg] = useState("");
@@ -50,13 +57,67 @@ export default function Jobs() {
                 </span>
               </div>
 
+              {/* Joined rather than interpolated with fixed separators: a
+                  placement cell posting often has no location, which used to
+                  render a dangling "Freshworks ·  · ₹8.5L". */}
               <p className="text-sm text-slate-500 mt-1">
-                {j.company?.name} · {j.location}
-                {j.ctc && ` · ₹${(j.ctc / 100000).toFixed(1)}L`}
+                {[
+                  j.company?.name,
+                  j.location,
+                  j.ctc ? `₹${(j.ctc / 100000).toFixed(1)} LPA` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
+
+              {j.companyLevel && (
+                <span className="inline-block mt-2 px-2 py-0.5 rounded text-xs bg-violet-100 text-violet-700">
+                  {LEVEL_LABEL[j.companyLevel] ?? j.companyLevel}
+                </span>
+              )}
 
               {j.description && (
                 <p className="text-sm text-slate-600 mt-3">{j.description}</p>
+              )}
+
+              {j.companyAbout && (
+                <p className="text-sm text-slate-600 mt-3 whitespace-pre-line">
+                  {j.companyAbout}
+                </p>
+              )}
+
+              {j.requirements && (
+                <div className="mt-3">
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                    Requirements
+                  </p>
+                  <p className="text-sm text-slate-600 whitespace-pre-line">
+                    {j.requirements}
+                  </p>
+                </div>
+              )}
+
+              {/* The JD exactly as the company sent it, shared by the
+                  placement cell. Opens in a new tab. */}
+              {j.attachments?.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1.5">
+                    Job description
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {j.attachments.map((a) => (
+                      <a
+                        key={a._id}
+                        href={a.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-700 hover:bg-slate-100"
+                      >
+                        {a.originalName}
+                      </a>
+                    ))}
+                  </div>
+                </div>
               )}
 
               <div className="flex flex-wrap gap-1.5 mt-3">

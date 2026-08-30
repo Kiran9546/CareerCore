@@ -18,32 +18,26 @@ export default function Aptitude() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const timerRef = useRef(null);
+  const submittingRef = useRef(false);
+  const deadlineRef = useRef(0);
+  const submitRef = useRef(null);
 
   useEffect(() => {
     api
       .get("/student/aptitude/history")
-      .then((res) => setHistory(res.data.attempts || []));
+      .then((res) => setHistory(res.data.attempts || []))
+      .catch(() => setHistory([]));
   }, []);
-
-  useEffect(() => {
-    if (view !== "test" || remaining <= 0) return;
-    timerRef.current = setInterval(() => {
-      setRemaining((r) => {
-        if (r <= 1) {
-          clearInterval(timerRef.current);
-          submit();
-          return 0;
-        }
-        return r - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timerRef.current);
-  }, [view]);
 
   const start = async () => {
     setError("");
     try {
       const res = await api.post("/student/aptitude/start");
+      submittingRef.current = false;
+      // Track an absolute deadline rather than decrementing a counter:
+      // browsers throttle setInterval in background tabs, so a tick-based
+      // countdown would hand the student far more than the allotted 30 min.
+      deadlineRef.current = Date.now() + res.data.timeRemainingSeconds * 1000;
       setTest(res.data);
       setRemaining(res.data.timeRemainingSeconds);
       setAnswers({});
@@ -55,6 +49,9 @@ export default function Aptitude() {
   };
 
   const submit = async () => {
+    // The countdown effect and the Submit button can both land here.
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     clearInterval(timerRef.current);
     try {
       const payload = {
@@ -70,8 +67,36 @@ export default function Aptitude() {
     } catch (e) {
       setError(e.response?.data?.message || "Submission failed");
       setView("intro");
+      submittingRef.current = false;
     }
   };
+
+  // Keep a live handle on submit. The old code called submit() from inside a
+  // setRemaining updater, and that updater was created once when the test
+  // started — so it closed over the empty `answers` object and auto-submit on
+  // timeout sent a blank answer sheet, scoring the student 0.
+  useEffect(() => {
+    submitRef.current = submit;
+  });
+
+  useEffect(() => {
+    if (view !== "test") return;
+
+    const tick = () => {
+      const left = Math.max(
+        0,
+        Math.round((deadlineRef.current - Date.now()) / 1000),
+      );
+      setRemaining(left);
+      if (left <= 0) {
+        clearInterval(timerRef.current);
+        submitRef.current?.();
+      }
+    };
+
+    timerRef.current = setInterval(tick, 1000);
+    return () => clearInterval(timerRef.current);
+  }, [view]);
 
   const mmss = (s) =>
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -273,7 +298,8 @@ export default function Aptitude() {
           setResult(null);
           api
             .get("/student/aptitude/history")
-            .then((r) => setHistory(r.data.attempts || []));
+            .then((r) => setHistory(r.data.attempts || []))
+            .catch(() => {});
         }}
         className="px-4 py-2 rounded-lg border border-slate-300 text-sm hover:bg-slate-50"
       >

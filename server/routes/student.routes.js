@@ -32,6 +32,7 @@ import {
   applyToJob,
   myApplications,
   getRecommendationsForStudent,
+  getMyPlacementJourney,
 } from "../controllers/student.controller.js";
 
 import {
@@ -87,5 +88,11 @@ router.get("/recommendations", getRecommendationsForStudent);
 router.get("/jobs", browseJobs);
 router.post("/jobs/:jobId/apply", applyToJob);
 router.get("/applications", myApplications);
+
+// ─── Placement journey (read-only) ───────────────────────────
+// Official drive results belong to the placement cell. Students can see
+// their own history and the analysis derived from it; there is deliberately
+// no matching write route.
+router.get("/placement", getMyPlacementJourney);
 
 export default router;

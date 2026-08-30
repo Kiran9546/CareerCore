@@ -5,6 +5,7 @@ const ROLE_STYLE = {
   student: "bg-slate-100 text-slate-700",
   recruiter: "bg-blue-100 text-blue-700",
   faculty: "bg-green-100 text-green-700",
+  placement_officer: "bg-emerald-100 text-emerald-700",
   admin: "bg-amber-100 text-amber-700",
 };
 
@@ -13,20 +14,34 @@ export default function Users() {
   const [role, setRole] = useState("");
   const [search, setSearch] = useState("");
 
+  const [error, setError] = useState("");
+
   const load = () => {
     api.get(`/admin/users${role ? `?role=${role}` : ""}`)
-      .then((r) => setUsers(r.data.users));
+      .then((r) => { setUsers(r.data.users); setError(""); })
+      .catch((e) => {
+        setUsers([]);
+        setError(e.response?.data?.message || "Could not load users");
+      });
   };
 
   useEffect(load, [role]);
 
   const toggle = async (id) => {
-    await api.patch(`/admin/users/${id}/toggle`);
+    try {
+      await api.patch(`/admin/users/${id}/toggle`);
+    } catch (e) {
+      setError(e.response?.data?.message || "Could not update the account");
+    }
     load();
   };
 
   const verify = async (id) => {
-    await api.patch(`/admin/users/${id}/verify`);
+    try {
+      await api.patch(`/admin/users/${id}/verify`);
+    } catch (e) {
+      setError(e.response?.data?.message || "Could not update verification");
+    }
     load();
   };
 
@@ -38,6 +53,11 @@ export default function Users() {
 
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-900">
+          {error}
+        </div>
+      )}
       <div className="flex gap-3">
         <input value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name or email…"
@@ -45,7 +65,7 @@ export default function Users() {
         <select value={role} onChange={(e) => setRole(e.target.value)}
           className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-white">
           <option value="">All roles</option>
-          {["student", "recruiter", "faculty", "admin"].map((r) => (
+          {["student", "recruiter", "faculty", "placement_officer", "admin"].map((r) => (
             <option key={r} value={r}>{r}</option>
           ))}
         </select>

@@ -166,8 +166,29 @@ export const ROLES = {
   STUDENT: "student",
   RECRUITER: "recruiter",
   FACULTY: "faculty",
+  // Placement cell staff. Owns official drive records, job postings and
+  // stage results. Self-registerable — see SELF_REGISTERABLE_ROLES in
+  // auth.controller.js for what that grants.
+  PLACEMENT_OFFICER: "placement_officer",
   ADMIN: "admin",
 };
+
+/** Staff who may create and manage placement drives. */
+export const DRIVE_MANAGER_ROLES = [ROLES.PLACEMENT_OFFICER, ROLES.ADMIN];
+
+/** Staff who may record official stage results. Only the placement cell —
+ *  they are the office that receives the results from the company. */
+export const RESULT_EDITOR_ROLES = [ROLES.PLACEMENT_OFFICER, ROLES.ADMIN];
+
+/**
+ * Staff who may read any student's placement profile.
+ *
+ * Faculty are deliberately absent. The placement journey — profiles,
+ * comparison and stage results — belongs to the placement cell, which owns
+ * the official records. Faculty keep their own batch analytics and student
+ * list, which read the Student collection and never touch drive results.
+ */
+export const PLACEMENT_VIEWER_ROLES = [ROLES.PLACEMENT_OFFICER, ROLES.ADMIN];
 
 export const APPLICATION_STATUS = {
   APPLIED: "applied",
@@ -190,3 +211,136 @@ export const APTITUDE_SECTIONS = [
 export const MAX_RESUME_SIZE_MB = 5;
 export const PRS_HISTORY_CAP = 50;
 export const MAX_SKILL_PROFICIENCY = 5;
+
+// ─────────────────────────────────────────────────────────────
+// PLACEMENT JOURNEY (additive — Drives & DriveParticipations)
+// ─────────────────────────────────────────────────────────────
+//
+// The placement-journey module exists to answer a question the PRS alone
+// cannot: two students with near-identical profiles and near-identical PRS
+// can have completely different placement outcomes. PRS measures the
+// profile; these records measure what actually happened in the drives.
+//
+// Nothing below feeds into the PRS formula. PRS_WEIGHTS and the component
+// scores above are untouched.
+
+/** Ordered stages of a campus drive. Order matters — the funnel is built
+ *  from this array, and a student can only reach stage N by clearing N-1. */
+export const DRIVE_STAGES = ["aptitude", "technical", "interview", "final"];
+
+/** Stages that are pass/fail attempts (i.e. everything except the final
+ *  selection decision, which has its own vocabulary). */
+export const ATTEMPT_STAGES = ["aptitude", "technical", "interview"];
+
+/**
+ * Stage outcome vocabulary — deliberately strict.
+ *
+ * NOT_REACHED is the crucial one. A student eliminated at aptitude never
+ * sat the technical round, so their technical record must NOT read as a
+ * failure and must NOT count as an attempt. Conflating "never attempted"
+ * with "attempted and failed" is exactly the error that makes a
+ * technically-weak student and an aptitude-blocked student look alike.
+ */
+export const STAGE_STATUS = {
+  NOT_REACHED: "not_reached",
+  PASSED: "passed",
+  FAILED: "failed",
+};
+
+/** Final selection decision. Only SELECTED yields an offer. */
+export const FINAL_STATUS = {
+  NOT_REACHED: "not_reached",
+  SELECTED: "selected",
+  REJECTED: "rejected",
+};
+
+export const DRIVE_STATUS = {
+  PLANNED: "planned",
+  ONGOING: "ongoing",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
+};
+
+/** Overall placement standing, derived — never stored. */
+export const PLACEMENT_STATUS = {
+  PLACED: "placed",
+  IN_PROCESS: "in_process",
+  UNPLACED: "unplaced",
+  NO_HISTORY: "no_history",
+};
+
+/**
+ * Rule-engine thresholds — TEAM-ASSIGNED, exposed here so they can be
+ * tuned without touching the engine.
+ *
+ * The MIN_* guards are the important ones. Without them the engine would
+ * happily announce "struggles with aptitude" to a student who failed a
+ * single round, which is not a pattern — it is one data point. Every
+ * pattern claim the engine makes has to clear a minimum sample size, and
+ * when it cannot, the engine says so instead of guessing.
+ */
+export const PLACEMENT_RULES = {
+  /** Drives a student must have actually participated in before any
+   *  overall conclusion (strength, weakness, or verdict) is drawn. */
+  MIN_DRIVES_FOR_PATTERN: 3,
+
+  /** Attempts at ONE stage before that stage may be called a strength
+   *  or a weakness. Two failures is a coincidence; three is a pattern. */
+  MIN_ATTEMPTS_PER_STAGE: 3,
+
+  /** Interviews reached before "reaches interviews but does not convert"
+   *  may be claimed. */
+  MIN_INTERVIEWS_FOR_CONVERSION: 2,
+
+  /** Pass rate at or below this is a weakness. */
+  LOW_PASS_RATE: 0.34,
+
+  /** Pass rate at or above this is a strength. */
+  HIGH_PASS_RATE: 0.67,
+
+  /** A profile this strong with zero offers is the headline contrast the
+   *  system is built to surface — a strong profile that is not converting.
+   *  Set to the floor of the "Placement Ready" band in READINESS_LEVELS, so
+   *  the claim reads as "the PRS says ready, the drive results disagree"
+   *  rather than being a second, unrelated threshold. */
+  STRONG_PROFILE_PRS: 61,
+
+  /** Below the per-stage minimum but above this, findings are reported as
+   *  provisional rather than suppressed entirely. */
+  MIN_ATTEMPTS_PROVISIONAL: 2,
+};
+
+// ─────────────────────────────────────────────────────────────
+// JOB POSTINGS BY THE PLACEMENT CELL
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Where a job posting came from.
+ *
+ * `recruiter` is the original path: a self-registered recruiter posts
+ * against their own Company document. `placement_cell` is the path the
+ * placement officer uses — they are relaying an opening a company sent to
+ * the college, so there is usually no recruiter account and no Company
+ * document behind it, just a company name and whatever the company sent.
+ */
+export const JOB_SOURCE = {
+  RECRUITER: "recruiter",
+  PLACEMENT_CELL: "placement_cell",
+};
+
+/**
+ * Company tiers, in the vocabulary campus placement cells actually use.
+ * TEAM-ASSIGNED labels — the CTC bands are indicative, not enforced.
+ */
+export const COMPANY_LEVELS = [
+  { value: "mass", label: "Mass recruiter", hint: "High volume, entry CTC" },
+  { value: "mid", label: "Mid tier", hint: "Moderate CTC, selective" },
+  { value: "dream", label: "Dream", hint: "High CTC, strong filters" },
+  { value: "super_dream", label: "Super dream", hint: "Top CTC, very selective" },
+];
+
+export const COMPANY_LEVEL_VALUES = COMPANY_LEVELS.map((l) => l.value);
+
+/** Attachment limits for job documents (JDs and company material). */
+export const JD_MAX_SIZE_MB = 10;
+export const JD_MAX_FILES = 5;

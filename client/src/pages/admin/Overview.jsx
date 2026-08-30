@@ -8,11 +8,21 @@ const ROLE_COLORS = {
 
 export default function Overview() {
   const [stats, setStats] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    api.get("/admin/stats").then((r) => setStats(r.data));
+    api
+      .get("/admin/stats")
+      .then((r) => setStats(r.data))
+      .catch((e) => setError(e.response?.data?.message || "Could not load stats"));
   }, []);
 
+  if (error)
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+        <p className="text-slate-500">{error}</p>
+      </div>
+    );
   if (!stats) return <p className="text-slate-400">Loading…</p>;
 
   const c = stats.counts;

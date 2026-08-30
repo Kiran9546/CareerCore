@@ -3,7 +3,7 @@ import Job from "../models/Job.js";
 import Application from "../models/Application.js";
 import Student from "../models/Student.js";
 import { computeMatch } from "../services/matchingService.js";
-import { resolveSkills } from "../services/skillNormalizer.js";
+import { resolveSkill, resolveSkills } from "../services/skillNormalizer.js";
 import { APPLICATION_STATUS } from "../config/constants.js";
 import { notifyMatchingStudents, notifyApplicationStatus } from "../jobs/cronTasks.js";
 
@@ -125,9 +125,18 @@ export const createJob = async (req, res, next) => {
       requiredSkills.map((s) => ({ name: s.name, proficiency: 3 })),
     );
 
-    const mandatoryMap = new Map(
-      requiredSkills.map((s) => [s.name.toLowerCase(), !!s.isMandatory]),
-    );
+    // Key the mandatory flags by resolved skill id, not by what the recruiter
+    // typed: resolveSkills() returns the CANONICAL name, so keying on the raw
+    // input silently dropped isMandatory whenever an alias was entered
+    // ("reactjs" -> "React", "mongo db" -> "MongoDB").
+    const mandatoryBySkillId = new Map();
+    for (const s of requiredSkills) {
+      const skill = await resolveSkill(s.name);
+      if (!skill) continue;
+      const id = String(skill._id);
+      // If any spelling of the skill was flagged mandatory, it stays mandatory.
+      mandatoryBySkillId.set(id, mandatoryBySkillId.get(id) || !!s.isMandatory);
+    }
 
     const job = await Job.create({
       companyId: company._id,
@@ -139,7 +148,7 @@ export const createJob = async (req, res, next) => {
       requiredSkills: resolved.map((r) => ({
         skillId: r.skillId,
         name: r.name,
-        isMandatory: mandatoryMap.get(r.name.toLowerCase()) ?? false,
+        isMandatory: mandatoryBySkillId.get(String(r.skillId)) ?? false,
       })),
       minCgpa: minCgpa ?? 0,
       maxBacklogs: maxBacklogs ?? 99,
