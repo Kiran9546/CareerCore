@@ -27,6 +27,24 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    /**
+     * The department a faculty member belongs to, matching Student.branch.
+     *
+     * Faculty only ever see their own department's students, so this is the
+     * key their whole view is scoped by — a faculty account without one can
+     * see nothing, which is deliberate: better an empty list than another
+     * department's records. Ignored for every other role.
+     */
+    department: {
+      type: String,
+      uppercase: true,
+      trim: true,
+      required: [
+        function () { return this.role === "faculty"; },
+        "Faculty accounts must belong to a department",
+      ],
+    },
+
     isActive: { type: Boolean, default: true },
 
     // Recruiters need admin approval before posting jobs

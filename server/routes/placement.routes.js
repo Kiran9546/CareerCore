@@ -33,6 +33,7 @@ import {
   compareStudents,
   getPlacementOverview,
   listStudentsWithOutcomes,
+  listMissedDrives,
 } from "../controllers/placement.controller.js";
 
 /**
@@ -71,6 +72,9 @@ router.get("/overview", canView, getPlacementOverview);
 router.get("/students", canView, listStudentsWithOutcomes);
 router.get("/students/:studentId/profile", canView, getStudentPlacementProfile);
 router.get("/compare", canView, compareStudents);
+// Students who were eligible for a drive and never registered — the gap a
+// participation-based profile cannot show, because they have no record.
+router.get("/missed", canView, listMissedDrives);
 
 // ─── Drives ──────────────────────────────────────────────────
 router.get("/drives", canView, listDrives);

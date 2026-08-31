@@ -344,3 +344,200 @@ export const COMPANY_LEVEL_VALUES = COMPANY_LEVELS.map((l) => l.value);
 /** Attachment limits for job documents (JDs and company material). */
 export const JD_MAX_SIZE_MB = 10;
 export const JD_MAX_FILES = 5;
+
+// ─────────────────────────────────────────────────────────────
+// PLACEMENT ROSTER ORDERING
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * How the placement roster is grouped, best outcome first.
+ *
+ * The officer scans this list looking for who needs attention, so the list
+ * is ordered by what actually happened rather than by any score: students
+ * holding an offer are done, students clearing rounds are progressing, and
+ * students clearing nothing are the ones to act on. `NO_HISTORY` sits last
+ * because "never attended a drive" is a different problem from "attended
+ * and did not progress".
+ */
+export const PLACEMENT_GROUP = {
+  PLACED: "placed",
+  PROGRESSED: "progressed",
+  NO_PASSES: "no_passes",
+  NO_HISTORY: "no_history",
+};
+
+export const PLACEMENT_GROUP_ORDER = [
+  PLACEMENT_GROUP.PLACED,
+  PLACEMENT_GROUP.PROGRESSED,
+  PLACEMENT_GROUP.NO_PASSES,
+  PLACEMENT_GROUP.NO_HISTORY,
+];
+
+export const PLACEMENT_GROUP_LABEL = {
+  placed: "Placed",
+  progressed: "Cleared some rounds",
+  no_passes: "No rounds cleared",
+  no_history: "No drive history",
+};
+
+// ─────────────────────────────────────────────────────────────
+// DEPARTMENTS
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Departments a faculty account can belong to. These match the values used
+ * for Student.branch — faculty scoping compares the two directly, so the
+ * vocabularies have to stay the same.
+ */
+export const DEPARTMENTS = ["ISE", "CSE", "ECE", "AIML", "EEE", "ME", "CV"];
+
+/**
+ * Branch codes as they appear inside a USN, mapped to our department codes.
+ *
+ * A USN is laid out `4MT<YY><BB><NNN>` — college code, admission year,
+ * branch, serial. When a spreadsheet has no department column the branch is
+ * still sitting in the USN, so an imported student can be filed correctly
+ * from the identifier alone.
+ */
+export const USN_BRANCH_CODES = {
+  IS: "ISE",
+  CS: "CSE",
+  EC: "ECE",
+  AI: "AIML",
+  EE: "EEE",
+  ME: "ME",
+  CV: "CV",
+};
+
+/** Course length in years, used to derive a batch from a USN's entry year. */
+export const COURSE_YEARS = 4;
+
+/**
+ * Ways a department gets written on a spreadsheet, mapped to our codes.
+ *
+ * Offices write "Information Science", "Information Science & Engineering"
+ * or "ISE" in the same column of the same file. Faculty scoping compares
+ * Student.branch against User.department directly, so a student filed under
+ * "INFORMATION SCIENCE" would be invisible to their own ISE faculty —
+ * everything entering the system has to be reduced to a code first.
+ *
+ * Matched on the longest key first, so "computer science" is not swallowed
+ * by a shorter substring.
+ */
+const DEPARTMENT_SYNONYMS = {
+  "information science": "ISE",
+  "information technology": "ISE",
+  ise: "ISE",
+  it: "ISE",
+
+  "computer science": "CSE",
+  computer: "CSE",
+  cse: "CSE",
+  cs: "CSE",
+
+  "electronics and communication": "ECE",
+  "electronics & communication": "ECE",
+  electronics: "ECE",
+  ece: "ECE",
+  ec: "ECE",
+
+  "artificial intelligence": "AIML",
+  "machine learning": "AIML",
+  aiml: "AIML",
+  ai: "AIML",
+
+  "electrical and electronics": "EEE",
+  "electrical & electronics": "EEE",
+  electrical: "EEE",
+  eee: "EEE",
+  ee: "EEE",
+
+  mechanical: "ME",
+  me: "ME",
+
+  civil: "CV",
+  cv: "CV",
+  ce: "CV",
+};
+
+/**
+ * Reduce however a department was written to one of DEPARTMENTS.
+ * Returns null when it cannot be placed, so the caller can fall back to the
+ * USN or report it rather than inventing a department.
+ */
+export const normaliseDepartment = (raw) => {
+  if (!raw) return null;
+  const text = String(raw).toLowerCase().replace(/[^a-z ]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!text) return null;
+
+  const upper = text.toUpperCase().replace(/ /g, "");
+  if (DEPARTMENTS.includes(upper)) return upper;
+
+  const words = text.split(" ");
+
+  // Longest key first so "computer science" wins over "cs".
+  const keys = Object.keys(DEPARTMENT_SYNONYMS).sort((a, b) => b.length - a.length);
+  for (const key of keys) {
+    if (text === key) return DEPARTMENT_SYNONYMS[key];
+
+    // Short keys are abbreviations and must match a whole word — otherwise
+    // "ec" matches inside "bio tech" and files a biotech student under ECE.
+    // Longer keys are real phrases and may appear anywhere in the cell.
+    const matched =
+      key.length <= 3
+        ? words.includes(key)
+        : text.includes(key);
+    if (matched) return DEPARTMENT_SYNONYMS[key];
+  }
+  return null;
+};
+
+export const DEPARTMENT_LABEL = {
+  ISE: "Information Science & Engineering",
+  CSE: "Computer Science & Engineering",
+  ECE: "Electronics & Communication",
+  AIML: "Artificial Intelligence & Machine Learning",
+  EEE: "Electrical & Electronics",
+  ME: "Mechanical Engineering",
+  CV: "Civil Engineering",
+};
+
+// ─────────────────────────────────────────────────────────────
+// RESULT SUBMISSIONS
+// ─────────────────────────────────────────────────────────────
+//
+// The pipeline that carries a result from whoever knows it to the official
+// record. Three entry points feed it and they are independent of each other:
+//
+//   faculty asks a student  ->  student fills it in  ->  faculty forwards
+//   faculty enters it directly (own department)      ->  faculty forwards
+//   placement officer enters or imports it directly  ->  official at once
+//
+// Forwarding writes the result onto DriveParticipation.stages, which stays
+// the single source of every derived metric.
+
+export const SUBMISSION_STATUS = {
+  /** Faculty has asked this student for their results; nothing filled yet. */
+  REQUESTED: "requested",
+  /** The student has filled it in and it is waiting on faculty review. */
+  SUBMITTED: "submitted",
+  /** Faculty accepted it and wrote it to the official record. */
+  FORWARDED: "forwarded",
+  /** Faculty declined it; the official record was not touched. */
+  REJECTED: "rejected",
+};
+
+export const SUBMISSION_STATUS_LABEL = {
+  requested: "Awaiting student",
+  submitted: "Awaiting faculty review",
+  forwarded: "Forwarded to placement cell",
+  rejected: "Declined",
+};
+
+/** Who originated a set of results, kept for provenance on the official record. */
+export const RESULT_SOURCE = {
+  STUDENT: "student",
+  FACULTY: "faculty",
+  PLACEMENT_CELL: "placement_cell",
+  IMPORT: "spreadsheet_import",
+};

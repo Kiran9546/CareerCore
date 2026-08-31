@@ -1,6 +1,6 @@
 import User from "../models/User.js";
 import { signToken } from "../utils/jwt.js";
-import { ROLES } from "../config/constants.js";
+import { ROLES, DEPARTMENTS } from "../config/constants.js";
 
 /**
  * Roles the public /register endpoint is allowed to create.
@@ -30,7 +30,7 @@ const SELF_REGISTERABLE_ROLES = [
 /** POST /api/auth/register */
 export const register = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, department } = req.body;
 
     if (!name || !email || !password || !role) {
       return res.status(400).json({ message: "name, email, password and role are required" });
@@ -49,6 +49,19 @@ export const register = async (req, res, next) => {
       });
     }
 
+    // Faculty are scoped to a department everywhere in the app, so an
+    // account without one would be able to see nothing at all.
+    if (role === ROLES.FACULTY) {
+      if (!department) {
+        return res.status(400).json({ message: "Select your department" });
+      }
+      if (!DEPARTMENTS.includes(String(department).toUpperCase())) {
+        return res.status(400).json({
+          message: `department must be one of: ${DEPARTMENTS.join(", ")}`,
+        });
+      }
+    }
+
     const exists = await User.findOne({ email: email.toLowerCase() });
     if (exists) {
       return res.status(409).json({ message: "An account with this email already exists" });
@@ -59,6 +72,9 @@ export const register = async (req, res, next) => {
       email,
       passwordHash: password,          // hashed by the pre-save hook
       role,
+      ...(role === ROLES.FACULTY
+        ? { department: String(department).toUpperCase() }
+        : {}),
       isVerified: role !== ROLES.RECRUITER, // recruiters await admin approval
     });
 

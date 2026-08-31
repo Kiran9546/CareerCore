@@ -2,7 +2,31 @@ import Student from "../models/Student.js";
 import Application from "../models/Application.js";
 import CareerPath from "../models/CareerPath.js";
 import { getSkillGap } from "../services/mlClient.js";
-import { READINESS_LEVELS } from "../config/constants.js";
+import { READINESS_LEVELS, ROLES } from "../config/constants.js";
+
+/**
+ * The branch filter a faculty request is locked to.
+ *
+ * Faculty only ever see their own department. This is taken from
+ * req.user.department and then OVERWRITES anything the caller sent, rather
+ * than merely defaulting when `branch` is absent — a default would be
+ * bypassed by passing ?branch=CSE. Admins keep the unscoped view they had.
+ *
+ * Returns null for a faculty account with no department, which every caller
+ * turns into an empty result. Showing nothing is the safe failure here;
+ * showing everything is not.
+ */
+const scopeToDepartment = (req, match) => {
+  if (req.user.role !== ROLES.FACULTY) return match;
+  if (!req.user.department) return null;
+  return { ...match, branch: req.user.department };
+};
+
+const NO_DEPARTMENT = {
+  message:
+    "Your faculty account has no department set, so no students are in " +
+    "scope. Ask an administrator to set it.",
+};
 
 export const getBatchOverview = async (req, res, next) => {
   try {
@@ -10,8 +34,11 @@ export const getBatchOverview = async (req, res, next) => {
     if (req.query.batch) match.batch = req.query.batch;
     if (req.query.branch) match.branch = req.query.branch;
 
+    const scoped = scopeToDepartment(req, match);
+    if (!scoped) return res.status(403).json(NO_DEPARTMENT);
+
     const stats = await Student.aggregate([
-      { $match: match },
+      { $match: scoped },
       {
         $group: {
           _id: null,
@@ -65,8 +92,11 @@ export const getBranchComparison = async (req, res, next) => {
     const match = {};
     if (req.query.batch) match.batch = req.query.batch;
 
+    const scoped = scopeToDepartment(req, match);
+    if (!scoped) return res.status(403).json(NO_DEPARTMENT);
+
     const rows = await Student.aggregate([
-      { $match: match },
+      { $match: scoped },
       {
         $group: {
           _id: "$branch",
@@ -98,8 +128,11 @@ export const getComponentAverages = async (req, res, next) => {
     if (req.query.batch) match.batch = req.query.batch;
     if (req.query.branch) match.branch = req.query.branch;
 
+    const scoped = scopeToDepartment(req, match);
+    if (!scoped) return res.status(403).json(NO_DEPARTMENT);
+
     const rows = await Student.aggregate([
-      { $match: match },
+      { $match: scoped },
       {
         $group: {
           _id: null,
@@ -133,7 +166,10 @@ export const getTopSkillGaps = async (req, res, next) => {
     if (req.query.batch) match.batch = req.query.batch;
     if (req.query.branch) match.branch = req.query.branch;
 
-    const students = await Student.find(match)
+    const scoped = scopeToDepartment(req, match);
+    if (!scoped) return res.status(403).json(NO_DEPARTMENT);
+
+    const students = await Student.find(scoped)
       .select("skills careerInterest")
       .limit(200);
 
@@ -183,7 +219,10 @@ export const listStudents = async (req, res, next) => {
     if (req.query.branch) filter.branch = req.query.branch;
     if (req.query.level) filter.readinessLevel = req.query.level;
 
-    const students = await Student.find(filter)
+    const scoped = scopeToDepartment(req, filter);
+    if (!scoped) return res.status(403).json(NO_DEPARTMENT);
+
+    const students = await Student.find(scoped)
       .populate("userId", "name email")
       .populate("careerInterest", "name code")
       .select("usn batch branch cgpa backlogs currentPRS readinessLevel skills projects certifications profileCompleteness")
@@ -215,7 +254,12 @@ export const listStudents = async (req, res, next) => {
 
 export const getStudentDetail = async (req, res, next) => {
   try {
-    const student = await Student.findById(req.params.id)
+    const scoped = scopeToDepartment(req, { _id: req.params.id });
+    if (!scoped) return res.status(403).json(NO_DEPARTMENT);
+
+    // Scoped in the query rather than checked after loading, so a student in
+    // another department is indistinguishable from one that does not exist.
+    const student = await Student.findOne(scoped)
       .populate("userId", "name email")
       .populate("careerInterest", "name code");
 
@@ -231,8 +275,15 @@ export const getStudentDetail = async (req, res, next) => {
 
 export const getFilters = async (req, res, next) => {
   try {
-    const batches = await Student.distinct("batch");
-    const branches = await Student.distinct("branch");
-    res.json({ batches: batches.sort(), branches: branches.sort() });
+    const scoped = scopeToDepartment(req, {});
+    if (!scoped) return res.status(403).json(NO_DEPARTMENT);
+
+    const batches = await Student.distinct("batch", scoped);
+    const branches = await Student.distinct("branch", scoped);
+    res.json({
+      batches: batches.sort(),
+      branches: branches.sort(),
+      department: req.user.department ?? null,
+    });
   } catch (err) { next(err); }
 };

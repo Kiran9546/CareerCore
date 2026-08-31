@@ -290,11 +290,11 @@ function buildResumeBlocks({ p, form, ed }) {
               </h1>
               {form.phone && (
                 <p style={contactLine}>
-                  <b>Phone No:</b> {form.phone}
+                  <b>Phone:</b> {form.phone}
                 </p>
               )}
               <p style={contactLine}>
-                <b>Gmail :</b> <span style={linkStyle}>{p.email}</span>
+                <b>Email:</b> <span style={linkStyle}>{p.email}</span>
               </p>
               {form.linkedinUrl && (
                 <p style={contactLine}>

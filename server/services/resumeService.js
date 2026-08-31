@@ -42,24 +42,34 @@ export const buildTechnicalSkills = async (studentSkills = []) => {
   };
 };
 
-/** Split a profile description into resume-style bullets */
+/**
+ * Split a profile description into resume-style bullets, and always end
+ * with the tech stack when there is one.
+ *
+ * The stack used to appear only when the description was empty, so a project
+ * that had both lost its stack entirely — which is the half a recruiter
+ * actually scans a project entry for. Capping the description at four
+ * bullets leaves room for the stack line inside the five-bullet budget.
+ */
 export const descriptionToBullets = (description = "", techStack = []) => {
-  if (!description.trim()) {
-    return techStack.length ? [`Built using ${techStack.join(", ")}`] : [];
-  }
+  const stackLine = techStack.length ? `Built using ${techStack.join(", ")}` : null;
+  const withStack = (bullets) =>
+    stackLine ? [...bullets.slice(0, 4), stackLine] : bullets.slice(0, 5);
+
+  if (!description.trim()) return stackLine ? [stackLine] : [];
 
   const byLine = description
     .split(/\r?\n/)
     .map((l) => l.replace(/^[-•*]\s*/, "").trim())
     .filter(Boolean);
-  if (byLine.length > 1) return byLine.slice(0, 5);
+  if (byLine.length > 1) return withStack(byLine);
 
   const bySentence = description
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim().replace(/\.$/, ""))
     .filter((s) => s.length > 10);
 
-  return bySentence.length ? bySentence.slice(0, 5) : [description.trim()];
+  return withStack(bySentence.length ? bySentence : [description.trim()]);
 };
 
 export const buildProjects = (studentProjects = []) =>

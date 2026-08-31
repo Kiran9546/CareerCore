@@ -11,6 +11,7 @@ import connectDB from "./config/db.js";
 import adminRoutes from "./routes/admin.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import placementRoutes from "./routes/placement.routes.js";
+import resultRoutes from "./routes/results.routes.js";
 import { startCronJobs } from "./jobs/cronTasks.js";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -71,6 +72,7 @@ app.use("/api/faculty", facultyRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/placement", placementRoutes);
+app.use("/api/results", resultRoutes);
 // ─── 404 handler ─────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ message: `Route not found: ${req.originalUrl}` });
@@ -110,6 +112,16 @@ app.use((err, req, res, next) => {
   // Bad input is the client's fault, not a server fault. Without this, a value
   // that trips a schema rule — an over-long resume summary, a malformed id —
   // came back as a 500 with the raw Mongoose message shown to the user.
+  // A spreadsheet the importer could not read carries its own diagnostics —
+  // which sheet, which header row, what it did recognise. Passing those
+  // through turns a dead-end error into something the uploader can act on.
+  if (err.detected) {
+    return res.status(err.status || 400).json({
+      message: err.message,
+      detected: err.detected,
+    });
+  }
+
   if (err.name === "ValidationError") {
     const details = Object.values(err.errors || {}).map(fieldMessage);
     return res.status(400).json({

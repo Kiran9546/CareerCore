@@ -7,10 +7,11 @@ import Skill from "../models/Skill.js";
 import CareerPath from "../models/CareerPath.js";
 import AptitudeAttempt from "../models/AptitudeAttempt.js";
 import Drive from "../models/Drive.js";
+import Job from "../models/Job.js";
 import DriveParticipation from "../models/DriveParticipation.js";
 import { computeAndSavePRS } from "../services/prsService.js";
 import { buildPlacementProfile } from "../services/placementProfileService.js";
-import { ROLES, DRIVE_STATUS } from "../config/constants.js";
+import { ROLES, DRIVE_STATUS, JOB_SOURCE } from "../config/constants.js";
 
 /**
  * CareerCore — Placement journey demonstration data
@@ -553,6 +554,40 @@ const run = async () => {
       }
     }
     console.log(`  ${written} participation records written`);
+
+    // ── One open job posting ─────────────────────────────────
+    // The drives above are all completed, so without this the student Jobs
+    // page has nothing to show. Upserted on title+company like everything
+    // else here, so a re-run does not stack duplicates.
+    const posting = await Job.findOneAndUpdate(
+      { companyName: "Zoho", title: "Member Technical Staff", source: JOB_SOURCE.PLACEMENT_CELL },
+      {
+        companyName: "Zoho",
+        title: "Member Technical Staff",
+        source: JOB_SOURCE.PLACEMENT_CELL,
+        postedBy: officer._id,
+        role: "Software Engineer",
+        location: "Chennai",
+        ctc: 900000, // stored in rupees; the UI reads and writes LPA
+        companyLevel: "dream",
+        companyAbout:
+          "Product company building business software in-house. Hires for " +
+          "long-term product teams rather than for client projects.",
+        requirements:
+          "Written round followed by two technical rounds and an HR round. " +
+          "No bond. Relocation to Chennai required.",
+        description: "Build and maintain product features end to end.",
+        minCgpa: 7.5,
+        maxBacklogs: 0,
+        eligibleBranches: ["ISE", "CSE"],
+        eligibleBatches: ["2026"],
+        openings: 12,
+        isActive: true,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+    console.log(`
+Open job posting: ${posting.companyName} — ${posting.title}`);
 
     // ── PRS (existing engine, formula untouched) ─────────────
     console.log("\nComputing PRS with the existing engine...");

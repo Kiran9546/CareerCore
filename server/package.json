@@ -10,7 +10,9 @@
     "seed": "node seed/seed.js",
     "seed:fresh": "node seed/seed.js --fresh",
     "seed:demo": "node seed/seedDemoStudents.js",
-    "seed:placement": "node seed/seedPlacementDemo.js"
+    "seed:placement": "node seed/seedPlacementDemo.js",
+    "db:clean": "node seed/cleanDatabase.js",
+    "db:clean:dry": "node seed/cleanDatabase.js --dry-run"
   },
   "keywords": [
     "placement",

@@ -8,6 +8,9 @@ import {
   STAGE_STATUS,
   FINAL_STATUS,
   DRIVE_STATUS,
+  PLACEMENT_GROUP,
+  PLACEMENT_GROUP_ORDER,
+  PLACEMENT_GROUP_LABEL,
 } from "../config/constants.js";
 import {
   buildPlacementProfile,
@@ -627,10 +630,12 @@ export const listStudentsWithOutcomes = async (req, res, next) => {
     if (req.query.batch) filter.batch = req.query.batch;
     if (req.query.branch) filter.branch = req.query.branch;
 
+    // No sort here: the meaningful order is by outcome, which lives in the
+    // participation records rather than on the Student document, so the
+    // list is ordered after the two are joined below.
     const students = await Student.find(filter)
       .populate("userId", "name email")
       .select("usn batch branch cgpa backlogs currentPRS readinessLevel")
-      .sort("-currentPRS")
       .limit(300);
 
     const attemptStatuses = [STAGE_STATUS.PASSED, STAGE_STATUS.FAILED];
@@ -667,31 +672,78 @@ export const listStudentsWithOutcomes = async (req, res, next) => {
     ]);
     const rowMap = new Map(rows.map((r) => [String(r._id), r]));
 
+    const roster = students.map((s) => {
+      const r = rowMap.get(String(s._id));
+      const offers = r?.offers || 0;
+      const drives = r?.drives || 0;
+      const roundsCleared =
+        (r?.aptitudePassed || 0) + (r?.technicalPassed || 0) + (r?.interviewsPassed || 0);
+      const attempts =
+        (r?.aptitudeAttempts || 0) + (r?.technicalAttempts || 0) + (r?.interviewsReached || 0);
+
+      // Which band this student belongs to. Derived, never stored — it
+      // changes the moment a stage result does.
+      let group = PLACEMENT_GROUP.NO_HISTORY;
+      if (offers > 0) group = PLACEMENT_GROUP.PLACED;
+      else if (roundsCleared > 0) group = PLACEMENT_GROUP.PROGRESSED;
+      else if (attempts > 0) group = PLACEMENT_GROUP.NO_PASSES;
+
+      return {
+        _id: s._id,
+        name: s.userId?.name,
+        email: s.userId?.email,
+        usn: s.usn,
+        batch: s.batch,
+        branch: s.branch,
+        cgpa: s.cgpa,
+        backlogs: s.backlogs,
+        prs: s.currentPRS,
+        readinessLevel: s.readinessLevel,
+        drives,
+        aptitudeAttempts: r?.aptitudeAttempts || 0,
+        aptitudePassed: r?.aptitudePassed || 0,
+        technicalAttempts: r?.technicalAttempts || 0,
+        technicalPassed: r?.technicalPassed || 0,
+        interviewsReached: r?.interviewsReached || 0,
+        interviewsPassed: r?.interviewsPassed || 0,
+        offers,
+        roundsCleared,
+        group,
+      };
+    });
+
+    /**
+     * Ordered by outcome, best first: placed, then students clearing rounds
+     * without an offer yet, then students clearing nothing, then students
+     * with no drive history at all.
+     *
+     * Within a band the tie-breaks answer "who is furthest along": more
+     * offers, then more rounds cleared, then more drives attended. CGPA is
+     * the last resort only so the order is stable between requests rather
+     * than shuffling on every load.
+     */
+    const groupRank = new Map(PLACEMENT_GROUP_ORDER.map((g, i) => [g, i]));
+    roster.sort(
+      (a, b) =>
+        groupRank.get(a.group) - groupRank.get(b.group) ||
+        b.offers - a.offers ||
+        b.roundsCleared - a.roundsCleared ||
+        b.drives - a.drives ||
+        (b.cgpa ?? 0) - (a.cgpa ?? 0) ||
+        String(a.usn).localeCompare(String(b.usn)),
+    );
+
+    const groupCounts = PLACEMENT_GROUP_ORDER.reduce((acc, g) => {
+      acc[g] = roster.filter((r) => r.group === g).length;
+      return acc;
+    }, {});
+
     res.json({
-      students: students.map((s) => {
-        const r = rowMap.get(String(s._id));
-        return {
-          _id: s._id,
-          name: s.userId?.name,
-          email: s.userId?.email,
-          usn: s.usn,
-          batch: s.batch,
-          branch: s.branch,
-          cgpa: s.cgpa,
-          backlogs: s.backlogs,
-          prs: s.currentPRS,
-          readinessLevel: s.readinessLevel,
-          drives: r?.drives || 0,
-          aptitudeAttempts: r?.aptitudeAttempts || 0,
-          aptitudePassed: r?.aptitudePassed || 0,
-          technicalAttempts: r?.technicalAttempts || 0,
-          technicalPassed: r?.technicalPassed || 0,
-          interviewsReached: r?.interviewsReached || 0,
-          interviewsPassed: r?.interviewsPassed || 0,
-          offers: r?.offers || 0,
-        };
-      }),
-      total: students.length,
+      students: roster,
+      total: roster.length,
+      groupCounts,
+      groupOrder: PLACEMENT_GROUP_ORDER,
+      groupLabels: PLACEMENT_GROUP_LABEL,
     });
   } catch (err) {
     next(err);
@@ -731,6 +783,164 @@ export const exportPlacementData = async (req, res, next) => {
 
     await workbook.xlsx.write(res);
     res.end();
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// MISSED DRIVES
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/placement/missed[?batch=&branch=&driveId=]
+ *
+ * Students who met a drive's eligibility criteria and were never registered
+ * for it.
+ *
+ * This is the gap the rest of the module cannot see. A placement profile is
+ * built from participation records, so a student who never registered
+ * simply has no row — they look identical to a student who was never
+ * eligible in the first place. The two are completely different problems:
+ * one needs coaching, the other needs chasing before the next drive closes.
+ *
+ * Computed by replaying each drive's eligibility filter against the student
+ * roster and subtracting whoever did register, rather than being stored, so
+ * it stays correct when a drive's criteria are edited.
+ */
+export const listMissedDrives = async (req, res, next) => {
+  try {
+    const studentFilter = {};
+    if (req.query.batch) studentFilter.batch = String(req.query.batch);
+    if (req.query.branch) studentFilter.branch = String(req.query.branch);
+
+    const driveFilter = {};
+    if (req.query.driveId && mongoose.isValidObjectId(req.query.driveId)) {
+      driveFilter._id = req.query.driveId;
+    }
+    // A cancelled drive nobody registered for is not a missed opportunity.
+    driveFilter.status = { $ne: DRIVE_STATUS.CANCELLED };
+
+    const [students, drives] = await Promise.all([
+      Student.find(studentFilter)
+        .populate("userId", "name email")
+        .select("usn batch branch cgpa backlogs currentPRS readinessLevel")
+        .lean(),
+      Drive.find(driveFilter).sort("-driveDate").lean(),
+    ]);
+
+    const registered = await DriveParticipation.find({
+      driveId: { $in: drives.map((d) => d._id) },
+    })
+      .select("driveId studentId")
+      .lean();
+
+    // driveId -> Set of student ids already registered
+    const registeredByDrive = new Map();
+    for (const p of registered) {
+      const key = String(p.driveId);
+      if (!registeredByDrive.has(key)) registeredByDrive.set(key, new Set());
+      registeredByDrive.get(key).add(String(p.studentId));
+    }
+
+    /** Same rules as eligibilityFilter(), applied in memory. */
+    const isEligible = (student, drive) => {
+      const e = drive.eligibility || {};
+      if ((student.cgpa ?? 0) < (e.minCgpa ?? 0)) return false;
+      if ((student.backlogs ?? 0) > (e.maxBacklogs ?? 99)) return false;
+      if (e.branches?.length && !e.branches.includes(student.branch)) return false;
+      if (e.batches?.length && !e.batches.includes(student.batch)) return false;
+      return true;
+    };
+
+    const byDrive = [];
+    // studentId -> the drives they were eligible for and skipped
+    const byStudent = new Map();
+
+    for (const drive of drives) {
+      const already = registeredByDrive.get(String(drive._id)) ?? new Set();
+      const eligible = students.filter((s) => isEligible(s, drive));
+      const missed = eligible.filter((s) => !already.has(String(s._id)));
+
+      byDrive.push({
+        driveId: drive._id,
+        company: drive.companyName,
+        role: drive.role,
+        driveDate: drive.driveDate,
+        status: drive.status,
+        ctc: drive.ctc,
+        eligibility: drive.eligibility,
+        eligibleCount: eligible.length,
+        registeredCount: eligible.length - missed.length,
+        missedCount: missed.length,
+        // Registration rate among students who could actually have gone.
+        registrationPercent:
+          eligible.length > 0
+            ? Math.round(((eligible.length - missed.length) / eligible.length) * 1000) / 10
+            : null,
+        students: missed.map((s) => ({
+          _id: s._id,
+          name: s.userId?.name,
+          usn: s.usn,
+          branch: s.branch,
+          batch: s.batch,
+          cgpa: s.cgpa,
+        })),
+      });
+
+      for (const s of missed) {
+        const key = String(s._id);
+        if (!byStudent.has(key)) {
+          byStudent.set(key, {
+            _id: s._id,
+            name: s.userId?.name,
+            email: s.userId?.email,
+            usn: s.usn,
+            branch: s.branch,
+            batch: s.batch,
+            cgpa: s.cgpa,
+            prs: s.currentPRS,
+            readinessLevel: s.readinessLevel,
+            missedCount: 0,
+            drives: [],
+          });
+        }
+        const row = byStudent.get(key);
+        row.missedCount += 1;
+        row.drives.push({
+          driveId: drive._id,
+          company: drive.companyName,
+          role: drive.role,
+          driveDate: drive.driveDate,
+        });
+      }
+    }
+
+    // The students skipping the most drives are the ones to chase first.
+    const studentRows = [...byStudent.values()].sort(
+      (a, b) =>
+        b.missedCount - a.missedCount ||
+        String(a.usn).localeCompare(String(b.usn)),
+    );
+
+    const totalMissed = byDrive.reduce((n, d) => n + d.missedCount, 0);
+    const totalEligible = byDrive.reduce((n, d) => n + d.eligibleCount, 0);
+
+    res.json({
+      byDrive,
+      byStudent: studentRows,
+      summary: {
+        drivesConsidered: drives.length,
+        studentsConsidered: students.length,
+        studentsWhoMissedAtLeastOne: studentRows.length,
+        totalEligibleSlots: totalEligible,
+        totalMissedSlots: totalMissed,
+        overallRegistrationPercent:
+          totalEligible > 0
+            ? Math.round(((totalEligible - totalMissed) / totalEligible) * 1000) / 10
+            : null,
+      },
+    });
   } catch (err) {
     next(err);
   }

@@ -5,6 +5,7 @@ import NotificationBell from "./NotificationBell";
 const NAV = [
   { to: "/faculty", label: "Analytics", end: true },
   { to: "/faculty/students", label: "Students" },
+  { to: "/faculty/results", label: "Results" },
 ];
 
 export default function FacultyLayout() {
@@ -19,7 +20,9 @@ export default function FacultyLayout() {
           <div className="flex justify-between items-center py-4">
             <div>
               <h1 className="text-xl font-bold text-slate-900">CareerCore</h1>
-              <p className="text-sm text-slate-500">{user?.name} · Faculty</p>
+              <p className="text-sm text-slate-500">
+                {user?.name} · Faculty{user?.department ? ` · ${user.department}` : ""}
+              </p>
             </div>
             <div className="flex items-center gap-3">
               <NotificationBell />

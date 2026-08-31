@@ -33,6 +33,9 @@ import PlacementJobs from "./pages/placement/Jobs";
 import PlacementStudents from "./pages/placement/Students";
 import PlacementProfile from "./pages/placement/PlacementProfile";
 import PlacementCompare from "./pages/placement/Compare";
+import PlacementMissed from "./pages/placement/Missed";
+import PlacementResults from "./pages/placement/Results";
+import FacultyResults from "./pages/faculty/Results";
 
 function Home() {
   const { user, loading } = useAuth();
@@ -91,6 +94,7 @@ export default function App() {
           >
             <Route index element={<Analytics />} />
             <Route path="students" element={<FacultyStudents />} />
+            <Route path="results" element={<FacultyResults />} />
           </Route>
 
           {/* The path must equal the role string — Home and ProtectedRoute
@@ -110,6 +114,8 @@ export default function App() {
             <Route path="students" element={<PlacementStudents />} />
             <Route path="students/:id" element={<PlacementProfile />} />
             <Route path="compare" element={<PlacementCompare />} />
+            <Route path="missed" element={<PlacementMissed />} />
+            <Route path="results" element={<PlacementResults />} />
           </Route>
           <Route
             path="/admin"

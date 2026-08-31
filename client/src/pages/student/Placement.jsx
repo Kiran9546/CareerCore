@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import PlacementProfileView from "../../components/PlacementProfileView";
+import MyResultSubmissions from "../../components/MyResultSubmissions";
 import { PLACEMENT_STATUS_LABEL, PLACEMENT_STATUS_STYLE } from "../../utils/placement";
 
 /**
@@ -62,6 +63,11 @@ export default function Placement() {
       </div>
 
       <PlacementProfileView profile={profile} showIdentity={false} />
+
+      {/* Requests opened by the student's own department. The student can
+          only fill in what has been asked for, and faculty review it before
+          any of it reaches the official record above. */}
+      <MyResultSubmissions />
     </div>
   );
 }

@@ -28,7 +28,7 @@ export const getResume = async (req, res, next) => {
         linkedinUrl: student.linkedinUrl,
         education: {
           degree: {
-            course: `Bachelors of Engineering – ${student.branch}`,
+            course: `Bachelor of Engineering – ${student.branch}`,
             institution: "Mangalore Institute of Technology & Engineering.",
             yearRange: `${Number(student.batch) - 4}-Present`,
             cgpa: student.cgpa,

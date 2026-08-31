@@ -11,6 +11,8 @@ const NAV = [
   { to: "/placement_officer/drives", label: "Drives" },
   { to: "/placement_officer/jobs", label: "Jobs" },
   { to: "/placement_officer/students", label: "Students" },
+  { to: "/placement_officer/results", label: "Results" },
+  { to: "/placement_officer/missed", label: "Not registered" },
 ];
 
 export default function PlacementLayout() {

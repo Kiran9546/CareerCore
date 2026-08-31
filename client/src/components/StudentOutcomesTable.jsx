@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
 import { downloadPlacementExport } from "../utils/download";
@@ -17,7 +17,21 @@ import { downloadPlacementExport } from "../utils/download";
  * Each round cell reads `cleared / attempted`, and shows a dash when the
  * round was never reached. A dash is not a zero: it means the student never
  * sat that round, so there is nothing to have passed or failed.
+ *
+ * Rows arrive already ordered by outcome from the API — placed first, then
+ * students clearing rounds without an offer, then students clearing nothing,
+ * then students with no drive history. That order is computed server-side
+ * from the participation records rather than sorted here, so the spreadsheet
+ * export and this table agree. The bands are drawn as header rows so the
+ * boundaries are visible rather than implied.
  */
+
+const GROUP_STYLE = {
+  placed: "bg-emerald-50 text-emerald-800 border-emerald-200",
+  progressed: "bg-blue-50 text-blue-800 border-blue-200",
+  no_passes: "bg-amber-50 text-amber-800 border-amber-200",
+  no_history: "bg-slate-50 text-slate-600 border-slate-200",
+};
 
 /** cleared / attempted, or a dash when the round was never reached. */
 const RoundCell = ({ passed, attempts }) => {
@@ -48,6 +62,7 @@ const RoundCell = ({ passed, attempts }) => {
 
 export default function StudentOutcomesTable({ basePath }) {
   const [students, setStudents] = useState([]);
+  const [groups, setGroups] = useState({ order: [], labels: {}, counts: {} });
   const [batch, setBatch] = useState("");
   const [branch, setBranch] = useState("");
   const [search, setSearch] = useState("");
@@ -64,6 +79,11 @@ export default function StudentOutcomesTable({ basePath }) {
       .get(`/placement/students${q.toString() ? `?${q}` : ""}`)
       .then((r) => {
         setStudents(r.data.students);
+        setGroups({
+          order: r.data.groupOrder ?? [],
+          labels: r.data.groupLabels ?? {},
+          counts: r.data.groupCounts ?? {},
+        });
         setError("");
       })
       .catch((e) =>
@@ -104,6 +124,7 @@ export default function StudentOutcomesTable({ basePath }) {
       !(s.technicalAttempts > 0 && s.technicalPassed === 0)
     )
       return false;
+    if (outcome === "progressed" && s.group !== "progressed") return false;
     return true;
   });
 
@@ -148,6 +169,7 @@ export default function StudentOutcomesTable({ basePath }) {
           <option value="unplaced">No offer</option>
           <option value="stuck_aptitude">Stuck at aptitude</option>
           <option value="stuck_technical">Stuck at technical</option>
+          <option value="progressed">Cleared some rounds, no offer</option>
           <option value="attended">Attended a drive</option>
           <option value="no_history">No drive history</option>
         </select>
@@ -173,8 +195,20 @@ export default function StudentOutcomesTable({ basePath }) {
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 p-6 overflow-x-auto">
+        {groups.order.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {groups.order.map((g) => (
+              <span
+                key={g}
+                className={`px-2.5 py-1 rounded text-xs border ${GROUP_STYLE[g] ?? ""}`}
+              >
+                {groups.labels[g] ?? g}: {groups.counts[g] ?? 0}
+              </span>
+            ))}
+          </div>
+        )}
         <p className="text-sm text-slate-500 mb-4">
-          {loading ? "Loading…" : `${shown.length} students`}
+          {loading ? "Loading…" : `${shown.length} students, best outcome first`}
           <span className="text-slate-400">
             {" "}· each round shows cleared / attempted. A dash means the round
             was never reached, which is not a failure.
@@ -195,8 +229,25 @@ export default function StudentOutcomesTable({ basePath }) {
             </tr>
           </thead>
           <tbody>
-            {shown.map((s) => (
-              <tr key={s._id} className="border-b border-slate-100 hover:bg-slate-50">
+            {shown.map((s, i) => (
+              <Fragment key={s._id}>
+                {s.group !== shown[i - 1]?.group && (
+                  <tr>
+                    <td colSpan={9} className="pt-4 pb-1">
+                      <span
+                        className={`inline-block px-2.5 py-1 rounded text-xs font-medium border ${
+                          GROUP_STYLE[s.group] ?? "bg-slate-50 text-slate-600 border-slate-200"
+                        }`}
+                      >
+                        {groups.labels[s.group] ?? s.group}
+                        <span className="ml-1.5 opacity-70">
+                          {shown.filter((x) => x.group === s.group).length}
+                        </span>
+                      </span>
+                    </td>
+                  </tr>
+                )}
+              <tr className="border-b border-slate-100 hover:bg-slate-50">
                 <td className="py-2.5">
                   <Link
                     to={`${basePath}/students/${s._id}`}
@@ -229,6 +280,7 @@ export default function StudentOutcomesTable({ basePath }) {
                   </span>
                 </td>
               </tr>
+              </Fragment>
             ))}
             {!loading && !shown.length && (
               <tr>

@@ -2,6 +2,15 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
+/** Must match DEPARTMENTS in the server's config/constants.js. */
+const DEPARTMENTS = [
+  ["ISE", "Information Science & Engineering"],
+  ["CSE", "Computer Science & Engineering"],
+  ["ECE", "Electronics & Communication"],
+  ["AIML", "Artificial Intelligence & Machine Learning"],
+  ["EEE", "Electrical & Electronics"],
+];
+
 const ROLES = [
   {
     value: "student",
@@ -11,7 +20,7 @@ const ROLES = [
   {
     value: "faculty",
     label: "Faculty",
-    hint: "Monitor batch-level placement analytics",
+    hint: "Monitor and record results for your own department",
   },
   {
     value: "placement_officer",
@@ -30,6 +39,7 @@ export default function Register() {
     password: "",
     confirm: "",
     role: "student",
+    department: "",
   });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -43,6 +53,8 @@ export default function Register() {
       return setError("Password must be at least 8 characters");
     if (form.password !== form.confirm)
       return setError("Passwords do not match");
+    if (form.role === "faculty" && !form.department)
+      return setError("Select your department");
 
     setBusy(true);
     try {
@@ -51,6 +63,7 @@ export default function Register() {
         email: form.email.trim(),
         password: form.password,
         role: form.role,
+        ...(form.role === "faculty" ? { department: form.department } : {}),
       });
       navigate(`/${user.role}`);
     } catch (err) {
@@ -102,6 +115,30 @@ export default function Register() {
               </button>
             ))}
           </div>
+
+          {/* Faculty are scoped to one department everywhere in the app, so
+              this is required rather than optional — an account without one
+              can see nothing. */}
+          {form.role === "faculty" && (
+            <div className="mb-5">
+              <label className={label}>Department</label>
+              <select
+                value={form.department}
+                onChange={(e) => setForm({ ...form, department: e.target.value })}
+                className={input}
+              >
+                <option value="">Select your department…</option>
+                {DEPARTMENTS.map(([code, name]) => (
+                  <option key={code} value={code}>
+                    {code} — {name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 mt-1">
+                You will only see students from this department.
+              </p>
+            </div>
+          )}
 
           <label className={label}>Full name</label>
           <input

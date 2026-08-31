@@ -24,7 +24,7 @@ const resumeSchema = new mongoose.Schema(
         course: {
           type: String,
           default:
-            "Bachelors of Engineering – Information Science and Engineering",
+            "Bachelor of Engineering – Information Science and Engineering",
         },
         institution: {
           type: String,
