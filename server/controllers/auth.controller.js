@@ -1,6 +1,6 @@
 import User from "../models/User.js";
 import { signToken } from "../utils/jwt.js";
-import { ROLES, DEPARTMENTS } from "../config/constants.js";
+import { ROLES, DEPARTMENTS, DEPARTMENT_LABEL } from "../config/constants.js";
 
 /**
  * Roles the public /register endpoint is allowed to create.
@@ -116,4 +116,23 @@ export const login = async (req, res, next) => {
 /** GET /api/auth/me */
 export const getMe = async (req, res) => {
   res.json({ user: req.user });
+};
+/**
+ * GET /api/auth/departments
+ *
+ * The department list the registration form offers.
+ *
+ * Public, because it is needed before anyone has an account. Served rather
+ * than duplicated in the client because the two lists had already drifted
+ * once — departments were added on the server and the sign-up form went on
+ * offering the old five, so a mechanical faculty member simply could not
+ * register.
+ */
+export const listDepartments = (req, res) => {
+  res.json({
+    departments: DEPARTMENTS.map((code) => ({
+      code,
+      label: DEPARTMENT_LABEL[code] ?? code,
+    })),
+  });
 };

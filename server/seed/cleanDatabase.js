@@ -25,14 +25,8 @@ import { ROLES } from "../config/constants.js";
  *            faculty.demo@mite.ac.in  Dr. Suresh Hegde
  *            officer@mite.ac.in       Priya Kulkarni
  *
- *          students B–E and all of their drive records. They carry no login
- *          anyone uses, but they are the evidence behind the project's
- *          central claim — that similar profiles and similar PRS can end in
- *          completely different outcomes. Deleting them would leave the
- *          comparison, the funnel, the roster bands and the not-registered
- *          report with nothing to show.
- *
- *          the four seeded drives and their sixteen participations.
+ *          the drives and participations. The student roll itself is owned
+ *          by the cohort seed, which can rebuild it at any time.
  *
  *   REMOVED every randomly generated demo student, every account left behind
  *          by a test run, and the orphaned rows that pointed at them.
@@ -58,13 +52,14 @@ const KEEP_EMAILS = [
   "officer@mite.ac.in",
 ];
 
-/** Demo students kept as data but not as sign-ins. */
-const KEEP_DATA_EMAILS = [
-  "student.b@mite.ac.in",
-  "student.c@mite.ac.in",
-  "student.d@mite.ac.in",
-  "student.e@mite.ac.in",
-];
+/**
+ * Students that exist as data without a sign-in anyone uses.
+ *
+ * Empty now that the cohort seed builds the whole roll — every student it
+ * creates has a working account of their own. Kept as a hook for any future
+ * record that should survive a clean without being a login.
+ */
+const KEEP_DATA_EMAILS = [];
 
 const ALL_KEEP = [...KEEP_EMAILS, ...KEEP_DATA_EMAILS];
 
@@ -97,7 +92,7 @@ const run = async () => {
       console.warn(
         `\n  WARNING: these accounts were expected but not found: ${missing.join(", ")}`,
       );
-      console.warn("  Run `npm run seed:placement` first if the demo set is missing.\n");
+      console.warn("  Run `npm run seed:cohort` first if the demo set is missing.\n");
     }
 
     // Admin is kept: it is provisioned outside the app and is the only way

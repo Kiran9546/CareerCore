@@ -1,15 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-
-/** Must match DEPARTMENTS in the server's config/constants.js. */
-const DEPARTMENTS = [
-  ["ISE", "Information Science & Engineering"],
-  ["CSE", "Computer Science & Engineering"],
-  ["ECE", "Electronics & Communication"],
-  ["AIML", "Artificial Intelligence & Machine Learning"],
-  ["EEE", "Electrical & Electronics"],
-];
+import api from "../../api/axios";
 
 const ROLES = [
   {
@@ -43,6 +35,16 @@ export default function Register() {
   });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // Fetched rather than hardcoded: a duplicated list had already drifted out
+  // of step with the server, leaving whole departments unable to register.
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    api
+      .get("/auth/departments")
+      .then((r) => setDepartments(r.data.departments))
+      .catch(() => setDepartments([]));
+  }, []);
 
   const submit = async () => {
     setError("");
@@ -128,9 +130,9 @@ export default function Register() {
                 className={input}
               >
                 <option value="">Select your department…</option>
-                {DEPARTMENTS.map(([code, name]) => (
-                  <option key={code} value={code}>
-                    {code} — {name}
+                {departments.map((d) => (
+                  <option key={d.code} value={d.code}>
+                    {d.code} — {d.label}
                   </option>
                 ))}
               </select>

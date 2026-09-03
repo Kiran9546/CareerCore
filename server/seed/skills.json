@@ -1,125 +1,1020 @@
 [
-  { "name": "Python", "category": "Programming", "aliases": ["python3", "py", "python 3"] },
-  { "name": "Java", "category": "Programming", "aliases": ["core java", "java se", "j2se"] },
-  { "name": "C++", "category": "Programming", "aliases": ["cpp", "c plus plus", "cplusplus"] },
-  { "name": "C", "category": "Programming", "aliases": ["c language", "ansi c"] },
-  { "name": "JavaScript", "category": "Programming", "aliases": ["js", "java script", "ecmascript", "es6"] },
-  { "name": "TypeScript", "category": "Programming", "aliases": ["ts", "type script"] },
-  { "name": "Go", "category": "Programming", "aliases": ["golang", "go lang"] },
-  { "name": "Rust", "category": "Programming", "aliases": ["rust lang"] },
-  { "name": "Kotlin", "category": "Programming", "aliases": ["kotlin lang"] },
-  { "name": "Swift", "category": "Programming", "aliases": ["swift lang"] },
-  { "name": "PHP", "category": "Programming", "aliases": ["php7", "php8"] },
-  { "name": "Ruby", "category": "Programming", "aliases": ["ruby lang"] },
-  { "name": "R", "category": "Programming", "aliases": ["r language", "r lang", "rstats"] },
-  { "name": "Scala", "category": "Programming", "aliases": ["scala lang"] },
-  { "name": "Shell Scripting", "category": "Programming", "aliases": ["bash", "shell", "bash scripting", "sh"] },
-
-  { "name": "HTML", "category": "Frontend", "aliases": ["html5", "hyper text markup language"] },
-  { "name": "CSS", "category": "Frontend", "aliases": ["css3", "cascading style sheets"] },
-  { "name": "React", "category": "Frontend", "aliases": ["reactjs", "react.js", "react js"] },
-  { "name": "Angular", "category": "Frontend", "aliases": ["angularjs", "angular.js", "angular 2+"] },
-  { "name": "Vue.js", "category": "Frontend", "aliases": ["vue", "vuejs", "vue js"] },
-  { "name": "Next.js", "category": "Frontend", "aliases": ["nextjs", "next js"] },
-  { "name": "Redux", "category": "Frontend", "aliases": ["redux toolkit", "rtk"] },
-  { "name": "Tailwind CSS", "category": "Frontend", "aliases": ["tailwind", "tailwindcss"] },
-  { "name": "Bootstrap", "category": "Frontend", "aliases": ["bootstrap5", "bootstrap 4"] },
-  { "name": "Responsive Design", "category": "Frontend", "aliases": ["responsive web design", "mobile first design", "rwd"] },
-  { "name": "Web Accessibility", "category": "Frontend", "aliases": ["a11y", "wcag", "accessibility"] },
-  { "name": "Figma", "category": "Frontend", "aliases": ["figma design"] },
-  { "name": "UI/UX Design", "category": "Frontend", "aliases": ["ui ux", "uiux", "user interface design", "ux design"] },
-
-  { "name": "Node.js", "category": "Backend", "aliases": ["node", "nodejs", "node js"] },
-  { "name": "Express.js", "category": "Backend", "aliases": ["express", "expressjs", "express js"] },
-  { "name": "Django", "category": "Backend", "aliases": ["django framework"] },
-  { "name": "Flask", "category": "Backend", "aliases": ["flask framework"] },
-  { "name": "FastAPI", "category": "Backend", "aliases": ["fast api"] },
-  { "name": "Spring Boot", "category": "Backend", "aliases": ["springboot", "spring", "spring framework"] },
-  { "name": "REST API", "category": "Backend", "aliases": ["rest", "restful api", "rest apis", "restful"] },
-  { "name": "GraphQL", "category": "Backend", "aliases": ["graph ql"] },
-  { "name": "Microservices", "category": "Backend", "aliases": ["microservice architecture", "micro services"] },
-  { "name": "Authentication & Authorization", "category": "Backend", "aliases": ["jwt", "oauth", "auth", "authentication"] },
-  { "name": "WebSockets", "category": "Backend", "aliases": ["websocket", "socket.io", "socketio"] },
-  { "name": "Message Queues", "category": "Backend", "aliases": ["rabbitmq", "kafka", "apache kafka", "message broker"] },
-  { "name": "Caching", "category": "Backend", "aliases": ["redis", "memcached", "cache"] },
-
-  { "name": "SQL", "category": "Database", "aliases": ["structured query language", "sql queries"] },
-  { "name": "MySQL", "category": "Database", "aliases": ["my sql", "mariadb"] },
-  { "name": "PostgreSQL", "category": "Database", "aliases": ["postgres", "postgre sql", "psql"] },
-  { "name": "MongoDB", "category": "Database", "aliases": ["mongo", "mongo db", "mongoose"] },
-  { "name": "Database Design", "category": "Database", "aliases": ["schema design", "er diagram", "normalization", "dbms"] },
-  { "name": "Query Optimization", "category": "Database", "aliases": ["indexing", "query tuning", "sql optimization"] },
-
-  { "name": "Machine Learning", "category": "Data Science", "aliases": ["ml", "machine-learning"] },
-  { "name": "Deep Learning", "category": "Data Science", "aliases": ["dl", "neural networks", "ann"] },
-  { "name": "Scikit-learn", "category": "Data Science", "aliases": ["sklearn", "scikit learn"] },
-  { "name": "TensorFlow", "category": "Data Science", "aliases": ["tensor flow", "tf", "keras"] },
-  { "name": "PyTorch", "category": "Data Science", "aliases": ["torch", "py torch"] },
-  { "name": "Pandas", "category": "Data Science", "aliases": ["pandas library", "pd"] },
-  { "name": "NumPy", "category": "Data Science", "aliases": ["numpy library", "np"] },
-  { "name": "Statistics", "category": "Data Science", "aliases": ["statistical analysis", "stats", "probability and statistics"] },
-  { "name": "Data Visualization", "category": "Data Science", "aliases": ["dataviz", "matplotlib", "seaborn", "plotly"] },
-  { "name": "Data Cleaning", "category": "Data Science", "aliases": ["data wrangling", "data preprocessing", "data munging"] },
-  { "name": "Feature Engineering", "category": "Data Science", "aliases": ["feature extraction", "feature selection"] },
-  { "name": "Natural Language Processing", "category": "Data Science", "aliases": ["nlp", "text mining", "spacy", "nltk"] },
-  { "name": "Computer Vision", "category": "Data Science", "aliases": ["cv", "opencv", "image processing"] },
-  { "name": "Model Deployment", "category": "Data Science", "aliases": ["mlops", "ml ops", "model serving"] },
-  { "name": "Excel", "category": "Data Science", "aliases": ["ms excel", "microsoft excel", "advanced excel", "spreadsheets"] },
-  { "name": "Power BI", "category": "Data Science", "aliases": ["powerbi", "power-bi", "microsoft power bi"] },
-  { "name": "Tableau", "category": "Data Science", "aliases": ["tableau desktop"] },
-  { "name": "ETL", "category": "Data Science", "aliases": ["extract transform load", "data pipeline", "etl pipeline"] },
-  { "name": "Big Data", "category": "Data Science", "aliases": ["hadoop", "spark", "apache spark", "pyspark"] },
-  { "name": "A/B Testing", "category": "Data Science", "aliases": ["ab testing", "split testing", "hypothesis testing"] },
-
-  { "name": "Docker", "category": "DevOps", "aliases": ["containerization", "docker compose", "containers"] },
-  { "name": "Kubernetes", "category": "DevOps", "aliases": ["k8s", "kube", "container orchestration"] },
-  { "name": "CI/CD", "category": "DevOps", "aliases": ["continuous integration", "continuous deployment", "jenkins", "github actions"] },
-  { "name": "Linux", "category": "DevOps", "aliases": ["unix", "ubuntu", "linux administration"] },
-  { "name": "Terraform", "category": "DevOps", "aliases": ["infrastructure as code", "iac"] },
-  { "name": "Ansible", "category": "DevOps", "aliases": ["configuration management"] },
-  { "name": "Monitoring & Logging", "category": "DevOps", "aliases": ["prometheus", "grafana", "elk stack", "observability"] },
-  { "name": "Nginx", "category": "DevOps", "aliases": ["reverse proxy", "load balancing", "apache"] },
-
-  { "name": "AWS", "category": "Cloud", "aliases": ["amazon web services", "ec2", "s3"] },
-  { "name": "Azure", "category": "Cloud", "aliases": ["microsoft azure", "ms azure"] },
-  { "name": "Google Cloud Platform", "category": "Cloud", "aliases": ["gcp", "google cloud"] },
-  { "name": "Serverless", "category": "Cloud", "aliases": ["lambda", "aws lambda", "faas", "cloud functions"] },
-  { "name": "Cloud Architecture", "category": "Cloud", "aliases": ["cloud design", "solution architecture"] },
-  { "name": "Cloud Security", "category": "Cloud", "aliases": ["iam", "cloud iam"] },
-
-  { "name": "Network Security", "category": "Security", "aliases": ["network sec", "firewall", "ids", "ips"] },
-  { "name": "Cryptography", "category": "Security", "aliases": ["encryption", "crypto", "ssl", "tls"] },
-  { "name": "Ethical Hacking", "category": "Security", "aliases": ["penetration testing", "pentesting", "pen testing"] },
-  { "name": "Vulnerability Assessment", "category": "Security", "aliases": ["vapt", "vulnerability scanning", "nessus"] },
-  { "name": "Security Auditing", "category": "Security", "aliases": ["compliance", "iso 27001", "security audit"] },
-  { "name": "Incident Response", "category": "Security", "aliases": ["soc", "threat detection", "siem"] },
-  { "name": "OWASP", "category": "Security", "aliases": ["owasp top 10", "web security", "application security"] },
-  { "name": "Computer Networks", "category": "Security", "aliases": ["networking", "tcp/ip", "cn", "osi model"] },
-
-  { "name": "Manual Testing", "category": "Testing", "aliases": ["functional testing", "black box testing"] },
-  { "name": "Automation Testing", "category": "Testing", "aliases": ["test automation", "selenium", "cypress", "playwright"] },
-  { "name": "Unit Testing", "category": "Testing", "aliases": ["jest", "pytest", "junit", "tdd"] },
-  { "name": "API Testing", "category": "Testing", "aliases": ["postman", "rest assured", "api test"] },
-  { "name": "Performance Testing", "category": "Testing", "aliases": ["load testing", "jmeter", "stress testing"] },
-  { "name": "Test Case Design", "category": "Testing", "aliases": ["test planning", "test scenarios", "test strategy"] },
-  { "name": "Bug Tracking", "category": "Testing", "aliases": ["jira", "defect tracking", "bugzilla"] },
-
-  { "name": "Android Development", "category": "Mobile", "aliases": ["android", "android studio"] },
-  { "name": "iOS Development", "category": "Mobile", "aliases": ["ios", "swiftui", "xcode"] },
-  { "name": "React Native", "category": "Mobile", "aliases": ["reactnative", "react-native"] },
-  { "name": "Flutter", "category": "Mobile", "aliases": ["dart", "flutter sdk"] },
-
-  { "name": "Data Structures", "category": "Fundamentals", "aliases": ["ds", "data structure", "dsa"] },
-  { "name": "Algorithms", "category": "Fundamentals", "aliases": ["algo", "algorithm design", "daa"] },
-  { "name": "Object Oriented Programming", "category": "Fundamentals", "aliases": ["oop", "oops", "object-oriented"] },
-  { "name": "Operating Systems", "category": "Fundamentals", "aliases": ["os", "operating system"] },
-  { "name": "Problem Solving", "category": "Fundamentals", "aliases": ["competitive programming", "leetcode", "coding"] },
-  { "name": "Git", "category": "Fundamentals", "aliases": ["github", "version control", "gitlab", "git version control"] },
-  { "name": "Agile Methodology", "category": "Fundamentals", "aliases": ["scrum", "agile", "kanban", "sdlc"] },
-  { "name": "System Design", "category": "Fundamentals", "aliases": ["software architecture", "hld", "lld"] },
-
-  { "name": "Communication", "category": "Soft Skills", "aliases": ["verbal communication", "written communication"] },
-  { "name": "Teamwork", "category": "Soft Skills", "aliases": ["collaboration", "team work"] },
-  { "name": "Presentation Skills", "category": "Soft Skills", "aliases": ["public speaking", "presentation"] },
-  { "name": "Documentation", "category": "Soft Skills", "aliases": ["technical writing", "docs"] }
+  {
+    "name": "Python",
+    "category": "Programming",
+    "aliases": [
+      "python3",
+      "py",
+      "python 3"
+    ]
+  },
+  {
+    "name": "Java",
+    "category": "Programming",
+    "aliases": [
+      "core java",
+      "java se",
+      "j2se"
+    ]
+  },
+  {
+    "name": "C++",
+    "category": "Programming",
+    "aliases": [
+      "cpp",
+      "c plus plus",
+      "cplusplus"
+    ]
+  },
+  {
+    "name": "C",
+    "category": "Programming",
+    "aliases": [
+      "c language",
+      "ansi c"
+    ]
+  },
+  {
+    "name": "JavaScript",
+    "category": "Programming",
+    "aliases": [
+      "js",
+      "java script",
+      "ecmascript",
+      "es6"
+    ]
+  },
+  {
+    "name": "TypeScript",
+    "category": "Programming",
+    "aliases": [
+      "ts",
+      "type script"
+    ]
+  },
+  {
+    "name": "Go",
+    "category": "Programming",
+    "aliases": [
+      "golang",
+      "go lang"
+    ]
+  },
+  {
+    "name": "Rust",
+    "category": "Programming",
+    "aliases": [
+      "rust lang"
+    ]
+  },
+  {
+    "name": "Kotlin",
+    "category": "Programming",
+    "aliases": [
+      "kotlin lang"
+    ]
+  },
+  {
+    "name": "Swift",
+    "category": "Programming",
+    "aliases": [
+      "swift lang"
+    ]
+  },
+  {
+    "name": "PHP",
+    "category": "Programming",
+    "aliases": [
+      "php7",
+      "php8"
+    ]
+  },
+  {
+    "name": "Ruby",
+    "category": "Programming",
+    "aliases": [
+      "ruby lang"
+    ]
+  },
+  {
+    "name": "R",
+    "category": "Programming",
+    "aliases": [
+      "r language",
+      "r lang",
+      "rstats"
+    ]
+  },
+  {
+    "name": "Scala",
+    "category": "Programming",
+    "aliases": [
+      "scala lang"
+    ]
+  },
+  {
+    "name": "Shell Scripting",
+    "category": "Programming",
+    "aliases": [
+      "bash",
+      "shell",
+      "bash scripting",
+      "sh"
+    ]
+  },
+  {
+    "name": "HTML",
+    "category": "Frontend",
+    "aliases": [
+      "html5",
+      "hyper text markup language"
+    ]
+  },
+  {
+    "name": "CSS",
+    "category": "Frontend",
+    "aliases": [
+      "css3",
+      "cascading style sheets"
+    ]
+  },
+  {
+    "name": "React",
+    "category": "Frontend",
+    "aliases": [
+      "reactjs",
+      "react.js",
+      "react js"
+    ]
+  },
+  {
+    "name": "Angular",
+    "category": "Frontend",
+    "aliases": [
+      "angularjs",
+      "angular.js",
+      "angular 2+"
+    ]
+  },
+  {
+    "name": "Vue.js",
+    "category": "Frontend",
+    "aliases": [
+      "vue",
+      "vuejs",
+      "vue js"
+    ]
+  },
+  {
+    "name": "Next.js",
+    "category": "Frontend",
+    "aliases": [
+      "nextjs",
+      "next js"
+    ]
+  },
+  {
+    "name": "Redux",
+    "category": "Frontend",
+    "aliases": [
+      "redux toolkit",
+      "rtk"
+    ]
+  },
+  {
+    "name": "Tailwind CSS",
+    "category": "Frontend",
+    "aliases": [
+      "tailwind",
+      "tailwindcss"
+    ]
+  },
+  {
+    "name": "Bootstrap",
+    "category": "Frontend",
+    "aliases": [
+      "bootstrap5",
+      "bootstrap 4"
+    ]
+  },
+  {
+    "name": "Responsive Design",
+    "category": "Frontend",
+    "aliases": [
+      "responsive web design",
+      "mobile first design",
+      "rwd"
+    ]
+  },
+  {
+    "name": "Web Accessibility",
+    "category": "Frontend",
+    "aliases": [
+      "a11y",
+      "wcag",
+      "accessibility"
+    ]
+  },
+  {
+    "name": "Figma",
+    "category": "Frontend",
+    "aliases": [
+      "figma design"
+    ]
+  },
+  {
+    "name": "UI/UX Design",
+    "category": "Frontend",
+    "aliases": [
+      "ui ux",
+      "uiux",
+      "user interface design",
+      "ux design"
+    ]
+  },
+  {
+    "name": "Node.js",
+    "category": "Backend",
+    "aliases": [
+      "node",
+      "nodejs",
+      "node js"
+    ]
+  },
+  {
+    "name": "Express.js",
+    "category": "Backend",
+    "aliases": [
+      "express",
+      "expressjs",
+      "express js"
+    ]
+  },
+  {
+    "name": "Django",
+    "category": "Backend",
+    "aliases": [
+      "django framework"
+    ]
+  },
+  {
+    "name": "Flask",
+    "category": "Backend",
+    "aliases": [
+      "flask framework"
+    ]
+  },
+  {
+    "name": "FastAPI",
+    "category": "Backend",
+    "aliases": [
+      "fast api"
+    ]
+  },
+  {
+    "name": "Spring Boot",
+    "category": "Backend",
+    "aliases": [
+      "springboot",
+      "spring",
+      "spring framework"
+    ]
+  },
+  {
+    "name": "REST API",
+    "category": "Backend",
+    "aliases": [
+      "rest",
+      "restful api",
+      "rest apis",
+      "restful"
+    ]
+  },
+  {
+    "name": "GraphQL",
+    "category": "Backend",
+    "aliases": [
+      "graph ql"
+    ]
+  },
+  {
+    "name": "Microservices",
+    "category": "Backend",
+    "aliases": [
+      "microservice architecture",
+      "micro services"
+    ]
+  },
+  {
+    "name": "Authentication & Authorization",
+    "category": "Backend",
+    "aliases": [
+      "jwt",
+      "oauth",
+      "auth",
+      "authentication"
+    ]
+  },
+  {
+    "name": "WebSockets",
+    "category": "Backend",
+    "aliases": [
+      "websocket",
+      "socket.io",
+      "socketio"
+    ]
+  },
+  {
+    "name": "Message Queues",
+    "category": "Backend",
+    "aliases": [
+      "rabbitmq",
+      "kafka",
+      "apache kafka",
+      "message broker"
+    ]
+  },
+  {
+    "name": "Caching",
+    "category": "Backend",
+    "aliases": [
+      "redis",
+      "memcached",
+      "cache"
+    ]
+  },
+  {
+    "name": "SQL",
+    "category": "Database",
+    "aliases": [
+      "structured query language",
+      "sql queries"
+    ]
+  },
+  {
+    "name": "MySQL",
+    "category": "Database",
+    "aliases": [
+      "my sql",
+      "mariadb"
+    ]
+  },
+  {
+    "name": "PostgreSQL",
+    "category": "Database",
+    "aliases": [
+      "postgres",
+      "postgre sql",
+      "psql"
+    ]
+  },
+  {
+    "name": "MongoDB",
+    "category": "Database",
+    "aliases": [
+      "mongo",
+      "mongo db",
+      "mongoose"
+    ]
+  },
+  {
+    "name": "Database Design",
+    "category": "Database",
+    "aliases": [
+      "schema design",
+      "er diagram",
+      "normalization",
+      "dbms"
+    ]
+  },
+  {
+    "name": "Query Optimization",
+    "category": "Database",
+    "aliases": [
+      "indexing",
+      "query tuning",
+      "sql optimization"
+    ]
+  },
+  {
+    "name": "Machine Learning",
+    "category": "Data Science",
+    "aliases": [
+      "ml",
+      "machine-learning"
+    ]
+  },
+  {
+    "name": "Deep Learning",
+    "category": "Data Science",
+    "aliases": [
+      "dl",
+      "neural networks",
+      "ann"
+    ]
+  },
+  {
+    "name": "Scikit-learn",
+    "category": "Data Science",
+    "aliases": [
+      "sklearn",
+      "scikit learn"
+    ]
+  },
+  {
+    "name": "TensorFlow",
+    "category": "Data Science",
+    "aliases": [
+      "tensor flow",
+      "tf",
+      "keras"
+    ]
+  },
+  {
+    "name": "PyTorch",
+    "category": "Data Science",
+    "aliases": [
+      "torch",
+      "py torch"
+    ]
+  },
+  {
+    "name": "Pandas",
+    "category": "Data Science",
+    "aliases": [
+      "pandas library",
+      "pd"
+    ]
+  },
+  {
+    "name": "NumPy",
+    "category": "Data Science",
+    "aliases": [
+      "numpy library",
+      "np"
+    ]
+  },
+  {
+    "name": "Statistics",
+    "category": "Data Science",
+    "aliases": [
+      "statistical analysis",
+      "stats",
+      "probability and statistics"
+    ]
+  },
+  {
+    "name": "Data Visualization",
+    "category": "Data Science",
+    "aliases": [
+      "dataviz",
+      "matplotlib",
+      "seaborn",
+      "plotly"
+    ]
+  },
+  {
+    "name": "Data Cleaning",
+    "category": "Data Science",
+    "aliases": [
+      "data wrangling",
+      "data preprocessing",
+      "data munging"
+    ]
+  },
+  {
+    "name": "Feature Engineering",
+    "category": "Data Science",
+    "aliases": [
+      "feature extraction",
+      "feature selection"
+    ]
+  },
+  {
+    "name": "Natural Language Processing",
+    "category": "Data Science",
+    "aliases": [
+      "nlp",
+      "text mining",
+      "spacy",
+      "nltk"
+    ]
+  },
+  {
+    "name": "Computer Vision",
+    "category": "Data Science",
+    "aliases": [
+      "cv",
+      "opencv",
+      "image processing"
+    ]
+  },
+  {
+    "name": "Model Deployment",
+    "category": "Data Science",
+    "aliases": [
+      "mlops",
+      "ml ops",
+      "model serving"
+    ]
+  },
+  {
+    "name": "Excel",
+    "category": "Data Science",
+    "aliases": [
+      "ms excel",
+      "microsoft excel",
+      "advanced excel",
+      "spreadsheets"
+    ]
+  },
+  {
+    "name": "Power BI",
+    "category": "Data Science",
+    "aliases": [
+      "powerbi",
+      "power-bi",
+      "microsoft power bi"
+    ]
+  },
+  {
+    "name": "Tableau",
+    "category": "Data Science",
+    "aliases": [
+      "tableau desktop"
+    ]
+  },
+  {
+    "name": "ETL",
+    "category": "Data Science",
+    "aliases": [
+      "extract transform load",
+      "data pipeline",
+      "etl pipeline"
+    ]
+  },
+  {
+    "name": "Big Data",
+    "category": "Data Science",
+    "aliases": [
+      "hadoop",
+      "spark",
+      "apache spark",
+      "pyspark"
+    ]
+  },
+  {
+    "name": "A/B Testing",
+    "category": "Data Science",
+    "aliases": [
+      "ab testing",
+      "split testing",
+      "hypothesis testing"
+    ]
+  },
+  {
+    "name": "Docker",
+    "category": "DevOps",
+    "aliases": [
+      "containerization",
+      "docker compose",
+      "containers"
+    ]
+  },
+  {
+    "name": "Kubernetes",
+    "category": "DevOps",
+    "aliases": [
+      "k8s",
+      "kube",
+      "container orchestration"
+    ]
+  },
+  {
+    "name": "CI/CD",
+    "category": "DevOps",
+    "aliases": [
+      "continuous integration",
+      "continuous deployment",
+      "jenkins",
+      "github actions"
+    ]
+  },
+  {
+    "name": "Linux",
+    "category": "DevOps",
+    "aliases": [
+      "unix",
+      "ubuntu",
+      "linux administration"
+    ]
+  },
+  {
+    "name": "Terraform",
+    "category": "DevOps",
+    "aliases": [
+      "infrastructure as code",
+      "iac"
+    ]
+  },
+  {
+    "name": "Ansible",
+    "category": "DevOps",
+    "aliases": [
+      "configuration management"
+    ]
+  },
+  {
+    "name": "Monitoring & Logging",
+    "category": "DevOps",
+    "aliases": [
+      "prometheus",
+      "grafana",
+      "elk stack",
+      "observability"
+    ]
+  },
+  {
+    "name": "Nginx",
+    "category": "DevOps",
+    "aliases": [
+      "reverse proxy",
+      "load balancing",
+      "apache"
+    ]
+  },
+  {
+    "name": "AWS",
+    "category": "Cloud",
+    "aliases": [
+      "amazon web services",
+      "ec2",
+      "s3"
+    ]
+  },
+  {
+    "name": "Azure",
+    "category": "Cloud",
+    "aliases": [
+      "microsoft azure",
+      "ms azure"
+    ]
+  },
+  {
+    "name": "Google Cloud Platform",
+    "category": "Cloud",
+    "aliases": [
+      "gcp",
+      "google cloud"
+    ]
+  },
+  {
+    "name": "Serverless",
+    "category": "Cloud",
+    "aliases": [
+      "lambda",
+      "aws lambda",
+      "faas",
+      "cloud functions"
+    ]
+  },
+  {
+    "name": "Cloud Architecture",
+    "category": "Cloud",
+    "aliases": [
+      "cloud design",
+      "solution architecture"
+    ]
+  },
+  {
+    "name": "Cloud Security",
+    "category": "Cloud",
+    "aliases": [
+      "iam",
+      "cloud iam"
+    ]
+  },
+  {
+    "name": "Network Security",
+    "category": "Security",
+    "aliases": [
+      "network sec",
+      "firewall",
+      "ids",
+      "ips"
+    ]
+  },
+  {
+    "name": "Cryptography",
+    "category": "Security",
+    "aliases": [
+      "encryption",
+      "crypto",
+      "ssl",
+      "tls"
+    ]
+  },
+  {
+    "name": "Ethical Hacking",
+    "category": "Security",
+    "aliases": [
+      "penetration testing",
+      "pentesting",
+      "pen testing"
+    ]
+  },
+  {
+    "name": "Vulnerability Assessment",
+    "category": "Security",
+    "aliases": [
+      "vapt",
+      "vulnerability scanning",
+      "nessus"
+    ]
+  },
+  {
+    "name": "Security Auditing",
+    "category": "Security",
+    "aliases": [
+      "compliance",
+      "iso 27001",
+      "security audit"
+    ]
+  },
+  {
+    "name": "Incident Response",
+    "category": "Security",
+    "aliases": [
+      "soc",
+      "threat detection",
+      "siem"
+    ]
+  },
+  {
+    "name": "OWASP",
+    "category": "Security",
+    "aliases": [
+      "owasp top 10",
+      "web security",
+      "application security"
+    ]
+  },
+  {
+    "name": "Computer Networks",
+    "category": "Security",
+    "aliases": [
+      "networking",
+      "tcp/ip",
+      "cn",
+      "osi model"
+    ]
+  },
+  {
+    "name": "Manual Testing",
+    "category": "Testing",
+    "aliases": [
+      "functional testing",
+      "black box testing"
+    ]
+  },
+  {
+    "name": "Automation Testing",
+    "category": "Testing",
+    "aliases": [
+      "test automation",
+      "selenium",
+      "cypress",
+      "playwright"
+    ]
+  },
+  {
+    "name": "Unit Testing",
+    "category": "Testing",
+    "aliases": [
+      "jest",
+      "pytest",
+      "junit",
+      "tdd"
+    ]
+  },
+  {
+    "name": "API Testing",
+    "category": "Testing",
+    "aliases": [
+      "postman",
+      "rest assured",
+      "api test"
+    ]
+  },
+  {
+    "name": "Performance Testing",
+    "category": "Testing",
+    "aliases": [
+      "load testing",
+      "jmeter",
+      "stress testing"
+    ]
+  },
+  {
+    "name": "Test Case Design",
+    "category": "Testing",
+    "aliases": [
+      "test planning",
+      "test scenarios",
+      "test strategy"
+    ]
+  },
+  {
+    "name": "Bug Tracking",
+    "category": "Testing",
+    "aliases": [
+      "jira",
+      "defect tracking",
+      "bugzilla"
+    ]
+  },
+  {
+    "name": "Android Development",
+    "category": "Mobile",
+    "aliases": [
+      "android",
+      "android studio"
+    ]
+  },
+  {
+    "name": "iOS Development",
+    "category": "Mobile",
+    "aliases": [
+      "ios",
+      "swiftui",
+      "xcode"
+    ]
+  },
+  {
+    "name": "React Native",
+    "category": "Mobile",
+    "aliases": [
+      "reactnative",
+      "react-native"
+    ]
+  },
+  {
+    "name": "Flutter",
+    "category": "Mobile",
+    "aliases": [
+      "dart",
+      "flutter sdk"
+    ]
+  },
+  {
+    "name": "Data Structures",
+    "category": "Fundamentals",
+    "aliases": [
+      "ds",
+      "data structure",
+      "dsa"
+    ]
+  },
+  {
+    "name": "Algorithms",
+    "category": "Fundamentals",
+    "aliases": [
+      "algo",
+      "algorithm design",
+      "daa"
+    ]
+  },
+  {
+    "name": "Object Oriented Programming",
+    "category": "Fundamentals",
+    "aliases": [
+      "oop",
+      "oops",
+      "object-oriented"
+    ]
+  },
+  {
+    "name": "Operating Systems",
+    "category": "Fundamentals",
+    "aliases": [
+      "os",
+      "operating system"
+    ]
+  },
+  {
+    "name": "Problem Solving",
+    "category": "Fundamentals",
+    "aliases": [
+      "competitive programming",
+      "leetcode",
+      "coding"
+    ]
+  },
+  {
+    "name": "Git",
+    "category": "Fundamentals",
+    "aliases": [
+      "github",
+      "version control",
+      "gitlab",
+      "git version control"
+    ]
+  },
+  {
+    "name": "Agile Methodology",
+    "category": "Fundamentals",
+    "aliases": [
+      "scrum",
+      "agile",
+      "kanban",
+      "sdlc"
+    ]
+  },
+  {
+    "name": "System Design",
+    "category": "Fundamentals",
+    "aliases": [
+      "software architecture",
+      "hld",
+      "lld"
+    ]
+  },
+  {
+    "name": "Communication",
+    "category": "Soft Skills",
+    "aliases": [
+      "verbal communication",
+      "written communication"
+    ]
+  },
+  {
+    "name": "Teamwork",
+    "category": "Soft Skills",
+    "aliases": [
+      "collaboration",
+      "team work"
+    ]
+  },
+  {
+    "name": "Presentation Skills",
+    "category": "Soft Skills",
+    "aliases": [
+      "public speaking",
+      "presentation"
+    ]
+  },
+  {
+    "name": "Documentation",
+    "category": "Soft Skills",
+    "aliases": [
+      "technical writing",
+      "docs"
+    ]
+  },
+  {
+    "name": "MATLAB",
+    "category": "Fundamentals",
+    "aliases": [
+      "mat lab",
+      "matlab simulink"
+    ]
+  },
+  {
+    "name": "Embedded C",
+    "category": "Programming",
+    "aliases": [
+      "embedded c programming",
+      "embedded-c"
+    ]
+  },
+  {
+    "name": "Verilog",
+    "category": "Fundamentals",
+    "aliases": [
+      "verilog hdl",
+      "system verilog"
+    ]
+  },
+  {
+    "name": "AutoCAD",
+    "category": "Fundamentals",
+    "aliases": [
+      "auto cad",
+      "autodesk autocad"
+    ]
+  },
+  {
+    "name": "SolidWorks",
+    "category": "Fundamentals",
+    "aliases": [
+      "solid works"
+    ]
+  },
+  {
+    "name": "Revit",
+    "category": "Fundamentals",
+    "aliases": [
+      "autodesk revit"
+    ]
+  }
 ]
