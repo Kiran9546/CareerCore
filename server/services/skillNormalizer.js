@@ -27,25 +27,11 @@ export const buildAliasMap = async (force = false) => {
 };
 
 /**
- * Call after any admin edit to the skill taxonomy.
- *
- * TODO (Phase 6): the admin controller must call this after any
- * create/update/delete on Skill. Until then the cached map goes stale
- * after a taxonomy edit and only refreshes on server restart —
- * meaning newly added skills resolve to null until then.
+ * Call after any admin edit to the skill taxonomy. The admin skill handlers
+ * (create, update, delete) do, so the next lookup rebuilds the map.
  */
 export const invalidateAliasMap = () => {
   aliasMap = null;
-};
-
-/**
- * Resolve a user-typed string to a canonical Skill document.
- * Returns null if unrecognised — the caller decides whether to
- * reject the input or queue it for admin review.
- */
-export const resolveSkill = async (input) => {
-  const map = await buildAliasMap();
-  return map.get(normalize(input)) || null;
 };
 
 /**

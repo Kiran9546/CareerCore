@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
+import { DRIVE_STATUS_LABEL } from "../../utils/placement";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 const ROLE_COLORS = {
-  student: "#0f172a", recruiter: "#3b82f6", faculty: "#10b981", admin: "#f59e0b",
+  student: "#0f172a", faculty: "#10b981", placement_officer: "#3b82f6", admin: "#f59e0b",
 };
 
 export default function Overview() {
@@ -29,20 +30,12 @@ export default function Overview() {
 
   return (
     <div className="space-y-6">
-      {stats.pendingRecruiters > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-3">
-          <p className="text-sm text-amber-900">
-            {stats.pendingRecruiters} recruiter account{stats.pendingRecruiters > 1 ? "s" : ""} awaiting verification
-          </p>
-        </div>
-      )}
-
       <div className="grid grid-cols-4 gap-4">
         {[
           ["Users", c.users], ["Students", c.students],
-          ["Companies", c.companies], ["Jobs", c.jobs],
-          ["Applications", c.applications], ["Skills", c.skills],
-          ["Career Paths", c.careerPaths], ["Questions", c.questions],
+          ["Companies", c.companies], ["Drives", c.drives],
+          ["Skills", c.skills], ["Career Paths", c.careerPaths],
+          ["Questions", c.questions],
         ].map(([label, value]) => (
           <div key={label} className="bg-white rounded-xl border border-slate-200 p-4">
             <p className="text-xs text-slate-500 uppercase tracking-wide">{label}</p>
@@ -69,18 +62,18 @@ export default function Overview() {
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="font-semibold text-slate-900 mb-4">Applications by Status</h2>
-          {stats.applicationsByStatus.length ? (
+          <h2 className="font-semibold text-slate-900 mb-4">Drives by Status</h2>
+          {stats.drivesByStatus.length ? (
             <div className="space-y-3 pt-2">
-              {stats.applicationsByStatus.map((s) => (
+              {stats.drivesByStatus.map((s) => (
                 <div key={s.status} className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600 capitalize">{s.status.replace("_", " ")}</span>
+                  <span className="text-sm text-slate-600">{DRIVE_STATUS_LABEL[s.status] ?? s.status}</span>
                   <span className="font-semibold text-slate-900">{s.count}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-slate-400">No applications yet.</p>
+            <p className="text-sm text-slate-400">No drives yet.</p>
           )}
         </div>
       </div>

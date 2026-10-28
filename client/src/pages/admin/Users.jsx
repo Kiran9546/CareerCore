@@ -36,15 +36,6 @@ export default function Users() {
     load();
   };
 
-  const verify = async (id) => {
-    try {
-      await api.patch(`/admin/users/${id}/verify`);
-    } catch (e) {
-      setError(e.response?.data?.message || "Could not update verification");
-    }
-    load();
-  };
-
   const shown = users.filter((u) =>
     !search ||
     u.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -98,11 +89,6 @@ export default function Users() {
                     }`}>
                       {u.isActive ? "active" : "disabled"}
                     </span>
-                    {u.role === "recruiter" && !u.isVerified && (
-                      <span className="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-700">
-                        unverified
-                      </span>
-                    )}
                   </div>
                 </td>
                 <td className="py-2.5">
@@ -111,12 +97,6 @@ export default function Users() {
                       className="text-xs text-slate-500 hover:text-slate-900 underline">
                       {u.isActive ? "Disable" : "Enable"}
                     </button>
-                    {u.role === "recruiter" && (
-                      <button onClick={() => verify(u._id)}
-                        className="text-xs text-slate-500 hover:text-slate-900 underline">
-                        {u.isVerified ? "Unverify" : "Verify"}
-                      </button>
-                    )}
                   </div>
                 </td>
               </tr>

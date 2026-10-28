@@ -68,9 +68,54 @@ export const notify = async ({ userId, type, title, body, link, metadata, email 
   return notification;
 };
 
-export const notifyMany = async (items) => {
-  const results = await Promise.allSettled(items.map((i) => notify(i)));
-  return results.filter((r) => r.status === "fulfilled").length;
+/**
+ * Idempotent bulk notify for workflow events. Each item carries a
+ * `dedupeKey`; an item whose key already exists is skipped, so a retried
+ * publish, a recalculation or two concurrent requests can never notify the
+ * same student about the same event twice.
+ *
+ * In-app only — a drive announcement can reach hundreds of students and is
+ * not worth hundreds of SMTP round trips inside a request.
+ *
+ * Returns { created, ids } where ids maps dedupeKey -> notification _id for
+ * the notifications this call created.
+ */
+/** True when a bulk write failed only because some upserts lost a race. */
+export const onlyDuplicateKeyErrors = (err) => {
+  const errors = err.writeErrors ?? (err.code === 11000 ? [err] : null);
+  return Array.isArray(errors) && errors.length > 0 && errors.every((e) => (e.code ?? e.err?.code) === 11000);
+};
+
+export const notifyOnceMany = async (items) => {
+  if (!items.length) return { created: 0, ids: new Map() };
+
+  const ops = items.map(({ dedupeKey, userId, type, title, body, link, metadata }) => ({
+    updateOne: {
+      filter: { dedupeKey },
+      update: {
+        // Timestamps are added by Mongoose's bulkWrite casting.
+        $setOnInsert: { userId, type, title, body, link, metadata, isRead: false, emailSent: false },
+      },
+      upsert: true,
+    },
+  }));
+
+  let result;
+  try {
+    result = await Notification.bulkWrite(ops, { ordered: false });
+  } catch (err) {
+    // Two requests racing on the same key: one wins, the other gets a
+    // duplicate-key error for that op. The remaining ops still ran.
+    if (!onlyDuplicateKeyErrors(err)) throw err;
+    result = err.result;
+  }
+
+  const ids = new Map();
+  const upserted = result?.upsertedIds || result?.result?.upsertedIds || {};
+  for (const [index, id] of Object.entries(upserted)) {
+    ids.set(items[Number(index)].dedupeKey, id);
+  }
+  return { created: ids.size, ids };
 };
 
 export const getUnreadCount = (userId) =>

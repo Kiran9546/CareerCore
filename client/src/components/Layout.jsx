@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import NotificationBell from "./NotificationBell";
 
 const NAV = [
@@ -9,8 +9,7 @@ const NAV = [
   { to: "/student/skills", label: "Skills" },
   { to: "/student/aptitude", label: "Aptitude" },
   { to: "/student/learn", label: "Learn" },
-  { to: "/student/jobs", label: "Jobs" },
-  { to: "/student/applications", label: "Applications" },
+  { to: "/student/drives", label: "Drives" },
   { to: "/student/placement", label: "Placement" },
 ];
 

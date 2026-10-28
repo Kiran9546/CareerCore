@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api from "../../api/axios";
+import ManagedDrive from "../../components/drive/ManagedDrive";
 import {
   STAGE_LABEL,
   STAGE_STATUSES,
@@ -27,6 +28,24 @@ import {
  */
 export default function DriveDetail() {
   const { id } = useParams();
+  const [workflow, setWorkflow] = useState(null);
+  const [error, setError] = useState("");
+
+  // Drives created through the recruitment workflow get the full dashboard;
+  // drives recorded the original way keep the result grid below.
+  useEffect(() => {
+    api
+      .get(`/placement/drives/${id}`)
+      .then((r) => setWorkflow(r.data.drive.workflow || "recorded"))
+      .catch((e) => setError(e.response?.data?.message || "Could not load this drive"));
+  }, [id]);
+
+  if (error) return <p className="text-slate-500">{error}</p>;
+  if (!workflow) return <p className="text-slate-400">Loading…</p>;
+  return workflow === "managed" ? <ManagedDrive key={id} id={id} /> : <RecordedDriveDetail key={id} id={id} />;
+}
+
+function RecordedDriveDetail({ id }) {
   const [drive, setDrive] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [eligible, setEligible] = useState([]);

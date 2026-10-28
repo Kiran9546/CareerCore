@@ -1,23 +1,22 @@
 import User from "../models/User.js";
 import { signToken } from "../utils/jwt.js";
-import { ROLES, DEPARTMENTS, DEPARTMENT_LABEL } from "../config/constants.js";
+import { ROLES, DEPARTMENTS, DEPARTMENT_LABEL, RECRUITER_RETIRED } from "../config/constants.js";
 
 /**
  * Roles the public /register endpoint is allowed to create.
  *
- * Recruiter was removed when job posting moved to the placement cell:
- * openings now reach students through the placement officer, so there is
- * nothing for a new self-registered recruiter to do. Existing recruiter
- * accounts still sign in and keep their company and job records — the role
- * is retired from sign-up, not deleted.
+ * Recruiter is retired entirely: the job-postings module it belonged to was
+ * removed in favour of placement drives. Existing recruiter users and their
+ * company records stay in the database, but cannot sign in (see login and
+ * middleware/auth.js).
  *
  * Placement officer IS self-registerable, by product decision. Note what
  * that grants: an officer can record official stage results and download
  * every student's contact details and academic record. The account is
  * created active, so there is no approval step between signing up and
  * holding that access. The `isVerified` flag and the `requireVerified`
- * middleware already exist and could gate the placement routes the way they
- * gate the recruiter routes, if that trade is ever revisited.
+ * middleware already exist and could gate the placement routes if that trade
+ * is ever revisited (docs/CLEANUP_PLAN.md, H1).
  *
  * Admin remains absent and is provisioned directly against the database.
  */
@@ -102,6 +101,9 @@ export const login = async (req, res, next) => {
     }
     if (!user.isActive) {
       return res.status(403).json({ message: "Account has been deactivated" });
+    }
+    if (user.role === ROLES.RECRUITER) {
+      return res.status(403).json({ message: RECRUITER_RETIRED });
     }
 
     user.lastLoginAt = new Date();

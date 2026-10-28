@@ -1,13 +1,13 @@
 /**
- * Blocks accounts that are still awaiting admin approval.
+ * Blocks accounts that are still awaiting admin approval (`isVerified`).
+ * Use AFTER protect().
  *
- * Registration already sets `isVerified: false` for recruiters, but nothing
- * read that flag — so an unapproved recruiter could post jobs and pull the
- * full student roster (names, emails, USNs, CGPA, PRS) the moment they signed
- * up. Use AFTER protect(), on every route that exposes student data.
+ * Not mounted on any route at present: it gated the recruiter area, which
+ * was removed with the job-postings module. It is kept because the proposed
+ * approval step for self-registered staff (docs/CLEANUP_PLAN.md, H1) would
+ * use it:
  *
- *   router.use(protect, requireRole(ROLES.RECRUITER));
- *   router.get("/jobs", requireVerified, listJobs);
+ *   router.use(protect, requireRole(...), requireVerified);
  */
 export const requireVerified = (req, res, next) => {
   if (!req.user) {
@@ -15,9 +15,7 @@ export const requireVerified = (req, res, next) => {
   }
   if (!req.user.isVerified) {
     return res.status(403).json({
-      message:
-        "Your account is awaiting approval from the placement cell. " +
-        "You can set up your company profile in the meantime.",
+      message: "Your account is awaiting approval from the placement cell.",
       needsVerification: true,
     });
   }

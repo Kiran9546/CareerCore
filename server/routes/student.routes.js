@@ -28,12 +28,17 @@ import {
   getSkillGapAnalysis,
   getCareerPrediction,
   getDashboard,
-  browseJobs,
-  applyToJob,
-  myApplications,
   getRecommendationsForStudent,
   getMyPlacementJourney,
 } from "../controllers/student.controller.js";
+
+import {
+  listMyDrives,
+  getMyDrive,
+  registerForDrive,
+  withdrawFromDrive,
+  myRecruitmentHistory,
+} from "../controllers/studentDrive.controller.js";
 
 import {
   startTest,
@@ -84,15 +89,20 @@ router.get("/skill-gap", getSkillGapAnalysis);
 router.get("/career-prediction", getCareerPrediction);
 router.get("/recommendations", getRecommendationsForStudent);
 
-// ─── Jobs & applications ─────────────────────────────────────
-router.get("/jobs", browseJobs);
-router.post("/jobs/:jobId/apply", applyToJob);
-router.get("/applications", myApplications);
-
 // ─── Placement journey (read-only) ───────────────────────────
 // Official drive results belong to the placement cell. Students can see
 // their own history and the analysis derived from it; there is deliberately
 // no matching write route.
 router.get("/placement", getMyPlacementJourney);
+router.get("/placement/status", myRecruitmentHistory);
+
+// ─── Placement drives (recruitment workflow) ─────────────────
+// Registration and withdrawal are the only writes a student makes here; the
+// student is resolved from the token and their academic record from the
+// database. Attendance, results and selections have no student route.
+router.get("/drives", listMyDrives);
+router.get("/drives/:id", getMyDrive);
+router.post("/drives/:id/register", registerForDrive);
+router.post("/drives/:id/withdraw", withdrawFromDrive);
 
 export default router;

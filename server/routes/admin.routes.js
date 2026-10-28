@@ -4,7 +4,7 @@ import { requireRole } from "../middleware/requireRole.js";
 import { ROLES } from "../config/constants.js";
 import {
   getPlatformStats,
-  listUsers, toggleUserActive, verifyRecruiter,
+  listUsers, toggleUserActive,
   listSkills, createSkill, updateSkill, deleteSkill,
   listCareerPaths, updateCareerPathWeights,
   listQuestions, createQuestion, toggleQuestion, deleteQuestion,
@@ -18,7 +18,6 @@ router.get("/stats", getPlatformStats);
 
 router.get("/users", listUsers);
 router.patch("/users/:id/toggle", toggleUserActive);
-router.patch("/users/:id/verify", verifyRecruiter);
 
 router.get("/skills", listSkills);
 router.post("/skills", createSkill);

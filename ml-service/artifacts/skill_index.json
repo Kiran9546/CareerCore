@@ -119,7 +119,13 @@
     "skill_Communication",
     "skill_Teamwork",
     "skill_Presentation Skills",
-    "skill_Documentation"
+    "skill_Documentation",
+    "skill_MATLAB",
+    "skill_Embedded C",
+    "skill_Verilog",
+    "skill_AutoCAD",
+    "skill_SolidWorks",
+    "skill_Revit"
   ],
   "numeric_features": [
     "cgpa",
@@ -243,7 +249,13 @@
     "skill_Communication",
     "skill_Teamwork",
     "skill_Presentation Skills",
-    "skill_Documentation"
+    "skill_Documentation",
+    "skill_MATLAB",
+    "skill_Embedded C",
+    "skill_Verilog",
+    "skill_AutoCAD",
+    "skill_SolidWorks",
+    "skill_Revit"
   ],
   "skill_names": [
     "Python",
@@ -357,7 +369,13 @@
     "Communication",
     "Teamwork",
     "Presentation Skills",
-    "Documentation"
+    "Documentation",
+    "MATLAB",
+    "Embedded C",
+    "Verilog",
+    "AutoCAD",
+    "SolidWorks",
+    "Revit"
   ],
   "classes": [
     "Cloud Engineer",

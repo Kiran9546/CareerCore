@@ -12,6 +12,7 @@ import Drive from "../models/Drive.js";
 import Job from "../models/Job.js";
 import Company from "../models/Company.js";
 import { ROLES } from "../config/constants.js";
+import { OFFICER, FACULTY, STUDENTS } from "./cohortData.js";
 
 /**
  * CareerCore — development database cleanup
@@ -20,10 +21,8 @@ import { ROLES } from "../config/constants.js";
  * Reduces a database cluttered by demo generation and test runs back to a
  * deliberate, presentable state:
  *
- *   KEPT   the three sign-in accounts, one per role:
- *            student.a@mite.ac.in     Aarav Shetty
- *            faculty.demo@mite.ac.in  Dr. Suresh Hegde
- *            officer@mite.ac.in       Priya Kulkarni
+ *   KEPT   the ten demo roster accounts defined in cohortData.js (one
+ *          placement officer, three faculty, six students) and any admin,
  *
  *          the drives and participations. The student roll itself is owned
  *          by the cohort seed, which can rebuild it at any time.
@@ -45,11 +44,11 @@ dotenv.config();
 const DRY_RUN = process.argv.includes("--dry-run");
 const FORCE = process.argv.includes("--force");
 
-/** The accounts that survive, by email. */
+/** The accounts that survive, by email: the demo roster in cohortData.js. */
 const KEEP_EMAILS = [
-  "student.a@mite.ac.in",
-  "faculty.demo@mite.ac.in",
-  "officer@mite.ac.in",
+  OFFICER.email,
+  ...FACULTY.map((f) => f.email),
+  ...STUDENTS.map((s) => s.email),
 ];
 
 /**

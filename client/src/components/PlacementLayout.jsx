@@ -1,18 +1,16 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import NotificationBell from "./NotificationBell";
 
 /**
  * Shell for the placement officer. Same header/tab idiom as the faculty,
- * recruiter and admin layouts — only the nav entries differ.
+ * admin layouts — only the nav entries differ.
  */
 const NAV = [
   { to: "/placement_officer", label: "Overview", end: true },
   { to: "/placement_officer/drives", label: "Drives" },
-  { to: "/placement_officer/jobs", label: "Jobs" },
   { to: "/placement_officer/students", label: "Students" },
   { to: "/placement_officer/results", label: "Results" },
-  { to: "/placement_officer/missed", label: "Not registered" },
 ];
 
 export default function PlacementLayout() {

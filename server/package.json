@@ -12,7 +12,8 @@
     "seed:cohort": "node seed/seedCohort.js",
     "seed:cohort:dry": "node seed/seedCohort.js --dry-run",
     "db:clean": "node seed/cleanDatabase.js",
-    "db:clean:dry": "node seed/cleanDatabase.js --dry-run"
+    "db:clean:dry": "node seed/cleanDatabase.js --dry-run",
+    "test": "node --test --test-concurrency=1 \"test/*.test.js\""
   },
   "keywords": [
     "placement",
@@ -24,13 +25,11 @@
   "dependencies": {
     "axios": "^1.7.2",
     "bcryptjs": "^2.4.3",
-    "cloudinary": "^2.3.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "exceljs": "^4.4.0",
     "express": "^4.19.2",
     "express-rate-limit": "^7.4.0",
-    "express-validator": "^7.1.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.5.1",
@@ -40,6 +39,7 @@
     "nodemailer": "^9.0.5"
   },
   "devDependencies": {
+    "mongodb-memory-server": "^10.4.3",
     "nodemon": "^3.1.4"
   }
 }

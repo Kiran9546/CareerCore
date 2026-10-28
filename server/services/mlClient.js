@@ -8,14 +8,11 @@ const client = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-export const checkMlHealth = async () => {
-  try {
-    const { data } = await client.get("/health");
-    return { available: true, ...data };
-  } catch (err) {
-    return { available: false, error: err.message };
-  }
-};
+/**
+ * Calls to the Flask ML service. Every function resolves (never throws) and
+ * reports `available: false` when the service cannot be reached, so callers
+ * decide how to degrade.
+ */
 
 export const getSkillGap = async (studentSkills, requiredSkills, topN = 10) => {
   try {
@@ -46,18 +43,5 @@ export const predictCareer = async (profile) => {
   } catch (err) {
     console.error(`ML predict-career failed: ${err.message}`);
     return { available: false, predictions: [], error: err.message };
-  }
-};
-
-export const rankCandidates = async (candidates, requiredSkills) => {
-  try {
-    const { data } = await client.post("/ml/rank-candidates", {
-      candidates,
-      requiredSkills,
-    });
-    return { available: true, ...data };
-  } catch (err) {
-    console.error(`ML rank-candidates failed: ${err.message}`);
-    return { available: false, candidates: [], error: err.message };
   }
 };

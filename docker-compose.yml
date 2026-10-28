@@ -7,14 +7,13 @@
 #   client      :5173    React + Vite
 #
 # Usage:
-#   docker compose up -d mongo        start ONLY the database (do this now)
-#   docker compose up -d --build      start everything (after Phase 1)
-#   docker compose logs -f server     follow one service's logs
+#   docker compose up -d mongo        start a local MongoDB (works today)
 #   docker compose down               stop (data survives)
 #   docker compose down -v            stop AND wipe the database
 #
-# NOTE: server, client and ml-service each expect a Dockerfile.
-#       Those are created in Phase 1. Until then only `mongo` will start.
+# NOTE: only `mongo` can start. The server, client and ml-service entries
+#       below expect a Dockerfile in each folder, and none exist yet — run
+#       those three directly as described in README.md.
 # ═══════════════════════════════════════════════════════════════════
 
 services:

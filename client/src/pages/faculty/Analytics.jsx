@@ -182,7 +182,11 @@ export default function Analytics() {
           )}
         </div>
 
-        {gaps ? (
+        {gaps?.available === false ? (
+          <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
+            <p className="text-sm text-amber-900">{gaps.message}</p>
+          </div>
+        ) : gaps ? (
           <>
             <p className="text-sm text-slate-500 mb-4">{gaps.studentsAnalysed} students analysed</p>
             <div className="space-y-2">

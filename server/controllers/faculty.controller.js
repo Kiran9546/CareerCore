@@ -1,5 +1,4 @@
 import Student from "../models/Student.js";
-import Application from "../models/Application.js";
 import CareerPath from "../models/CareerPath.js";
 import { getSkillGap } from "../services/mlClient.js";
 import { READINESS_LEVELS, ROLES } from "../config/constants.js";
@@ -188,6 +187,17 @@ export const getTopSkillGaps = async (req, res, next) => {
         5
       );
 
+      // One failure means the ML service is down. Stop rather than wait out a
+      // timeout per student, and say so instead of reporting "no gaps".
+      if (!result.available) {
+        return res.json({
+          gaps: [],
+          studentsAnalysed: 0,
+          available: false,
+          message: "Skill-gap analysis is unavailable right now — the ML service is not responding.",
+        });
+      }
+
       for (const g of result.gaps || []) {
         const cur = gapCount.get(g.skill) || { count: 0, totalPriority: 0 };
         cur.count += 1;
@@ -208,7 +218,7 @@ export const getTopSkillGaps = async (req, res, next) => {
       .sort((a, b) => b.studentsAffected - a.studentsAffected)
       .slice(0, 12);
 
-    res.json({ gaps, studentsAnalysed: students.length });
+    res.json({ gaps, studentsAnalysed: students.length, available: true });
   } catch (err) { next(err); }
 };
 
@@ -265,11 +275,7 @@ export const getStudentDetail = async (req, res, next) => {
 
     if (!student) return res.status(404).json({ message: "Student not found" });
 
-    const applications = await Application.find({ studentId: student._id })
-      .populate({ path: "jobId", select: "title", populate: { path: "companyId", select: "name" } })
-      .select("status matchPercent appliedAt");
-
-    res.json({ student, applications });
+    res.json({ student });
   } catch (err) { next(err); }
 };
 

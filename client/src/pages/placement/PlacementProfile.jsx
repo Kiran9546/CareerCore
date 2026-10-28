@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../../api/axios";
 import PlacementProfileView from "../../components/PlacementProfileView";
+import RecruitmentHistory from "../../components/drive/RecruitmentHistory";
 
 /**
  * The placement cell's view of one student's placement profile.
@@ -59,6 +60,8 @@ export default function PlacementProfile() {
       </div>
 
       <PlacementProfileView profile={profile} showIdentity />
+
+      <RecruitmentHistory endpoint={`/placement/students/${id}/recruitment`} />
 
       {/* Skills / projects / certifications — the profile side of the
           picture, shown next to the outcomes so the contrast between a

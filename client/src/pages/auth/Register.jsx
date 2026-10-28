@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 import api from "../../api/axios";
 
 const ROLES = [
@@ -147,7 +147,7 @@ export default function Register() {
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             className={`${input} mb-4`}
-            placeholder="Kiran Bhat"
+            placeholder="e.g. Asha Rao"
           />
 
           <label className={label}>Email</label>
@@ -185,12 +185,6 @@ export default function Register() {
           >
             {busy ? "Creating account…" : "Create account"}
           </button>
-
-          {form.role === "recruiter" && (
-            <p className="text-xs text-amber-600 text-center mt-3">
-              Recruiter accounts require admin verification before posting jobs.
-            </p>
-          )}
 
           <p className="text-sm text-slate-500 text-center mt-4">
             Already have an account?{" "}

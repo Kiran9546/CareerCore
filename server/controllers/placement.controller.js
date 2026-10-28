@@ -11,11 +11,19 @@ import {
   PLACEMENT_GROUP,
   PLACEMENT_GROUP_ORDER,
   PLACEMENT_GROUP_LABEL,
+  DRIVE_WORKFLOW,
+  REGISTRATION_STATUS,
 } from "../config/constants.js";
+import DriveCandidate from "../models/DriveCandidate.js";
+import { escapeRegex } from "../utils/escapeRegex.js";
+import {
+  createManagedDrive,
+  updateManagedDrive,
+  deleteManagedDrive,
+} from "../services/recruitmentService.js";
 import {
   buildPlacementProfile,
   buildPlacementProfiles,
-  buildCohortSummary,
 } from "../services/placementProfileService.js";
 import { compareProfiles } from "../services/placementRuleEngine.js";
 import { notify } from "../services/notificationService.js";
@@ -36,6 +44,21 @@ import {
 const toNumberOrUndefined = (v) =>
   v === undefined || v === null || v === "" ? undefined : Number(v);
 
+/**
+ * Managed drives run the recruitment workflow, whose round results reach the
+ * official record only through finalization. The original direct-write
+ * handlers below refuse them, so there is exactly one write path per drive.
+ */
+const refuseManaged = (res, drive) => {
+  if (drive?.workflow !== DRIVE_WORKFLOW.MANAGED) return false;
+  res.status(409).json({
+    message:
+      "This drive runs the recruitment workflow — students register themselves " +
+      "and results are recorded per round. Use the drive dashboard instead.",
+  });
+  return true;
+};
+
 // ─────────────────────────────────────────────────────────────
 // DRIVES
 // ─────────────────────────────────────────────────────────────
@@ -44,17 +67,28 @@ const toNumberOrUndefined = (v) =>
 export const listDrives = async (req, res, next) => {
   try {
     const filter = {};
-    if (req.query.status) filter.status = req.query.status;
+    if (req.query.status) filter.status = String(req.query.status);
     if (req.query.company) {
-      filter.companyName = { $regex: String(req.query.company), $options: "i" };
+      filter.companyName = { $regex: escapeRegex(req.query.company), $options: "i" };
     }
+    if (req.query.companyId && mongoose.isValidObjectId(req.query.companyId)) {
+      filter.companyId = req.query.companyId;
+    }
+    if (req.query.workflow === DRIVE_WORKFLOW.MANAGED) filter.workflow = DRIVE_WORKFLOW.MANAGED;
+    if (req.query.workflow === DRIVE_WORKFLOW.RECORDED) filter.workflow = { $ne: DRIVE_WORKFLOW.MANAGED };
 
     const drives = await Drive.find(filter).sort("-driveDate").limit(200).lean();
 
     // Participant and offer counts per drive, in one aggregation rather than
     // a query per row.
     const counts = await DriveParticipation.aggregate([
-      { $match: { driveId: { $in: drives.map((d) => d._id) } } },
+      // A withdrawn registration is kept as history but is not a participant.
+      {
+        $match: {
+          driveId: { $in: drives.map((d) => d._id) },
+          registrationStatus: { $ne: REGISTRATION_STATUS.WITHDRAWN },
+        },
+      },
       {
         $group: {
           _id: "$driveId",
@@ -69,11 +103,27 @@ export const listDrives = async (req, res, next) => {
     ]);
     const countMap = new Map(counts.map((c) => [String(c._id), c]));
 
+    const managedIds = drives
+      .filter((d) => d.workflow === DRIVE_WORKFLOW.MANAGED)
+      .map((d) => d._id);
+    const eligibleCounts = managedIds.length
+      ? await DriveCandidate.aggregate([
+          { $match: { driveId: { $in: managedIds }, eligible: true } },
+          { $group: { _id: "$driveId", n: { $sum: 1 } } },
+        ])
+      : [];
+    const eligibleMap = new Map(eligibleCounts.map((c) => [String(c._id), c.n]));
+
     res.json({
       drives: drives.map((d) => ({
         ...d,
+        workflow: d.workflow || DRIVE_WORKFLOW.RECORDED,
         participantCount: countMap.get(String(d._id))?.participants || 0,
         offerCount: countMap.get(String(d._id))?.offers || 0,
+        eligibleCount:
+          d.workflow === DRIVE_WORKFLOW.MANAGED
+            ? eligibleMap.get(String(d._id)) || 0
+            : undefined,
       })),
       total: drives.length,
     });
@@ -96,6 +146,13 @@ export const getDrive = async (req, res, next) => {
 /** POST /api/placement/drives */
 export const createDrive = async (req, res, next) => {
   try {
+    // The recruitment workflow: company from the list, eligibility
+    // calculated at once, Draft until published.
+    if (req.body.workflow === DRIVE_WORKFLOW.MANAGED) {
+      const out = await createManagedDrive(req.body, req.user);
+      return res.status(201).json(out);
+    }
+
     const { companyName, role, driveDate } = req.body;
 
     if (!companyName || !role || !driveDate) {
@@ -122,7 +179,10 @@ export const createDrive = async (req, res, next) => {
       location: req.body.location,
       ctc: toNumberOrUndefined(req.body.ctc),
       stages,
-      status: req.body.status || DRIVE_STATUS.PLANNED,
+      // Recorded drives keep their own status vocabulary.
+      status: Object.values(DRIVE_STATUS).includes(req.body.status)
+        ? req.body.status
+        : DRIVE_STATUS.PLANNED,
       eligibility: {
         minCgpa: toNumberOrUndefined(req.body.minCgpa) ?? 0,
         maxBacklogs: toNumberOrUndefined(req.body.maxBacklogs) ?? 0,
@@ -143,6 +203,15 @@ export const updateDrive = async (req, res, next) => {
   try {
     const drive = await Drive.findById(req.params.id);
     if (!drive) return res.status(404).json({ message: "Drive not found" });
+
+    if (drive.workflow === DRIVE_WORKFLOW.MANAGED) {
+      return res.json({ drive: await updateManagedDrive(drive, req.body, req.user) });
+    }
+    if (req.body.status !== undefined && !Object.values(DRIVE_STATUS).includes(req.body.status)) {
+      return res.status(400).json({
+        message: `status must be one of: ${Object.values(DRIVE_STATUS).join(", ")}`,
+      });
+    }
 
     for (const f of ["companyName", "role", "description", "location", "status"]) {
       if (req.body[f] !== undefined) drive[f] = req.body[f];
@@ -175,6 +244,11 @@ export const deleteDrive = async (req, res, next) => {
   try {
     const drive = await Drive.findById(req.params.id);
     if (!drive) return res.status(404).json({ message: "Drive not found" });
+
+    if (drive.workflow === DRIVE_WORKFLOW.MANAGED) {
+      await deleteManagedDrive(drive, req.user);
+      return res.json({ message: "Drive deleted" });
+    }
 
     // Deleting a drive would silently erase every student's record of it.
     // Cancelling keeps the history intact, so that is the only route once
@@ -300,6 +374,7 @@ export const registerParticipants = async (req, res, next) => {
   try {
     const drive = await Drive.findById(req.params.id);
     if (!drive) return res.status(404).json({ message: "Drive not found" });
+    if (refuseManaged(res, drive)) return;
 
     const ids = (Array.isArray(req.body.studentIds) ? req.body.studentIds : [])
       .filter((id) => mongoose.isValidObjectId(id));
@@ -374,6 +449,8 @@ export const removeParticipant = async (req, res, next) => {
     if (!participation) {
       return res.status(404).json({ message: "Participation not found" });
     }
+
+    if (refuseManaged(res, await Drive.findById(participation.driveId).select("workflow"))) return;
 
     // Removing a participation that already carries results would delete
     // official history. Only an untouched registration can be withdrawn.
@@ -450,6 +527,7 @@ export const updateStageResult = async (req, res, next) => {
 
     const drive = await Drive.findById(participation.driveId);
     if (!drive) return res.status(404).json({ message: "Drive not found" });
+    if (refuseManaged(res, drive)) return;
 
     if (!drive.stages.includes(stage)) {
       return res.status(400).json({
@@ -591,34 +669,6 @@ export const compareStudents = async (req, res, next) => {
   }
 };
 
-/** GET /api/placement/overview */
-export const getPlacementOverview = async (req, res, next) => {
-  try {
-    const studentFilter = {};
-    if (req.query.batch) studentFilter.batch = req.query.batch;
-    if (req.query.branch) studentFilter.branch = req.query.branch;
-
-    const [summary, driveCounts, upcoming] = await Promise.all([
-      buildCohortSummary(studentFilter),
-      Drive.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
-      Drive.find({ driveDate: { $gte: new Date() } })
-        .sort("driveDate")
-        .limit(5)
-        .select("companyName role driveDate status")
-        .lean(),
-    ]);
-
-    res.json({
-      summary,
-      drivesByStatus: driveCounts.map((d) => ({ status: d._id, count: d.count })),
-      upcomingDrives: upcoming,
-      filters: studentFilter,
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
 /**
  * GET /api/placement/students
  * Staff student list with placement outcomes joined on. Aggregated rather
@@ -641,7 +691,12 @@ export const listStudentsWithOutcomes = async (req, res, next) => {
     const attemptStatuses = [STAGE_STATUS.PASSED, STAGE_STATUS.FAILED];
 
     const rows = await DriveParticipation.aggregate([
-      { $match: { studentId: { $in: students.map((s) => s._id) } } },
+      {
+        $match: {
+          studentId: { $in: students.map((s) => s._id) },
+          registrationStatus: { $ne: REGISTRATION_STATUS.WITHDRAWN },
+        },
+      },
       {
         $group: {
           _id: "$studentId",
@@ -792,156 +847,3 @@ export const exportPlacementData = async (req, res, next) => {
 // MISSED DRIVES
 // ─────────────────────────────────────────────────────────────
 
-/**
- * GET /api/placement/missed[?batch=&branch=&driveId=]
- *
- * Students who met a drive's eligibility criteria and were never registered
- * for it.
- *
- * This is the gap the rest of the module cannot see. A placement profile is
- * built from participation records, so a student who never registered
- * simply has no row — they look identical to a student who was never
- * eligible in the first place. The two are completely different problems:
- * one needs coaching, the other needs chasing before the next drive closes.
- *
- * Computed by replaying each drive's eligibility filter against the student
- * roster and subtracting whoever did register, rather than being stored, so
- * it stays correct when a drive's criteria are edited.
- */
-export const listMissedDrives = async (req, res, next) => {
-  try {
-    const studentFilter = {};
-    if (req.query.batch) studentFilter.batch = String(req.query.batch);
-    if (req.query.branch) studentFilter.branch = String(req.query.branch);
-
-    const driveFilter = {};
-    if (req.query.driveId && mongoose.isValidObjectId(req.query.driveId)) {
-      driveFilter._id = req.query.driveId;
-    }
-    // A cancelled drive nobody registered for is not a missed opportunity.
-    driveFilter.status = { $ne: DRIVE_STATUS.CANCELLED };
-
-    const [students, drives] = await Promise.all([
-      Student.find(studentFilter)
-        .populate("userId", "name email")
-        .select("usn batch branch cgpa backlogs currentPRS readinessLevel")
-        .lean(),
-      Drive.find(driveFilter).sort("-driveDate").lean(),
-    ]);
-
-    const registered = await DriveParticipation.find({
-      driveId: { $in: drives.map((d) => d._id) },
-    })
-      .select("driveId studentId")
-      .lean();
-
-    // driveId -> Set of student ids already registered
-    const registeredByDrive = new Map();
-    for (const p of registered) {
-      const key = String(p.driveId);
-      if (!registeredByDrive.has(key)) registeredByDrive.set(key, new Set());
-      registeredByDrive.get(key).add(String(p.studentId));
-    }
-
-    /** Same rules as eligibilityFilter(), applied in memory. */
-    const isEligible = (student, drive) => {
-      const e = drive.eligibility || {};
-      if ((student.cgpa ?? 0) < (e.minCgpa ?? 0)) return false;
-      if ((student.backlogs ?? 0) > (e.maxBacklogs ?? 99)) return false;
-      if (e.branches?.length && !e.branches.includes(student.branch)) return false;
-      if (e.batches?.length && !e.batches.includes(student.batch)) return false;
-      return true;
-    };
-
-    const byDrive = [];
-    // studentId -> the drives they were eligible for and skipped
-    const byStudent = new Map();
-
-    for (const drive of drives) {
-      const already = registeredByDrive.get(String(drive._id)) ?? new Set();
-      const eligible = students.filter((s) => isEligible(s, drive));
-      const missed = eligible.filter((s) => !already.has(String(s._id)));
-
-      byDrive.push({
-        driveId: drive._id,
-        company: drive.companyName,
-        role: drive.role,
-        driveDate: drive.driveDate,
-        status: drive.status,
-        ctc: drive.ctc,
-        eligibility: drive.eligibility,
-        eligibleCount: eligible.length,
-        registeredCount: eligible.length - missed.length,
-        missedCount: missed.length,
-        // Registration rate among students who could actually have gone.
-        registrationPercent:
-          eligible.length > 0
-            ? Math.round(((eligible.length - missed.length) / eligible.length) * 1000) / 10
-            : null,
-        students: missed.map((s) => ({
-          _id: s._id,
-          name: s.userId?.name,
-          usn: s.usn,
-          branch: s.branch,
-          batch: s.batch,
-          cgpa: s.cgpa,
-        })),
-      });
-
-      for (const s of missed) {
-        const key = String(s._id);
-        if (!byStudent.has(key)) {
-          byStudent.set(key, {
-            _id: s._id,
-            name: s.userId?.name,
-            email: s.userId?.email,
-            usn: s.usn,
-            branch: s.branch,
-            batch: s.batch,
-            cgpa: s.cgpa,
-            prs: s.currentPRS,
-            readinessLevel: s.readinessLevel,
-            missedCount: 0,
-            drives: [],
-          });
-        }
-        const row = byStudent.get(key);
-        row.missedCount += 1;
-        row.drives.push({
-          driveId: drive._id,
-          company: drive.companyName,
-          role: drive.role,
-          driveDate: drive.driveDate,
-        });
-      }
-    }
-
-    // The students skipping the most drives are the ones to chase first.
-    const studentRows = [...byStudent.values()].sort(
-      (a, b) =>
-        b.missedCount - a.missedCount ||
-        String(a.usn).localeCompare(String(b.usn)),
-    );
-
-    const totalMissed = byDrive.reduce((n, d) => n + d.missedCount, 0);
-    const totalEligible = byDrive.reduce((n, d) => n + d.eligibleCount, 0);
-
-    res.json({
-      byDrive,
-      byStudent: studentRows,
-      summary: {
-        drivesConsidered: drives.length,
-        studentsConsidered: students.length,
-        studentsWhoMissedAtLeastOne: studentRows.length,
-        totalEligibleSlots: totalEligible,
-        totalMissedSlots: totalMissed,
-        overallRegistrationPercent:
-          totalEligible > 0
-            ? Math.round(((totalEligible - totalMissed) / totalEligible) * 1000) / 10
-            : null,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-};

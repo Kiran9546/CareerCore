@@ -164,27 +164,22 @@ export const CERTIFICATIONS = [
 ];
 
 /**
- * The cohort.
+ * The demo roster: ten sign-in accounts in total — one placement officer
+ * (`OFFICER`), three faculty and six students, two per department. Every
+ * account uses the same password (see seedCohort.js).
  *
- * Sign-in emails run `student.a` … `student.l` in roster order, so an
- * account can be read straight off the roll without decoding a USN.
- *
- * `keepAccount` marks the one student whose sign-in must survive untouched:
- * their email and password stay exactly as they are — it already holds
- * `student.a@mite.ac.in` — and only the USN is brought in line with the
- * rest. Every other entry carries its email in `email`.
- *
- * The first five ISE entries carry the contrast the project is built to
- * show. Read down their `drives` column and the difference is in the
- * records themselves — one never clears an aptitude round, one clears every
- * aptitude round and never a technical one, one converts, one converts
- * repeatedly, one has barely any history at all.
+ * The students are chosen so their records show different outcomes:
+ * strong on paper but stopped at aptitude every time (student1), converting
+ * repeatedly (student2), placed (student3, student5), no drive history at
+ * all (student4) and struggling (student6).
  */
+export const OFFICER = { email: "officer@mite.ac.in", name: "Priya Kulkarni" };
+
 export const STUDENTS = [
-  // ── ISE: the contrast group ─────────────────────────────────
+  // ── ISE ─────────────────────────────────────────────────────
   {
     usn: "4MT22IS001", name: "Aarav Shetty", dept: "ISE", cgpa: 9.1, backlogs: 0,
-    keepAccount: "student.a@mite.ac.in",
+    email: "student1@mite.ac.in",
     apt: { quantitative: 74, logical: 78, verbal: 80, technical: 76 },
     skills: 7, projects: 3, certs: 4,
     // Strong on paper, stopped at the first gate every single time.
@@ -196,32 +191,8 @@ export const STUDENTS = [
     ],
   },
   {
-    usn: "4MT22IS014", name: "Bhavya Kamath", dept: "ISE", cgpa: 8.2, backlogs: 0,
-    email: "student.b@mite.ac.in",
-    apt: { quantitative: 72, logical: 74, verbal: 70, technical: 66 },
-    skills: 8, projects: 3, certs: 4,
-    // Clears the first gate every time, never the second.
-    drives: [
-      ["drive-infosys", P, F, N, N],
-      ["drive-tcs", P, F, N, N],
-      ["drive-wipro", P, F, N, N],
-      ["drive-zoho", P, F, N, N],
-    ],
-  },
-  {
-    usn: "4MT22IS022", name: "Chetan Rao", dept: "ISE", cgpa: 8.0, backlogs: 0,
-    email: "student.c@mite.ac.in",
-    apt: { quantitative: 70, logical: 72, verbal: 74, technical: 72 },
-    skills: 8, projects: 3, certs: 4,
-    drives: [
-      ["drive-infosys", P, P, P, SEL],
-      ["drive-tcs", P, P, F, N],
-      ["drive-wipro", P, F, N, N],
-    ],
-  },
-  {
     usn: "4MT22IS033", name: "Divya Nayak", dept: "ISE", cgpa: 8.6, backlogs: 0,
-    email: "student.d@mite.ac.in",
+    email: "student2@mite.ac.in",
     apt: { quantitative: 84, logical: 86, verbal: 80, technical: 84 },
     skills: 9, projects: 3, certs: 4,
     drives: [
@@ -231,74 +202,41 @@ export const STUDENTS = [
       ["drive-zoho", P, P, F, N],
     ],
   },
-  {
-    usn: "4MT22IS041", name: "Eshan Prabhu", dept: "ISE", cgpa: 8.3, backlogs: 0,
-    email: "student.e@mite.ac.in",
-    apt: { quantitative: 72, logical: 76, verbal: 72, technical: 74 },
-    skills: 6, projects: 3, certs: 4,
-    // One drive, one result. Not enough for the engine to conclude anything.
-    drives: [["drive-wipro", F, N, N, N]],
-  },
 
   // ── CSE ─────────────────────────────────────────────────────
-  { usn: "4MT22CS004", email: "student.f@mite.ac.in", name: "Fathima Banu", dept: "CSE", cgpa: 9.0, backlogs: 0,
+  { usn: "4MT22CS004", email: "student3@mite.ac.in", name: "Fathima Banu", dept: "CSE", cgpa: 9.0, backlogs: 0,
     apt: { quantitative: 88, logical: 86, verbal: 82, technical: 88 }, skills: 9, projects: 3, certs: 4,
     drives: [["drive-zoho", P, P, P, SEL], ["drive-infosys", P, P, P, SEL]] },
-  { usn: "4MT22CS018", email: "student.g@mite.ac.in", name: "Suhas Acharya", dept: "CSE", cgpa: 7.6, backlogs: 0,
-    apt: { quantitative: 66, logical: 68, verbal: 64, technical: 70 }, skills: 6, projects: 2, certs: 2,
-    drives: [["drive-infosys", P, F, N, N], ["drive-wipro", P, F, N, N]] },
-  // No drive history at all — the roster's fourth band needs someone in it.
-  { usn: "4MT22CS029", email: "student.h@mite.ac.in", name: "Tejas Kulkarni", dept: "CSE", cgpa: 6.8, backlogs: 2,
+  // No drive history at all.
+  { usn: "4MT22CS029", email: "student4@mite.ac.in", name: "Tejas Kulkarni", dept: "CSE", cgpa: 6.8, backlogs: 2,
     apt: { quantitative: 50, logical: 54, verbal: 52, technical: 48 }, skills: 4, projects: 1, certs: 1,
     drives: [] },
 
   // ── ECE ─────────────────────────────────────────────────────
-  { usn: "4MT22EC003", email: "student.i@mite.ac.in", name: "Deepak Hegde", dept: "ECE", cgpa: 8.2, backlogs: 0,
+  { usn: "4MT22EC003", email: "student5@mite.ac.in", name: "Deepak Hegde", dept: "ECE", cgpa: 8.2, backlogs: 0,
     apt: { quantitative: 72, logical: 70, verbal: 68, technical: 66 }, skills: 6, projects: 3, certs: 3,
     drives: [["drive-bosch", P, P, P, SEL], ["drive-wipro", P, F, N, N]] },
-  { usn: "4MT22EC021", email: "student.j@mite.ac.in", name: "Nisha Kamath", dept: "ECE", cgpa: 6.6, backlogs: 1,
+  { usn: "4MT22EC021", email: "student6@mite.ac.in", name: "Nisha Kamath", dept: "ECE", cgpa: 6.6, backlogs: 1,
     apt: { quantitative: 48, logical: 52, verbal: 56, technical: 46 }, skills: 4, projects: 1, certs: 1,
     drives: [["drive-wipro", F, N, N, N]] },
-
-  // ── ME ──────────────────────────────────────────────────────
-  { usn: "4MT22ME005", email: "student.k@mite.ac.in", name: "Eshwar Pai", dept: "ME", cgpa: 7.7, backlogs: 0,
-    apt: { quantitative: 64, logical: 62, verbal: 60, technical: 58 }, skills: 4, projects: 3, certs: 2,
-    drives: [["drive-lnt", P, P, P, SEL], ["drive-bosch", P, F, N, N]] },
-
-  // ── EEE ─────────────────────────────────────────────────────
-  { usn: "4MT22EE013", email: "student.l@mite.ac.in", name: "Sanjana Rao", dept: "EEE", cgpa: 8.5, backlogs: 0,
-    apt: { quantitative: 78, logical: 76, verbal: 74, technical: 72 }, skills: 6, projects: 3, certs: 3,
-    drives: [["drive-bosch", P, P, P, SEL]] },
 ];
 
 /**
- * Faculty, one per department that has students on the roll.
- *
- * Department scoping is enforced from the signed-in user's own department,
- * so it can only be shown with more than one faculty account to sign in as.
- * Five is enough to make the point and few enough to keep straight.
- *
- * The ISE entry is the original demo account and is marked `keepAccount`:
- * the seed leaves its email, name and password exactly as they are. The
- * other four are created by the seed on the same password as everything
- * else, so there is only ever one password to remember.
+ * Faculty, one per department on the roster. Department scoping is
+ * enforced from the signed-in faculty member's own department, so each one
+ * sees only their two students.
  */
 export const FACULTY = [
-  { email: "faculty.demo@mite.ac.in", name: "Dr. Suresh Hegde", dept: "ISE", keepAccount: true },
+  { email: "faculty.ise@mite.ac.in", name: "Dr. Suresh Hegde", dept: "ISE" },
   { email: "faculty.cse@mite.ac.in", name: "Dr. Suresh Bhandary", dept: "CSE" },
   { email: "faculty.ece@mite.ac.in", name: "Dr. Latha Rao", dept: "ECE" },
-  { email: "faculty.me@mite.ac.in", name: "Dr. Ganesh Kamath", dept: "ME" },
-  { email: "faculty.eee@mite.ac.in", name: "Dr. Vidya Shenoy", dept: "EEE" },
 ];
 
 /** Offer terms, keyed `<usn>:<driveKey>`, applied where final is selected. */
 export const OFFERS = {
-  "4MT22IS022:drive-infosys": { ctc: 4.5 },
   "4MT22IS033:drive-infosys": { ctc: 4.5 },
   "4MT22IS033:drive-tcs": { ctc: 7.0 },
   "4MT22CS004:drive-zoho": { ctc: 9.0 },
   "4MT22CS004:drive-infosys": { ctc: 4.5 },
   "4MT22EC003:drive-bosch": { ctc: 6.5 },
-  "4MT22ME005:drive-lnt": { ctc: 5.2 },
-  "4MT22EE013:drive-bosch": { ctc: 6.5 },
 };

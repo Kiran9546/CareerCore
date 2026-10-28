@@ -3,8 +3,6 @@ import Student from "../models/Student.js";
 import Drive from "../models/Drive.js";
 import DriveParticipation from "../models/DriveParticipation.js";
 import {
-  DRIVE_STAGES,
-  ATTEMPT_STAGES,
   STAGE_STATUS,
   FINAL_STATUS,
   RESULT_SOURCE,
@@ -119,6 +117,14 @@ export const applyStages = async ({
 }) => {
   const drive = await Drive.findById(driveId);
   if (!drive) throw Object.assign(new Error("Drive not found"), { status: 404 });
+  // Managed drives take results only through round finalization in the
+  // recruitment workflow — never from a form, a forward or a spreadsheet.
+  if (drive.workflow === "managed") {
+    throw Object.assign(
+      new Error(`${drive.companyName} runs the recruitment workflow; its results are recorded per round on the drive dashboard`),
+      { status: 409 },
+    );
+  }
 
   let participation = await DriveParticipation.findOne({ driveId, studentId });
   if (!participation) {
@@ -588,7 +594,8 @@ export const parseResultsWorkbook = async (buffer, opts = {}) => {
     : everyone;
   const byUsn = new Map(inScope.map((s) => [s.usn.toUpperCase(), s]));
 
-  const drives = await Drive.find({}).select("companyName role driveDate stages");
+  // Managed drives are excluded: their results never come from a spreadsheet.
+  const drives = await Drive.find({ workflow: { $ne: "managed" } }).select("companyName role driveDate stages");
   const norm = (v) => String(v ?? "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
   const byCompanyRole = new Map(
     drives.map((d) => [`${norm(d.companyName)}|${norm(d.role)}`, d]),

@@ -5,18 +5,10 @@ import {
   DRIVE_MANAGER_ROLES,
   RESULT_EDITOR_ROLES,
   PLACEMENT_VIEWER_ROLES,
+  ROUND_REOPEN_ROLES,
+  POLICY_EDITOR_ROLES,
 } from "../config/constants.js";
-import { handleJobDocUpload } from "../middleware/uploadJobDoc.js";
-import {
-  listJobs,
-  getJob,
-  createJob,
-  updateJob,
-  toggleJob,
-  deleteJob,
-  removeAttachment,
-  listApplicants,
-} from "../controllers/placementJob.controller.js";
+import * as recruitment from "../controllers/recruitment.controller.js";
 import { exportPlacementData } from "../controllers/placement.controller.js";
 import {
   listDrives,
@@ -31,27 +23,23 @@ import {
   updateStageResult,
   getStudentPlacementProfile,
   compareStudents,
-  getPlacementOverview,
   listStudentsWithOutcomes,
-  listMissedDrives,
 } from "../controllers/placement.controller.js";
 
 /**
  * /api/placement — the placement cell's own section.
  *
- * Permissions are enforced here, per endpoint, rather than once on the
- * router, because the three staff roles genuinely differ:
+ * Permissions are enforced here, per endpoint, using the role lists in
+ * config/constants.js:
  *
- *   viewer  (faculty, placement officer, admin)
- *       read drives, participants, placement profiles, comparisons
- *   editor  (faculty, placement officer, admin)
- *       record and correct official stage results
- *   manager (placement officer, admin)
- *       create, edit, cancel drives and register participants
+ *   canView        PLACEMENT_VIEWER_ROLES  (placement officer, admin)
+ *   canEditResults RESULT_EDITOR_ROLES     (placement officer, admin)
+ *   canManageDrives DRIVE_MANAGER_ROLES    (placement officer, admin)
+ *   canReopen      ROUND_REOPEN_ROLES      (admin only)
  *
- * Faculty deliberately sit in viewer + editor but NOT manager: they hold
- * authorized placement information for their students and may correct it,
- * but the drive calendar itself belongs to the placement cell.
+ * The lists are kept separate so they can diverge without touching every
+ * route. Faculty are deliberately absent: they work with their department
+ * through /api/faculty and the result pipeline in /api/results.
  *
  * The student role appears nowhere in this file. Students read their own
  * placement journey through GET /api/student/placement, which has no write
@@ -67,14 +55,10 @@ const canView = requireRole(...PLACEMENT_VIEWER_ROLES);
 const canEditResults = requireRole(...RESULT_EDITOR_ROLES);
 const canManageDrives = requireRole(...DRIVE_MANAGER_ROLES);
 
-// ─── Overview & student lists (read) ─────────────────────────
-router.get("/overview", canView, getPlacementOverview);
+// ─── Student lists (read) ────────────────────────────────────
 router.get("/students", canView, listStudentsWithOutcomes);
 router.get("/students/:studentId/profile", canView, getStudentPlacementProfile);
 router.get("/compare", canView, compareStudents);
-// Students who were eligible for a drive and never registered — the gap a
-// participation-based profile cannot show, because they have no record.
-router.get("/missed", canView, listMissedDrives);
 
 // ─── Drives ──────────────────────────────────────────────────
 router.get("/drives", canView, listDrives);
@@ -92,23 +76,51 @@ router.delete("/participations/:id", canManageDrives, removeParticipant);
 // ─── Official stage results ──────────────────────────────────
 router.patch("/participations/:id/stage", canEditResults, updateStageResult);
 
+// ─── Recruitment workflow (managed drives) ───────────────────
+// Drives created with workflow: "managed" run the full process — company
+// list, calculated eligibility, automatic notifications, student
+// self-registration, configurable rounds with attendance, results and
+// progression. POST/PUT/DELETE /drives above delegate to it for those drives.
+const canReopen = requireRole(...ROUND_REOPEN_ROLES);
+const canSetPolicy = requireRole(...POLICY_EDITOR_ROLES);
+
+router.get("/companies", canView, recruitment.listCompanies);
+router.post("/companies", canManageDrives, recruitment.createCompany);
+router.get("/companies/:id", canView, recruitment.getCompany);
+
+router.get("/round-types", canView, recruitment.listRoundTypes);
+router.get("/interview-templates", canView, recruitment.listTemplates);
+router.post("/interview-templates", canManageDrives, recruitment.createTemplate);
+router.put("/interview-templates/:id", canManageDrives, recruitment.updateTemplate);
+router.delete("/interview-templates/:id", canManageDrives, recruitment.deleteTemplate);
+
+router.get("/policy", canView, recruitment.getPolicy);
+router.put("/policy", canSetPolicy, recruitment.setPolicy);
+
+router.get("/statistics", canView, recruitment.statistics);
+router.get("/audit", canManageDrives, recruitment.auditHistory);
+router.get("/students/:studentId/recruitment", canView, recruitment.studentHistory);
+
+router.get("/drives/:id/dashboard", canView, recruitment.getManagedDrive);
+router.patch("/drives/:id/status", canManageDrives, recruitment.changeStatus);
+router.post("/drives/:id/clone", canManageDrives, recruitment.cloneDrive);
+router.put("/drives/:id/eligibility", canManageDrives, recruitment.setEligibility);
+router.post("/drives/:id/eligibility/calculate", canManageDrives, recruitment.recalculateEligibility);
+router.get("/drives/:id/students", canView, recruitment.listStudents);
+router.get("/drives/:id/audit", canManageDrives, recruitment.auditHistory);
+
+router.put("/drives/:id/rounds", canManageDrives, recruitment.setRounds);
+router.patch("/drives/:id/rounds/:roundId/schedule", canManageDrives, recruitment.setSchedule);
+router.get("/drives/:id/rounds/:roundId/participants", canView, recruitment.roundParticipants);
+router.post("/drives/:id/rounds/:roundId/attendance", canEditResults, recruitment.recordAttendance);
+router.post("/drives/:id/rounds/:roundId/results", canEditResults, recruitment.recordResults);
+router.post("/drives/:id/rounds/:roundId/finalize", canEditResults, recruitment.finalizeRound);
+router.post("/drives/:id/rounds/:roundId/reopen", canReopen, recruitment.reopenRound);
+
+router.patch("/participations/:id/offer", canEditResults, recruitment.updateOffer);
+router.patch("/participations/:id/eligibility-override", canManageDrives, recruitment.overrideEligibility);
+
 // ─── Excel export ────────────────────────────────────────────
 router.get("/export", canView, exportPlacementData);
-
-// ─── Job postings ────────────────────────────────────────────
-// The placement cell posts openings companies send to the college. These
-// become ordinary Job documents, so students browse and apply to them
-// through the existing student routes with no special-casing.
-//
-// The create and update handlers sit behind the multipart parser so the
-// JD can be uploaded in the same request as the details.
-router.get("/jobs", canView, listJobs);
-router.get("/jobs/:id", canView, getJob);
-router.get("/jobs/:id/applicants", canView, listApplicants);
-router.post("/jobs", canManageDrives, handleJobDocUpload, createJob);
-router.put("/jobs/:id", canManageDrives, handleJobDocUpload, updateJob);
-router.patch("/jobs/:id/toggle", canManageDrives, toggleJob);
-router.delete("/jobs/:id/attachments/:attachmentId", canManageDrives, removeAttachment);
-router.delete("/jobs/:id", canManageDrives, deleteJob);
 
 export default router;

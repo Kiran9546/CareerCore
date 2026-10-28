@@ -158,7 +158,10 @@ export const buildPlacementProfile = async (studentId, options = {}) => {
 
   // Drop orphans defensively: a participation whose drive was deleted would
   // otherwise crash every read of this student's profile.
-  const valid = participations.filter((p) => p.driveId);
+  // A withdrawn registration stays on record but is not a drive taken part in.
+  const valid = participations.filter(
+    (p) => p.driveId && p.registrationStatus !== "withdrawn",
+  );
   valid.sort((a, b) => participationDate(b) - participationDate(a));
 
   // ── Stage tallies ────────────────────────────────────────────
@@ -351,7 +354,7 @@ export const buildCohortSummary = async (studentFilter = {}) => {
   const attemptStatuses = [STAGE_STATUS.PASSED, STAGE_STATUS.FAILED];
 
   const rows = await DriveParticipation.aggregate([
-    { $match: { studentId: { $in: ids } } },
+    { $match: { studentId: { $in: ids }, registrationStatus: { $ne: "withdrawn" } } },
     {
       $group: {
         _id: "$studentId",

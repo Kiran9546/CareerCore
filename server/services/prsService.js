@@ -118,6 +118,27 @@ export const computePRS = async (student, options = {}) => {
   }));
 
   const gapResult = await getSkillGap(studentSkills, requiredSkills, 10);
+
+  // Without the ML service there is no skills score. Reporting a total with
+  // that component silently at 0 would understate the student by up to the
+  // full skills weight — and computeAndSavePRS would persist it — so the PRS
+  // is reported as not computable instead and the last saved score stands.
+  if (!gapResult.available) {
+    return {
+      total: null,
+      computable: false,
+      skillServiceUnavailable: true,
+      message:
+        "Skill analysis is unavailable right now, so your PRS can't be recalculated. " +
+        "Your last saved score is unchanged — please try again later.",
+      partial: {
+        academic: round(A),
+        certifications: round(C),
+        aptitude: round(T),
+      },
+    };
+  }
+
   const S = gapResult.skillScore;
   const P = projectScore(student.projects, careerPath.requiredSkills);
 

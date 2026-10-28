@@ -1,5 +1,10 @@
 import mongoose from "mongoose";
-import { STAGE_STATUS, FINAL_STATUS } from "../config/constants.js";
+import {
+  STAGE_STATUS,
+  FINAL_STATUS,
+  REGISTRATION_STATUS,
+  OFFER_STATUS,
+} from "../config/constants.js";
 
 /**
  * One student's official record in one drive.
@@ -53,6 +58,10 @@ const finalResultSchema = new mongoose.Schema(
       role: String,
       offerDate: Date,
       accepted: { type: Boolean, default: false },
+      // Managed workflow additions. `accepted` above is kept in step with
+      // `status` so older readers of the flag stay correct.
+      location: String,
+      status: { type: String, enum: OFFER_STATUS },
     },
     note: { type: String, maxlength: 500 },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
@@ -78,6 +87,44 @@ const driveParticipationSchema = new mongoose.Schema(
 
     registeredAt: { type: Date, default: Date.now },
     registeredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+
+    /**
+     * Withdrawal is a status, never a delete — the record of having
+     * registered is part of the student's history. Every participation
+     * created before this field existed reads as registered.
+     */
+    registrationStatus: {
+      type: String,
+      enum: Object.values(REGISTRATION_STATUS),
+      default: REGISTRATION_STATUS.REGISTERED,
+    },
+    withdrawnAt: Date,
+    withdrawnBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    withdrawReason: { type: String, maxlength: 500 },
+
+    /** The academic record the registration was accepted against (managed
+     *  drives). Read-only evidence; the Student document stays the source. */
+    academicSnapshot: {
+      cgpa: Number,
+      backlogs: Number,
+      branch: String,
+      batch: String,
+      _id: false,
+    },
+
+    /**
+     * Set when a criteria change made an already-registered student
+     * ineligible. Their registration and any results are kept; they are
+     * simply not entered into round 1 unless an officer overrides it.
+     */
+    eligibilityFlag: {
+      ineligibleSince: Date,
+      reasons: [String],
+      overriddenAt: Date,
+      overriddenBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      overrideReason: String,
+      _id: false,
+    },
 
     stages: {
       aptitude: { type: stageResultSchema, default: () => ({}) },
@@ -107,6 +154,9 @@ const driveParticipationSchema = new mongoose.Schema(
 driveParticipationSchema.index({ driveId: 1, studentId: 1 }, { unique: true });
 // Profile build reads every participation for one student, newest first.
 driveParticipationSchema.index({ studentId: 1, createdAt: -1 });
+// Drive dashboards count registrations by status.
+driveParticipationSchema.index({ driveId: 1, registrationStatus: 1 });
+driveParticipationSchema.index({ "stages.final.status": 1, studentId: 1 });
 
 /**
  * Record a stage change and log it. Returns false when nothing changed,

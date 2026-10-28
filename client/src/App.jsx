@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./context/useAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Login from "./pages/auth/Login";
@@ -7,12 +8,6 @@ import StudentDashboard from "./pages/student/Dashboard";
 import Profile from "./pages/student/Profile";
 import Skills from "./pages/student/Skills";
 import Aptitude from "./pages/student/Aptitude";
-import RecruiterLayout from "./components/RecruiterLayout";
-import RecruiterJobs from "./pages/recruiter/Jobs";
-import PostJob from "./pages/recruiter/PostJob";
-import Company from "./pages/recruiter/Company";
-import StudentJobs from "./pages/student/Jobs";
-import Applications from "./pages/student/Applications";
 import FacultyLayout from "./components/FacultyLayout";
 import Analytics from "./pages/faculty/Analytics";
 import FacultyStudents from "./pages/faculty/Students";
@@ -29,11 +24,12 @@ import PlacementLayout from "./components/PlacementLayout";
 import PlacementOverview from "./pages/placement/Overview";
 import PlacementDrives from "./pages/placement/Drives";
 import PlacementDriveDetail from "./pages/placement/DriveDetail";
-import PlacementJobs from "./pages/placement/Jobs";
+import PlacementDriveForm from "./pages/placement/DriveForm";
+import StudentDrives from "./pages/student/Drives";
+import StudentDriveView from "./pages/student/DriveView";
 import PlacementStudents from "./pages/placement/Students";
 import PlacementProfile from "./pages/placement/PlacementProfile";
 import PlacementCompare from "./pages/placement/Compare";
-import PlacementMissed from "./pages/placement/Missed";
 import PlacementResults from "./pages/placement/Results";
 import FacultyResults from "./pages/faculty/Results";
 
@@ -65,23 +61,10 @@ export default function App() {
             <Route path="resume" element={<Resume />} />
             <Route path="skills" element={<Skills />} />
             <Route path="aptitude" element={<Aptitude />} />
-            <Route path="jobs" element={<StudentJobs />} />
-            <Route path="applications" element={<Applications />} />
             <Route path="learn" element={<Recommendations />} />
             <Route path="placement" element={<StudentPlacement />} />
-          </Route>
-
-          <Route
-            path="/recruiter"
-            element={
-              <ProtectedRoute roles={["recruiter"]}>
-                <RecruiterLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<RecruiterJobs />} />
-            <Route path="post" element={<PostJob />} />
-            <Route path="company" element={<Company />} />
+            <Route path="drives" element={<StudentDrives />} />
+            <Route path="drives/:id" element={<StudentDriveView />} />
           </Route>
 
           <Route
@@ -109,12 +92,12 @@ export default function App() {
           >
             <Route index element={<PlacementOverview />} />
             <Route path="drives" element={<PlacementDrives />} />
+            <Route path="drives/new" element={<PlacementDriveForm />} />
             <Route path="drives/:id" element={<PlacementDriveDetail />} />
-            <Route path="jobs" element={<PlacementJobs />} />
+            <Route path="drives/:id/edit" element={<PlacementDriveForm />} />
             <Route path="students" element={<PlacementStudents />} />
             <Route path="students/:id" element={<PlacementProfile />} />
             <Route path="compare" element={<PlacementCompare />} />
-            <Route path="missed" element={<PlacementMissed />} />
             <Route path="results" element={<PlacementResults />} />
           </Route>
           <Route

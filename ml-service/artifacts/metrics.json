@@ -1,64 +1,64 @@
 {
   "report": {
     "Cloud Engineer": {
-      "precision": 0.875,
-      "recall": 0.84,
-      "f1-score": 0.8571428571428571,
+      "precision": 0.905511811023622,
+      "recall": 0.92,
+      "f1-score": 0.9126984126984127,
       "support": 125.0
     },
     "Cybersecurity Analyst": {
-      "precision": 0.9586776859504132,
-      "recall": 0.928,
-      "f1-score": 0.943089430894309,
+      "precision": 0.9838709677419355,
+      "recall": 0.976,
+      "f1-score": 0.9799196787148594,
       "support": 125.0
     },
     "Data Analyst": {
-      "precision": 0.952,
-      "recall": 0.952,
-      "f1-score": 0.952,
+      "precision": 0.953125,
+      "recall": 0.976,
+      "f1-score": 0.9644268774703557,
       "support": 125.0
     },
     "DevOps Engineer": {
-      "precision": 0.8444444444444444,
-      "recall": 0.912,
-      "f1-score": 0.8769230769230769,
-      "support": 125.0
-    },
-    "ML Engineer": {
-      "precision": 0.952,
-      "recall": 0.952,
-      "f1-score": 0.952,
-      "support": 125.0
-    },
-    "QA Engineer": {
-      "precision": 0.96,
-      "recall": 0.96,
-      "f1-score": 0.96,
-      "support": 125.0
-    },
-    "Software Engineer": {
       "precision": 0.9426229508196722,
       "recall": 0.92,
       "f1-score": 0.9311740890688259,
       "support": 125.0
     },
-    "Web Developer": {
-      "precision": 0.937007874015748,
-      "recall": 0.952,
-      "f1-score": 0.9444444444444444,
+    "ML Engineer": {
+      "precision": 0.9758064516129032,
+      "recall": 0.968,
+      "f1-score": 0.9718875502008032,
       "support": 125.0
     },
-    "accuracy": 0.927,
+    "QA Engineer": {
+      "precision": 0.9682539682539683,
+      "recall": 0.976,
+      "f1-score": 0.9721115537848606,
+      "support": 125.0
+    },
+    "Software Engineer": {
+      "precision": 0.952755905511811,
+      "recall": 0.968,
+      "f1-score": 0.9603174603174603,
+      "support": 125.0
+    },
+    "Web Developer": {
+      "precision": 0.9918032786885246,
+      "recall": 0.968,
+      "f1-score": 0.979757085020243,
+      "support": 125.0
+    },
+    "accuracy": 0.959,
     "macro avg": {
-      "precision": 0.9277191194037847,
-      "recall": 0.9269999999999999,
-      "f1-score": 0.9270967373091892,
+      "precision": 0.9592187917065547,
+      "recall": 0.959,
+      "f1-score": 0.9590365884094776,
       "support": 1000.0
     },
     "weighted avg": {
-      "precision": 0.9277191194037848,
-      "recall": 0.927,
-      "f1-score": 0.9270967373091892,
+      "precision": 0.9592187917065547,
+      "recall": 0.959,
+      "f1-score": 0.9590365884094777,
       "support": 1000.0
     }
   },
@@ -75,130 +75,130 @@
     ],
     "matrix": [
       [
-        105,
-        3,
-        0,
-        17,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        6,
-        116,
-        0,
-        3,
+        115,
+        1,
+        2,
+        7,
         0,
         0,
         0,
         0
       ],
       [
+        3,
+        122,
         0,
         0,
-        119,
         0,
-        6,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        122,
+        0,
+        3,
         0,
         0,
         0
       ],
       [
         9,
-        2,
+        1,
         0,
-        114,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        6,
-        0,
-        119,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        120,
-        3,
-        2
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        4,
         115,
-        6
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        3,
+        0,
+        121,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        122,
+        2,
+        0
       ],
       [
         0,
         0,
         0,
-        1,
+        0,
+        0,
+        3,
+        121,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
         0,
         1,
-        4,
-        119
+        3,
+        121
       ]
     ]
   },
   "cross_validation": {
-    "mean": 0.9426,
-    "std": 0.0062,
+    "mean": 0.9458,
+    "std": 0.0075,
     "folds": [
-      0.943,
-      0.949,
+      0.958,
+      0.948,
       0.947,
-      0.931,
-      0.943
+      0.94,
+      0.936
     ]
   },
   "top_features": {
-    "skill_Manual Testing": 0.0387,
-    "skill_AWS": 0.0338,
-    "skill_Machine Learning": 0.0306,
-    "skill_Data Structures": 0.0296,
-    "skill_Statistics": 0.0283,
-    "skill_HTML": 0.0279,
-    "skill_Test Case Design": 0.0276,
-    "skill_Network Security": 0.0275,
-    "skill_Excel": 0.0263,
-    "skill_CSS": 0.0259,
-    "skill_Object Oriented Programming": 0.0254,
-    "skill_Cloud Architecture": 0.0243,
-    "skill_Vulnerability Assessment": 0.0238,
-    "skill_Scikit-learn": 0.0221,
-    "skill_Ethical Hacking": 0.0219
+    "skill_AWS": 0.0372,
+    "skill_Manual Testing": 0.0344,
+    "skill_CSS": 0.0316,
+    "skill_Excel": 0.0308,
+    "skill_Test Case Design": 0.0306,
+    "skill_Statistics": 0.0302,
+    "skill_Network Security": 0.0288,
+    "skill_Object Oriented Programming": 0.0268,
+    "skill_React": 0.0261,
+    "skill_Machine Learning": 0.0251,
+    "skill_Scikit-learn": 0.0245,
+    "skill_Algorithms": 0.0243,
+    "skill_Ethical Hacking": 0.0228,
+    "skill_Data Structures": 0.0226,
+    "skill_Automation Testing": 0.0219
   },
   "baselines": {
     "Logistic Regression": {
-      "accuracy": 0.92,
-      "macro_f1": 0.92,
-      "train_seconds": 0.27
+      "accuracy": 0.951,
+      "macro_f1": 0.9509,
+      "train_seconds": 2.3
     },
     "Decision Tree": {
-      "accuracy": 0.799,
-      "macro_f1": 0.8011,
-      "train_seconds": 0.06
+      "accuracy": 0.805,
+      "macro_f1": 0.8047,
+      "train_seconds": 0.11
     },
     "Random Forest": {
-      "accuracy": 0.927,
-      "macro_f1": 0.9271,
-      "train_seconds": 0.73
+      "accuracy": 0.959,
+      "macro_f1": 0.959,
+      "train_seconds": 1.21
     }
   },
   "classes": [
@@ -212,5 +212,5 @@
     "Web Developer"
   ],
   "n_samples": 5000,
-  "n_features": 120
+  "n_features": 126
 }

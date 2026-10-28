@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import crypto from "crypto";
 
 import User from "../models/User.js";
 import Student from "../models/Student.js";
@@ -14,66 +13,57 @@ import Drive from "../models/Drive.js";
 import DriveParticipation from "../models/DriveParticipation.js";
 import ResultSubmission from "../models/ResultSubmission.js";
 import Job from "../models/Job.js";
+import DriveCandidate from "../models/DriveCandidate.js";
+import RoundResult from "../models/RoundResult.js";
 import { computeAndSavePRS } from "../services/prsService.js";
 import { buildPlacementProfile } from "../services/placementProfileService.js";
-import { ROLES, JOB_SOURCE } from "../config/constants.js";
+import { ROLES } from "../config/constants.js";
 import {
-  DRIVES, STUDENTS, FACULTY, OFFERS,
+  DRIVES, STUDENTS, FACULTY, OFFICER, OFFERS,
   SKILLS_BY_DEPT, PROJECTS_BY_DEPT, CERTIFICATIONS,
 } from "./cohortData.js";
 
 /**
- * CareerCore — build the student cohort
- * =====================================
+ * CareerCore — demo roster
+ * ========================
  *
- * Replaces the placeholder students with a small, real-looking
- * multi-department roll and gives every one of them a placement history,
- * and puts one faculty account in charge of each department on it.
+ * Leaves the database with exactly ten sign-in accounts, all on one
+ * password: one placement officer, three faculty (ISE, CSE, ECE) and six
+ * students, two per department, each with a placement history. The roster
+ * itself is defined in cohortData.js.
  *
- * ─── WHAT IT LEAVES ALONE ─────────────────────────────────────────────
+ * ─── WHAT IT REMOVES ──────────────────────────────────────────────────
  *
- * The three sign-in accounts are not to be disturbed:
+ * Every user that is not on the roster and is not an admin — students,
+ * faculty, placement officers and retired recruiter accounts — together
+ * with the records that hang off them, so nothing is left pointing at a
+ * user that no longer exists. Drives that a removed staff account created
+ * (other than this seed's own drives) go too. Admin accounts are always
+ * kept. Audit log entries are immutable by design and stay.
  *
- *     student.a@mite.ac.in       faculty.demo@mite.ac.in
- *     officer@mite.ac.in         (and the admin account)
+ * Roster accounts that already exist are kept (so drives they created keep
+ * their owner) and have their name, role and password reset.
  *
- * The student account among them keeps its email and its password exactly
- * as they are; only its USN is brought in line with the rest of the roll,
- * so it does not sit among real identifiers looking obviously invented.
- * Every other student account is replaced.
+ * DEVELOPMENT DATA. Deterministic and idempotent: running it ten times
+ * leaves the same database as running it once. Always try --dry-run first:
+ * it lists exactly what would be removed and changes nothing.
  *
- * ─── HOW BIG, AND WHY ─────────────────────────────────────────────────
- *
- * Twelve students and five faculty. Department scoping cannot be seen when
- * every student is in one department, nor when there is only one faculty
- * account to sign in as — so the roll spans five departments and each has
- * a faculty member over it, which is the difference between a rule that is
- * implemented and a rule that is demonstrated.
- *
- * It stops there deliberately. This seed exists to be shown and explained,
- * so it is sized to be read in one screen rather than to look like a real
- * institution's database. Every account below, including the four faculty
- * this seed creates, uses the same password, so there is only ever one to
- * remember.
- *
- * DEVELOPMENT DATA. Deterministic and idempotent: no Math.random(), fixed
- * identifiers, every write an upsert. Running it ten times leaves the same
- * database as running it once.
- *
- * Usage:  npm run seed:cohort      (run `npm run seed` first)
+ * Usage:  npm run seed:cohort:dry   then   npm run seed:cohort
+ *         (run `npm run seed` first)
  */
 
 dotenv.config();
 
-const PASSWORD = "Demo2026";
+const PASSWORD = "12345678";
 const DRY_RUN = process.argv.includes("--dry-run");
 
-/** Accounts that must survive untouched. */
-const PROTECTED_EMAILS = [
-  ...STUDENTS.filter((s) => s.keepAccount).map((s) => s.keepAccount),
-  ...FACULTY.filter((f) => f.keepAccount).map((f) => f.email),
-  "officer@mite.ac.in",
+/** Every account that should exist after the seed, besides admins. */
+const ROSTER = [
+  { ...OFFICER, role: ROLES.PLACEMENT_OFFICER },
+  ...FACULTY.map((f) => ({ email: f.email, name: f.name, role: ROLES.FACULTY, department: f.dept })),
+  ...STUDENTS.map((st) => ({ email: st.email, name: st.name, role: ROLES.STUDENT })),
 ];
+const ROSTER_EMAILS = ROSTER.map((r) => r.email);
 
 const line = (label, n) => console.log(`  ${String(n).padStart(4)}  ${label}`);
 
@@ -130,84 +120,83 @@ const run = async () => {
     const skillByName = new Map(skills.map((s) => [s.name.toLowerCase(), s]));
     const sortedPaths = [...paths].sort((a, b) => a.code.localeCompare(b.code));
 
-    const officer = await User.findOne({ email: "officer@mite.ac.in" });
-    if (!officer) throw new Error("The placement officer account is missing — run `npm run seed:cohort` after creating it");
-
     // ── What goes ────────────────────────────────────────────
-    // Every student account except the protected one. Their profiles and
-    // everything hanging off them go too, or the database is left with rows
-    // pointing at users that no longer exist.
-    const keepUsers = await User.find({ email: { $in: PROTECTED_EMAILS } }).select("_id email");
+    // Every non-admin account that is not on the roster, and everything
+    // hanging off it, so the database is left with no rows pointing at users
+    // that no longer exist.
     const admins = await User.find({ role: ROLES.ADMIN }).select("_id email");
-    const protectedIds = [...keepUsers, ...admins].map((u) => u._id);
-
     const doomedUsers = await User.find({
-      role: ROLES.STUDENT,
-      _id: { $nin: protectedIds },
-    }).select("_id email");
-    const doomedStudents = await Student.find({
-      userId: { $in: doomedUsers.map((u) => u._id) },
-    }).select("_id");
-
-    // Staff accounts accumulate the same way student ones do — a
-    // registration made while testing the sign-up form is a real account
-    // afterwards, on whatever password was typed at the time, and a suite
-    // that creates an officer to act as leaves it behind. Anything not on
-    // the roll goes, so what is left is exactly the accounts listed below
-    // and every one of them is on the same password.
-    const rollFacultyEmails = FACULTY.map((f) => f.email);
-    const doomedStaff = await User.find({
-      role: { $in: [ROLES.FACULTY, ROLES.PLACEMENT_OFFICER] },
-      email: { $nin: [...PROTECTED_EMAILS, ...rollFacultyEmails] },
-      _id: { $nin: protectedIds },
+      role: { $ne: ROLES.ADMIN },
+      email: { $nin: ROSTER_EMAILS },
     }).select("_id email role");
+    const doomedUserIds = doomedUsers.map((u) => u._id);
+    const doomedStudents = await Student.find({ userId: { $in: doomedUserIds } }).select("_id");
+    const doomedStudentIds = doomedStudents.map((x) => x._id);
+    const strayDrives = await Drive.find({
+      createdBy: { $in: doomedUserIds },
+      seedKey: { $exists: false },
+    }).select("_id companyName role");
+    const strayDriveIds = strayDrives.map((d) => d._id);
 
     console.log("KEEPING");
-    for (const u of keepUsers) console.log(`   ${u.email}`);
     for (const a of admins) console.log(`   ${a.email}  (admin)`);
 
-    console.log("\nREPLACING");
-    line("student accounts removed", doomedUsers.length);
-    line("student profiles removed", doomedStudents.length);
-    line("stray staff accounts removed", doomedStaff.length);
-    for (const f of doomedStaff) console.log(`        ${f.role.padEnd(18)} ${f.email}`);
-    line("students to create", STUDENTS.length);
-    line("faculty on the roll", FACULTY.length);
-    line("drives", DRIVES.length);
+    console.log("\nREMOVING");
+    line("accounts", doomedUsers.length);
+    for (const u of doomedUsers) console.log(`        ${u.role.padEnd(18)} ${u.email}`);
+    line("student profiles", doomedStudents.length);
+    line("drives created by removed accounts", strayDrives.length);
+    for (const d of strayDrives) console.log(`        ${d.companyName} · ${d.role}`);
+
+    console.log("\nROSTER (password for every account: " + PASSWORD + ")");
+    for (const r of ROSTER) console.log(`   ${r.role.padEnd(18)} ${r.email}`);
 
     if (DRY_RUN) {
       console.log("\nDry run — nothing was changed.\n");
       process.exit(0);
     }
 
-    const doomedStudentIds = doomedStudents.map((s) => s._id);
+    // Student-owned records.
     await DriveParticipation.deleteMany({ studentId: { $in: doomedStudentIds } });
+    await DriveCandidate.deleteMany({ studentId: { $in: doomedStudentIds } });
+    await RoundResult.deleteMany({ studentId: { $in: doomedStudentIds } });
     await ResultSubmission.deleteMany({ studentId: { $in: doomedStudentIds } });
     await AptitudeAttempt.deleteMany({ studentId: { $in: doomedStudentIds } });
     await Application.deleteMany({ studentId: { $in: doomedStudentIds } });
     await Resume.deleteMany({ studentId: { $in: doomedStudentIds } });
-    await Notification.deleteMany({ userId: { $in: doomedUsers.map((u) => u._id) } });
     await Student.deleteMany({ _id: { $in: doomedStudentIds } });
-    await User.deleteMany({ _id: { $in: doomedUsers.map((u) => u._id) } });
 
-    const doomedStaffIds = doomedStaff.map((u) => u._id);
-    await ResultSubmission.deleteMany({ requestedBy: { $in: doomedStaffIds } });
-    await Notification.deleteMany({ userId: { $in: doomedStaffIds } });
-    await Job.deleteMany({ postedBy: { $in: doomedStaffIds } });
-
-    // Drives a test run created are not part of the roll and only clutter
-    // the officer's list. Their participations go first, or the rows outlive
-    // the drive they belong to.
-    const strayDrives = await Drive.find({
-      createdBy: { $in: doomedStaffIds },
-      seedKey: { $exists: false },
-    }).select("_id");
-    const strayDriveIds = strayDrives.map((d) => d._id);
+    // Staff-owned records, and drives a removed staff account created.
+    await ResultSubmission.deleteMany({ requestedBy: { $in: doomedUserIds } });
+    await Job.deleteMany({ postedBy: { $in: doomedUserIds } });
     await DriveParticipation.deleteMany({ driveId: { $in: strayDriveIds } });
+    await DriveCandidate.deleteMany({ driveId: { $in: strayDriveIds } });
+    await RoundResult.deleteMany({ driveId: { $in: strayDriveIds } });
     await ResultSubmission.deleteMany({ driveId: { $in: strayDriveIds } });
     await Drive.deleteMany({ _id: { $in: strayDriveIds } });
 
-    await User.deleteMany({ _id: { $in: doomedStaffIds } });
+    await Notification.deleteMany({ userId: { $in: doomedUserIds } });
+    await User.deleteMany({ _id: { $in: doomedUserIds } });
+
+    // ── Roster accounts ──────────────────────────────────────
+    // Created if missing; otherwise name, role and password are reset so
+    // every account ends up on the one password.
+    console.log("\nAccounts...");
+    const userByEmail = new Map();
+    for (const r of ROSTER) {
+      let user = await User.findOne({ email: r.email });
+      if (!user) user = new User({ email: r.email });
+      user.name = r.name;
+      user.role = r.role;
+      user.department = r.department;
+      user.passwordHash = PASSWORD; // hashed by the pre-save hook
+      user.isActive = true;
+      user.isVerified = true;
+      await user.save();
+      userByEmail.set(r.email, user);
+      console.log(`  ${r.role.padEnd(18)} ${r.email}`);
+    }
+    const officer = userByEmail.get(OFFICER.email);
 
     // ── Drives ───────────────────────────────────────────────
     console.log("\nDrives...");
@@ -225,56 +214,13 @@ const run = async () => {
       );
     }
 
-    // ── Faculty ──────────────────────────────────────────────
-    // One per department on the roll. The department is what every scoped
-    // query reads from, so a faculty account without one would see nothing
-    // at all; it is set here rather than left to whoever registered.
-    console.log("\nFaculty...");
-    for (const f of FACULTY) {
-      let user = await User.findOne({ email: f.email });
-      if (!user) {
-        user = await User.create({
-          name: f.name,
-          email: f.email,
-          passwordHash: PASSWORD,
-          role: ROLES.FACULTY,
-          department: f.dept,
-          isVerified: true,
-        });
-      } else if (!f.keepAccount) {
-        user.name = f.name;
-        user.department = f.dept;
-        await user.save({ validateBeforeSave: false });
-      }
-      const held = STUDENTS.filter((x) => x.dept === f.dept).length;
-      console.log(
-        `  ${f.email.padEnd(28)} ${String(user.department ?? f.dept).padEnd(5)} ` +
-          `${held} student${held === 1 ? "" : "s"}${f.keepAccount ? "   (unchanged)" : ""}`,
-      );
-    }
-
     // ── Students ─────────────────────────────────────────────
     console.log("\nStudents...");
     const studentByUsn = new Map();
     const missingSkills = new Set();
 
     for (const [i, spec] of STUDENTS.entries()) {
-      const email = spec.keepAccount ?? spec.email ?? `${spec.usn.toLowerCase()}@mite.ac.in`;
-
-      let user = await User.findOne({ email });
-      if (!user) {
-        user = await User.create({
-          name: spec.name,
-          email,
-          passwordHash: PASSWORD,
-          role: ROLES.STUDENT,
-          isVerified: true,
-        });
-      } else if (!spec.keepAccount) {
-        // A regenerated account may have had its name edited; the roll wins.
-        user.name = spec.name;
-        await user.save({ validateBeforeSave: false });
-      }
+      const user = userByEmail.get(spec.email);
 
       // Skills, projects and certifications drawn deterministically from the
       // department's own pools, so a mechanical student is not carrying React.
@@ -303,7 +249,12 @@ const run = async () => {
       });
 
       let student = await Student.findOne({ userId: user._id });
-      if (!student) student = new Student({ userId: user._id, usn: spec.usn });
+      if (!student) {
+        // A profile left behind under this USN by a removed account would
+        // block the unique index.
+        await Student.deleteOne({ usn: spec.usn, userId: { $ne: user._id } });
+        student = new Student({ userId: user._id, usn: spec.usn });
+      }
 
       student.usn = spec.usn;
       student.batch = "2026";
@@ -352,10 +303,12 @@ const run = async () => {
 
     // ── Participations ───────────────────────────────────────
     console.log("\nDrive participations...");
-    // Cleared wholesale first: a student whose history shrank between runs
-    // would otherwise keep the rows the new roll no longer lists.
+    // The seed's own drives are rebuilt from the roster each run. Only those:
+    // registrations in drives run through the recruitment workflow are real
+    // records and are left alone.
     await DriveParticipation.deleteMany({
       studentId: { $in: [...studentByUsn.values()].map((s) => s._id) },
+      driveId: { $in: [...driveByKey.values()].map((d) => d._id) },
     });
 
     let written = 0;
@@ -405,34 +358,6 @@ const run = async () => {
     }
     line("participation records", written);
 
-    // ── An open posting, so the Jobs page is not empty ────────
-    await Job.findOneAndUpdate(
-      { companyName: "Zoho", title: "Member Technical Staff", source: JOB_SOURCE.PLACEMENT_CELL },
-      {
-        companyName: "Zoho",
-        title: "Member Technical Staff",
-        source: JOB_SOURCE.PLACEMENT_CELL,
-        postedBy: officer._id,
-        role: "Software Engineer",
-        location: "Chennai",
-        ctc: 900000,
-        companyLevel: "dream",
-        companyAbout:
-          "Product company building business software in-house. Hires for " +
-          "long-term product teams rather than for client projects.",
-        requirements:
-          "Written round followed by two technical rounds and an HR round. " +
-          "No bond. Relocation to Chennai required.",
-        minCgpa: 7.5,
-        maxBacklogs: 0,
-        eligibleBranches: ["ISE", "CSE"],
-        eligibleBatches: ["2026"],
-        openings: 12,
-        isActive: true,
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
-    );
-
     // ── PRS, using the existing engine untouched ─────────────
     console.log("\nComputing PRS...");
     for (const [usn, s] of studentByUsn) {
@@ -444,7 +369,7 @@ const run = async () => {
 
     // ── What the rule engine makes of the contrast group ─────
     console.log("\nThe contrast, derived from the records — not written down:");
-    for (const usn of ["4MT22IS001", "4MT22IS014", "4MT22IS022", "4MT22IS033", "4MT22IS041"]) {
+    for (const usn of STUDENTS.map((st) => st.usn)) {
       const s = studentByUsn.get(usn);
       const p = await buildPlacementProfile(s._id);
       const m = p.metrics;
@@ -470,22 +395,9 @@ const run = async () => {
     line("participations", await DriveParticipation.countDocuments());
     line("students with an offer", placed.length);
 
-    console.log(`\nSIGN-IN ACCOUNTS — all of them use the one password: ${PASSWORD}`);
-    console.log("\n   placement officer   officer@mite.ac.in            (unchanged)");
-    for (const f of FACULTY) {
-      console.log(
-        `   faculty · ${f.dept.padEnd(4)}      ${f.email.padEnd(29)}` +
-          (f.keepAccount ? "(unchanged)" : ""),
-      );
-    }
-    console.log("");
-    for (const spec of STUDENTS) {
-      const email = spec.keepAccount ?? spec.email ?? `${spec.usn.toLowerCase()}@mite.ac.in`;
-      console.log(
-        `   student · ${spec.dept.padEnd(4)}      ${email.padEnd(29)}` +
-          `${spec.usn}${spec.keepAccount ? "  (unchanged)" : ""}`,
-      );
-    }
+    console.log(`\nSIGN-IN ACCOUNTS — every one uses the password: ${PASSWORD}\n`);
+    for (const r of ROSTER) console.log(`   ${r.role.padEnd(18)} ${r.email}`);
+    for (const a of admins) console.log(`   ${"admin".padEnd(18)} ${a.email}  (existing, password unchanged)`);
     console.log("");
 
     process.exit(0);

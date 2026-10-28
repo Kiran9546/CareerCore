@@ -1,9 +1,6 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import api from "../api/axios";
-
-const AuthContext = createContext(null);
-
-export const useAuth = () => useContext(AuthContext);
+import { AuthContext } from "./useAuth";
 
 /**
  * Read the cached user out of localStorage. A corrupt `cc_user` value used to

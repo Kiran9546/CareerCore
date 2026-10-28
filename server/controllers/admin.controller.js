@@ -1,25 +1,23 @@
 import User from "../models/User.js";
 import Student from "../models/Student.js";
 import Company from "../models/Company.js";
-import Job from "../models/Job.js";
-import Application from "../models/Application.js";
+import Drive from "../models/Drive.js";
 import Skill from "../models/Skill.js";
 import CareerPath from "../models/CareerPath.js";
 import AptitudeQuestion from "../models/AptitudeQuestion.js";
 import { invalidateAliasMap } from "../services/skillNormalizer.js";
-import { ROLES, APTITUDE_SECTIONS } from "../config/constants.js";
+import { APTITUDE_SECTIONS } from "../config/constants.js";
 
 const normalize = (s) => String(s).toLowerCase().trim().replace(/\s+/g, " ");
 
 export const getPlatformStats = async (req, res, next) => {
   try {
-    const [users, students, companies, jobs, applications, skills, paths, questions] =
+    const [users, students, companies, drives, skills, paths, questions] =
       await Promise.all([
         User.countDocuments(),
         Student.countDocuments(),
         Company.countDocuments(),
-        Job.countDocuments(),
-        Application.countDocuments(),
+        Drive.countDocuments(),
         Skill.countDocuments(),
         CareerPath.countDocuments(),
         AptitudeQuestion.countDocuments(),
@@ -29,20 +27,14 @@ export const getPlatformStats = async (req, res, next) => {
       { $group: { _id: "$role", count: { $sum: 1 } } },
     ]);
 
-    const byStatus = await Application.aggregate([
+    const byStatus = await Drive.aggregate([
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
 
-    const pendingRecruiters = await User.countDocuments({
-      role: ROLES.RECRUITER,
-      isVerified: false,
-    });
-
     res.json({
-      counts: { users, students, companies, jobs, applications, skills, careerPaths: paths, questions },
+      counts: { users, students, companies, drives, skills, careerPaths: paths, questions },
       usersByRole: byRole.map((r) => ({ role: r._id, count: r.count })),
-      applicationsByStatus: byStatus.map((r) => ({ status: r._id, count: r.count })),
-      pendingRecruiters,
+      drivesByStatus: byStatus.map((r) => ({ status: r._id, count: r.count })),
     });
   } catch (err) { next(err); }
 };
@@ -69,26 +61,6 @@ export const toggleUserActive = async (req, res, next) => {
 
     user.isActive = !user.isActive;
     await user.save();
-    res.json({ user });
-  } catch (err) { next(err); }
-};
-
-export const verifyRecruiter = async (req, res, next) => {
-  try {
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: "User not found" });
-    if (user.role !== ROLES.RECRUITER) {
-      return res.status(400).json({ message: "Only recruiter accounts require verification" });
-    }
-
-    user.isVerified = !user.isVerified;
-    await user.save();
-
-    await Company.findOneAndUpdate(
-      { recruiterUserId: user._id },
-      { isVerified: user.isVerified }
-    );
-
     res.json({ user });
   } catch (err) { next(err); }
 };

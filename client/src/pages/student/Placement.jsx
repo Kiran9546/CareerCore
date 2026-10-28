@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import PlacementProfileView from "../../components/PlacementProfileView";
 import MyResultSubmissions from "../../components/MyResultSubmissions";
+import RecruitmentHistory from "../../components/drive/RecruitmentHistory";
 import { PLACEMENT_STATUS_LABEL, PLACEMENT_STATUS_STYLE } from "../../utils/placement";
 
 /**
@@ -61,6 +62,10 @@ export default function Placement() {
           them here. If something looks wrong, contact the placement cell.
         </p>
       </div>
+
+      {/* Current standing and every drive round by round, including drives
+          run through the recruitment workflow. */}
+      <RecruitmentHistory endpoint="/student/placement/status" linkDrives />
 
       <PlacementProfileView profile={profile} showIdentity={false} />
 

@@ -136,28 +136,10 @@ export const getReadinessLevel = (prs) =>
   "Not Ready";
 
 // ─────────────────────────────────────────────────────────────
-// Candidate matching (Blueprint 5.6)
-// TEAM-ASSIGNED weights; the multiplicative eligibility gate is a
-// design choice so ineligible candidates score exactly 0 rather than
-// being removed by a separate filter.
-// ─────────────────────────────────────────────────────────────
-export const MATCH_WEIGHTS = {
-  skillOverlap: 0.5,
-  prs: 0.3,
-  cgpa: 0.2,
-};
-
-assertSumsToOne(MATCH_WEIGHTS, "MATCH_WEIGHTS");
-
-/** Mandatory skills count double in the overlap ratio. */
-export const MANDATORY_SKILL_MULTIPLIER = 2;
-
-// ─────────────────────────────────────────────────────────────
 // Notification thresholds (Blueprint 5.8) — TEAM-ASSIGNED
 // ─────────────────────────────────────────────────────────────
 export const LOW_PRS_THRESHOLD = 50;
 export const LOW_PRS_DAYS = 14;
-export const JOB_ALERT_MATCH_THRESHOLD = 70;
 
 // ─────────────────────────────────────────────────────────────
 // Roles & enums
@@ -172,6 +154,11 @@ export const ROLES = {
   PLACEMENT_OFFICER: "placement_officer",
   ADMIN: "admin",
 };
+
+/** Shown to recruiter accounts, whose area was removed with job postings. */
+export const RECRUITER_RETIRED =
+  "Recruiter accounts are no longer supported — companies now reach students " +
+  "through placement drives run by the placement cell.";
 
 /** Staff who may create and manage placement drives. */
 export const DRIVE_MANAGER_ROLES = [ROLES.PLACEMENT_OFFICER, ROLES.ADMIN];
@@ -208,7 +195,6 @@ export const APTITUDE_SECTIONS = [
 // ─────────────────────────────────────────────────────────────
 // Limits
 // ─────────────────────────────────────────────────────────────
-export const MAX_RESUME_SIZE_MB = 5;
 export const PRS_HISTORY_CAP = 50;
 export const MAX_SKILL_PROFICIENCY = 5;
 
@@ -311,8 +297,12 @@ export const PLACEMENT_RULES = {
 };
 
 // ─────────────────────────────────────────────────────────────
-// JOB POSTINGS BY THE PLACEMENT CELL
+// JOB POSTINGS (RETIRED)
 // ─────────────────────────────────────────────────────────────
+//
+// The job-postings module was removed in favour of placement drives. These
+// constants remain only because the Job and Application models — and the
+// records already stored with them — still use them.
 
 /**
  * Where a job posting came from.
@@ -341,9 +331,6 @@ export const COMPANY_LEVELS = [
 
 export const COMPANY_LEVEL_VALUES = COMPANY_LEVELS.map((l) => l.value);
 
-/** Attachment limits for job documents (JDs and company material). */
-export const JD_MAX_SIZE_MB = 10;
-export const JD_MAX_FILES = 5;
 
 // ─────────────────────────────────────────────────────────────
 // PLACEMENT ROSTER ORDERING
@@ -527,17 +514,159 @@ export const SUBMISSION_STATUS = {
   REJECTED: "rejected",
 };
 
-export const SUBMISSION_STATUS_LABEL = {
-  requested: "Awaiting student",
-  submitted: "Awaiting faculty review",
-  forwarded: "Forwarded to placement cell",
-  rejected: "Declined",
-};
-
 /** Who originated a set of results, kept for provenance on the official record. */
 export const RESULT_SOURCE = {
   STUDENT: "student",
   FACULTY: "faculty",
   PLACEMENT_CELL: "placement_cell",
   IMPORT: "spreadsheet_import",
+};
+
+// ─────────────────────────────────────────────────────────────
+// MANAGED RECRUITMENT WORKFLOW
+// ─────────────────────────────────────────────────────────────
+//
+// A drive created through the recruitment workflow ("managed") runs the
+// whole process inside CareerCore: eligibility is calculated, students are
+// notified and register themselves, and each configured round carries its
+// own attendance and result records. Drives recorded the original way
+// ("recorded") keep the fixed four-stage model above and are untouched.
+//
+// Managed results are mirrored onto DriveParticipation.stages when a round is
+// finalized (see ROUND_TYPES.legacyStage), so the placement profile, the rule
+// engine and the export keep a single source for every derived metric.
+
+export const DRIVE_WORKFLOW = {
+  RECORDED: "recorded",
+  MANAGED: "managed",
+};
+
+/** Lifecycle of a managed drive. The recorded statuses above stay valid. */
+export const MANAGED_DRIVE_STATUS = {
+  DRAFT: "draft",
+  OPEN: "open",
+  REGISTRATION_CLOSED: "registration_closed",
+  IN_PROGRESS: "in_progress",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
+};
+
+/**
+ * Allowed status moves for a managed drive. Anything not listed is rejected
+ * by the server, whatever the client sends.
+ */
+export const MANAGED_STATUS_TRANSITIONS = {
+  draft: ["open", "cancelled"],
+  open: ["registration_closed", "cancelled"],
+  registration_closed: ["open", "in_progress", "cancelled"],
+  in_progress: ["completed", "cancelled"],
+  completed: [],
+  cancelled: [],
+};
+
+/** Statuses in which a drive counts as active on the dashboards. */
+export const ACTIVE_DRIVE_STATUSES = [
+  "open",
+  "registration_closed",
+  "in_progress",
+  // recorded drives
+  "planned",
+  "ongoing",
+];
+
+/**
+ * The predefined round vocabulary. Officers pick from this list; they never
+ * type a round name. `legacyStage` is the four-stage bucket the round's
+ * outcome is mirrored into for the placement profile.
+ */
+export const ROUND_TYPES = [
+  { code: "aptitude", label: "Aptitude Test", legacyStage: "aptitude" },
+  { code: "coding", label: "Coding Test", legacyStage: "technical" },
+  { code: "group_discussion", label: "Group Discussion", legacyStage: "interview" },
+  { code: "technical", label: "Technical Interview", legacyStage: "technical" },
+  { code: "f2f", label: "Face-to-Face Interview", legacyStage: "interview" },
+  { code: "hr", label: "HR Interview", legacyStage: "interview" },
+];
+
+export const ROUND_TYPE_CODES = ROUND_TYPES.map((r) => r.code);
+export const ROUND_TYPE_LABEL = Object.fromEntries(ROUND_TYPES.map((r) => [r.code, r.label]));
+
+/** Starting templates offered when no template has been saved yet. Stored
+ *  as ordinary editable templates on first use, not consulted afterwards. */
+export const DEFAULT_INTERVIEW_TEMPLATES = [
+  { key: "software", name: "Software Recruitment", rounds: ["aptitude", "coding", "technical", "hr"] },
+  { key: "service", name: "Service Company", rounds: ["aptitude", "group_discussion", "technical", "hr"] },
+];
+
+export const ROUND_STATUS = {
+  PENDING: "pending",
+  SCHEDULED: "scheduled",
+  FINALIZED: "finalized",
+};
+
+export const ROUND_MODES = ["offline", "online"];
+
+export const ATTENDANCE = {
+  UNMARKED: "unmarked",
+  APPEARED: "appeared",
+  ABSENT: "absent",
+};
+
+export const ROUND_RESULT = {
+  PENDING: "pending",
+  PASSED: "passed",
+  FAILED: "failed",
+};
+
+export const REGISTRATION_STATUS = {
+  REGISTERED: "registered",
+  WITHDRAWN: "withdrawn",
+};
+
+export const OFFER_STATUS = ["pending", "accepted", "declined", "revoked"];
+
+/**
+ * Who may reopen a finalized round. Kept narrower than DRIVE_MANAGER_ROLES on
+ * purpose: unlocking an official result is the exceptional path, and every
+ * use is written to the audit log with a mandatory reason.
+ */
+export const ROUND_REOPEN_ROLES = [ROLES.ADMIN];
+
+/** Who may change the college-wide participation policy. */
+export const POLICY_EDITOR_ROLES = [ROLES.PLACEMENT_OFFICER, ROLES.ADMIN];
+
+/**
+ * What happens when a student who already holds a final selection tries to
+ * register for another drive.
+ */
+export const PARTICIPATION_POLICY = {
+  BLOCK_SELECTED: "block_selected",
+  ALLOW_ALL: "allow_all",
+  HIGHER_PACKAGE_ONLY: "higher_package_only",
+};
+
+export const PARTICIPATION_POLICY_LABEL = {
+  block_selected: "A selected student cannot register for another drive",
+  allow_all: "A selected student may continue participating",
+  higher_package_only: "A selected student may register only for a higher package",
+};
+
+export const DEFAULT_PARTICIPATION_POLICY = PARTICIPATION_POLICY.BLOCK_SELECTED;
+
+/** Hours before a registration deadline at which eligible, unregistered
+ *  students get one reminder. */
+export const DEADLINE_REMINDER_HOURS = 24;
+
+/** Page size ceiling for every paginated student list. */
+export const MAX_PAGE_SIZE = 200;
+
+/** Overall placement standing of one student across managed and recorded drives. */
+export const STUDENT_PLACEMENT_STATE = {
+  SELECTED: "selected",
+  IN_PROCESS: "in_process",
+  REGISTERED: "registered",
+  ELIGIBLE: "eligible",
+  REJECTED: "rejected",
+  WITHDRAWN: "withdrawn",
+  NOT_PLACED: "not_placed",
 };

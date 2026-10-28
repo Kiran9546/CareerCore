@@ -325,8 +325,11 @@ def report(df, skill_names):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=N_SAMPLES)
-    ap.add_argument("--seed-dir", default="../../server/seed")
-    ap.add_argument("--out", default="../data/career_dataset.csv")
+    # Resolved from this file, like train_model.py, so the script works from
+    # any working directory (ml-service/ or ml-service/notebooks/).
+    here = os.path.dirname(os.path.abspath(__file__))
+    ap.add_argument("--seed-dir", default=os.path.normpath(os.path.join(here, "..", "..", "server", "seed")))
+    ap.add_argument("--out", default=os.path.normpath(os.path.join(here, "..", "data", "career_dataset.csv")))
     ap.add_argument("--seed", type=int, default=RANDOM_SEED)
     args = ap.parse_args()
 

@@ -9,6 +9,7 @@ const TYPE_ICON = {
   application_status: "✓",
   recommendation_update: "◇",
   placement_update: "★",
+  drive_opportunity: "◆",
   system: "■",
 };
 
@@ -19,6 +20,7 @@ const TYPE_COLOR = {
   application_status: "text-green-600",
   recommendation_update: "text-purple-600",
   placement_update: "text-emerald-600",
+  drive_opportunity: "text-indigo-600",
   system: "text-slate-400",
 };
 
@@ -125,7 +127,7 @@ export default function NotificationBell() {
                   <span className={`text-sm mt-0.5 ${TYPE_COLOR[n.type]}`}>{TYPE_ICON[n.type]}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-900">{n.title}</p>
-                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.body}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-3 whitespace-pre-line">{n.body}</p>
                     <p className="text-[11px] text-slate-400 mt-1">{timeAgo(n.createdAt)}</p>
                   </div>
                   {!n.isRead && <span className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 shrink-0" />}

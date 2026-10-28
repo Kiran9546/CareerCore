@@ -1,5 +1,6 @@
 import { verifyToken } from "../utils/jwt.js";
 import User from "../models/User.js";
+import { ROLES, RECRUITER_RETIRED } from "../config/constants.js";
 
 /**
  * Verifies the JWT from the Authorization header and attaches
@@ -21,6 +22,10 @@ export const protect = async (req, res, next) => {
     }
     if (!user.isActive) {
       return res.status(403).json({ message: "Account has been deactivated" });
+    }
+    // A token issued before the recruiter area was retired is refused too.
+    if (user.role === ROLES.RECRUITER) {
+      return res.status(403).json({ message: RECRUITER_RETIRED });
     }
 
     req.user = user;

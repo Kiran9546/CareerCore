@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
-import { STAGES, STAGE_LABEL, DRIVE_STATUS_STYLE, formatDate } from "../../utils/placement";
+import { STAGES, STAGE_LABEL, DRIVE_STATUS_STYLE, DRIVE_STATUS_LABEL, ROUND_SHORT_LABEL as ROUND_LABEL, formatDate } from "../../utils/placement";
+import CloneDriveDialog from "../../components/drive/CloneDriveDialog";
 
+/** Statuses of a drive recorded after the fact (the original form below). */
 const DRIVE_STATUSES = ["planned", "ongoing", "completed", "cancelled"];
+
+/** Every status either kind of drive can be in, for the list filter. */
+const FILTER_STATUSES = ["draft", "open", "registration_closed", "in_progress", "planned", "ongoing", "completed", "cancelled"];
+
 
 const EMPTY = {
   companyName: "",
@@ -21,7 +27,12 @@ const EMPTY = {
 };
 
 /**
- * Drive creation and management for the placement cell.
+ * Drive list and management for the placement cell.
+ *
+ * "Create placement drive" runs the recruitment workflow (company list,
+ * calculated eligibility, notifications, self-registration and per-round
+ * results). "Record past drive" keeps the original form, for entering a drive
+ * whose results arrived after the fact.
  *
  * The stage checkboxes matter more than they look: a drive that does not
  * run a technical round is recorded as such, so a student's profile can
@@ -37,6 +48,7 @@ export default function Drives() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cloning, setCloning] = useState(null);
 
   const load = () => {
     api
@@ -160,19 +172,28 @@ export default function Drives() {
             className={select}
           >
             <option value="">All statuses</option>
-            {DRIVE_STATUSES.map((s) => (
-              <option key={s} value={s}>{s}</option>
+            {FILTER_STATUSES.map((s) => (
+              <option key={s} value={s}>{DRIVE_STATUS_LABEL[s]}</option>
             ))}
           </select>
           <span className="text-sm text-slate-500">{drives.length} drives</span>
         </div>
-        <button
-          onClick={() => (showForm ? cancelEdit() : setShowForm(true))}
-          className="px-3 py-1.5 text-sm rounded-lg bg-slate-900 text-white hover:bg-slate-800"
-        >
-          {showForm ? "Cancel" : "New drive"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => (showForm ? cancelEdit() : setShowForm(true))}
+            className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 hover:bg-slate-50"
+          >
+            {showForm ? "Cancel" : "Record past drive"}
+          </button>
+          <Link
+            to="/placement_officer/drives/new"
+            className="px-3 py-1.5 text-sm rounded-lg bg-slate-900 text-white hover:bg-slate-800"
+          >
+            + Create placement drive
+          </Link>
+        </div>
       </div>
+      {cloning && <CloneDriveDialog drive={cloning} onClose={() => setCloning(null)} />}
 
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3">
@@ -188,7 +209,7 @@ export default function Drives() {
       {showForm && (
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <h3 className="font-semibold text-slate-900 mb-4">
-            {editingId ? "Edit drive" : "New placement drive"}
+            {editingId ? "Edit recorded drive" : "Record a past drive"}
           </h3>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -347,7 +368,7 @@ export default function Drives() {
               <th className="pb-2 font-medium">Role</th>
               <th className="pb-2 font-medium">Date</th>
               <th className="pb-2 font-medium">Eligibility</th>
-              <th className="pb-2 font-medium">Stages</th>
+              <th className="pb-2 font-medium">Rounds</th>
               <th className="pb-2 font-medium">Participants</th>
               <th className="pb-2 font-medium">Offers</th>
               <th className="pb-2 font-medium">Status</th>
@@ -379,31 +400,55 @@ export default function Drives() {
                     : "All branches"}
                 </td>
                 <td className="py-2.5 text-xs text-slate-500">
-                  {(d.stages || []).map((s) => STAGE_LABEL[s]).join(" → ")}
+                  {d.workflow === "managed"
+                    ? [...(d.rounds || [])].sort((a, b) => a.order - b.order).map((r) => ROUND_LABEL[r.type]).join(" → ") || "Not configured"
+                    : (d.stages || []).map((s) => STAGE_LABEL[s]).join(" → ")}
                 </td>
-                <td className="py-2.5 text-slate-600">{d.participantCount}</td>
+                <td className="py-2.5 text-slate-600">
+                  {d.participantCount}
+                  {d.workflow === "managed" && (
+                    <p className="text-xs text-slate-400">of {d.eligibleCount} eligible</p>
+                  )}
+                </td>
                 <td className="py-2.5 font-medium text-slate-900">{d.offerCount}</td>
                 <td className="py-2.5">
                   <span
                     className={`px-2 py-0.5 rounded text-xs ${DRIVE_STATUS_STYLE[d.status] ?? ""}`}
                   >
-                    {d.status}
+                    {DRIVE_STATUS_LABEL[d.status] ?? d.status}
                   </span>
                 </td>
                 <td className="py-2.5 text-right whitespace-nowrap">
+                  {d.workflow === "managed" ? (
+                    <Link
+                      to={`/placement_officer/drives/${d._id}`}
+                      className="text-xs text-slate-600 hover:text-slate-900 underline mr-3"
+                    >
+                      Dashboard
+                    </Link>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => startEdit(d)}
+                        className="text-xs text-slate-600 hover:text-slate-900 underline mr-3"
+                      >
+                        Edit
+                      </button>
+                      <Link
+                        to={`/placement_officer/drives/${d._id}`}
+                        className="text-xs text-slate-600 hover:text-slate-900 underline mr-3"
+                      >
+                        Results
+                      </Link>
+                    </>
+                  )}
                   <button
-                    onClick={() => startEdit(d)}
+                    onClick={() => setCloning(d)}
                     className="text-xs text-slate-600 hover:text-slate-900 underline mr-3"
                   >
-                    Edit
+                    Clone
                   </button>
-                  <Link
-                    to={`/placement_officer/drives/${d._id}`}
-                    className="text-xs text-slate-600 hover:text-slate-900 underline mr-3"
-                  >
-                    Results
-                  </Link>
-                  {d.participantCount === 0 && (
+                  {d.participantCount === 0 && (d.workflow !== "managed" || d.status === "draft") && (
                     <button
                       onClick={() => remove(d)}
                       className="text-xs text-red-600 hover:text-red-800 underline"
