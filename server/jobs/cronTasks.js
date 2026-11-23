@@ -1,4 +1,5 @@
 import cron from "node-cron";
+import { runExclusive } from "./jobLock.js";
 import Student from "../models/Student.js";
 import Notification from "../models/Notification.js";
 import { notify } from "../services/notificationService.js";
@@ -84,31 +85,48 @@ const runSkillReminder = async () => {
   console.log(`[cron] skill reminders sent: ${sent}`);
 };
 
+const MINUTE = 60 * 1000;
+
+/** Live cron tasks, so a graceful shutdown can stop them. */
+const tasks = [];
+
+/**
+ * Schedule `fn` under a cluster-wide lease. Every instance schedules every
+ * job, but only the one that wins the lease for a tick runs it, so adding
+ * API instances never duplicates notifications.
+ */
+const schedule = (expression, name, leaseMs, fn) => {
+  tasks.push(
+    cron.schedule(expression, async () => {
+      try {
+        const n = await runExclusive(`cron:${name}`, leaseMs, fn);
+        if (n) console.log(`[cron] ${name}: ${n}`);
+      } catch (err) {
+        console.error(`[cron] ${name} failed: ${err.message}`);
+      }
+    })
+  );
+};
+
 export const startCronJobs = () => {
   if (process.env.DISABLE_CRON === "true") {
     console.log("[cron] disabled via DISABLE_CRON");
     return;
   }
 
-  // Mondays 09:00
-  cron.schedule("0 9 * * 1", runLowPrsCheck);
-
-  // Wednesdays 09:00
-  cron.schedule("0 9 * * 3", runSkillReminder);
+  // Mondays 09:00 / Wednesdays 09:00
+  schedule("0 9 * * 1", "low-PRS alerts", 60 * MINUTE, runLowPrsCheck);
+  schedule("0 9 * * 3", "skill reminders", 60 * MINUTE, runSkillReminder);
 
   // Recruitment workflow: close registration at the deadline (every 10 min),
   // deadline reminders (hourly), upcoming-round reminders (daily 6pm).
-  const logged = (name, fn) => async () => {
-    try {
-      const n = await fn();
-      if (n) console.log(`[cron] ${name}: ${n}`);
-    } catch (err) {
-      console.error(`[cron] ${name} failed: ${err.message}`);
-    }
-  };
-  cron.schedule("*/10 * * * *", logged("registrations closed", closeExpiredRegistrations));
-  cron.schedule("15 * * * *", logged("registration deadline reminders", remindRegistrationDeadlines));
-  cron.schedule("0 18 * * *", logged("upcoming round reminders", remindUpcomingRounds));
+  schedule("*/10 * * * *", "registrations closed", 5 * MINUTE, closeExpiredRegistrations);
+  schedule("15 * * * *", "registration deadline reminders", 30 * MINUTE, remindRegistrationDeadlines);
+  schedule("0 18 * * *", "upcoming round reminders", 60 * MINUTE, remindUpcomingRounds);
 
   console.log("[cron] scheduled: low-PRS (Mon 9am), skill reminders (Wed 9am), recruitment workflow");
+};
+
+export const stopCronJobs = () => {
+  for (const t of tasks.splice(0)) t.stop();
 };

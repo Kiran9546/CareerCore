@@ -49,12 +49,13 @@ export default function Users() {
           {error}
         </div>
       )}
-      <div className="flex gap-3">
-        <input value={search} onChange={(e) => setSearch(e.target.value)}
+      <div className="flex flex-wrap gap-3">
+        <input type="search" value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name or email…"
-          className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-slate-300" />
-        <select value={role} onChange={(e) => setRole(e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-white">
+          aria-label="Search users by name or email"
+          className="min-w-0 basis-full sm:basis-auto flex-1 px-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-white" />
+        <select value={role} onChange={(e) => setRole(e.target.value)} aria-label="Role"
+          className="min-w-0 max-w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-white">
           <option value="">All roles</option>
           {["student", "recruiter", "faculty", "placement_officer", "admin"].map((r) => (
             <option key={r} value={r}>{r}</option>
@@ -64,6 +65,7 @@ export default function Users() {
 
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <p className="text-sm text-slate-500 mb-4">{shown.length} users</p>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-slate-500 border-b border-slate-200">
@@ -103,6 +105,7 @@ export default function Users() {
             ))}
           </tbody>
         </table>
+        </div>
         {shown.length > 100 && (
           <p className="text-xs text-slate-400 mt-3">Showing first 100 of {shown.length}</p>
         )}

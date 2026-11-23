@@ -10,7 +10,7 @@ export const protect = async (req, res, next) => {
   const header = req.headers.authorization;
 
   if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Not authorized — no token provided" });
+    return res.status(401).json({ message: "Not authorized: no token provided" });
   }
 
   try {
@@ -33,8 +33,8 @@ export const protect = async (req, res, next) => {
   } catch (err) {
     const msg =
       err.name === "TokenExpiredError"
-        ? "Session expired — please log in again"
-        : "Not authorized — invalid token";
+        ? "Your session has expired. Please sign in again"
+        : "Not authorized: invalid token";
     return res.status(401).json({ message: msg });
   }
 };

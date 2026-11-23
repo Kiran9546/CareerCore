@@ -2,6 +2,7 @@ import { useState } from "react";
 import api from "../../api/axios";
 import EligibilityFields from "./EligibilityFields";
 import { formatDateTime, ui } from "../../utils/placement";
+import { confirmAction } from "../ui/confirm";
 
 /**
  * Change a drive's criteria and recalculate. Saving bumps the criteria
@@ -26,8 +27,8 @@ export default function EligibilityPanel({ drive, onSaved, onError }) {
     (r.notified ? `. ${r.notified} newly eligible student(s) notified` : "") + ".";
 
   const save = async () => {
-    if (!value.branches.length) return onError({ response: { data: { message: "No branch selected — choose at least one eligible branch" } } });
-    if (drive.status !== "draft" && !window.confirm("Change the criteria of a published drive? Eligibility will be recalculated; newly eligible students are notified and existing registrations are kept.")) return;
+    if (!value.branches.length) return onError({ response: { data: { message: "No branch selected. Choose at least one eligible branch." } } });
+    if (drive.status !== "draft" && !(await confirmAction("Change the criteria of a published drive? Eligibility will be recalculated; newly eligible students are notified and existing registrations are kept."))) return;
     setBusy(true);
     try {
       const r = await api.put(`/placement/drives/${drive._id}/eligibility`, {

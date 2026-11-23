@@ -400,7 +400,7 @@ export default function ResultsWorkbench() {
                 <option value="">Select a drive…</option>
                 {drives.map((d) => (
                   <option key={d._id} value={d._id}>
-                    {d.companyName} — {d.role} ({formatDate(d.driveDate)})
+                    {d.companyName} · {d.role} ({formatDate(d.driveDate)})
                   </option>
                 ))}
               </select>
@@ -431,6 +431,7 @@ export default function ResultsWorkbench() {
               </button>
             </div>
             <div className="max-h-72 overflow-y-auto border border-slate-200 rounded-lg">
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <tbody>
                   {students.map((s) => (
@@ -460,6 +461,7 @@ export default function ResultsWorkbench() {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
 
@@ -486,7 +488,7 @@ export default function ResultsWorkbench() {
               <select className={input} value={entryStudent} onChange={(e) => setEntryStudent(e.target.value)}>
                 <option value="">Select a student…</option>
                 {students.map((s) => (
-                  <option key={s._id} value={s._id}>{s.name} — {s.usn}</option>
+                  <option key={s._id} value={s._id}>{s.name} · {s.usn}</option>
                 ))}
               </select>
             </div>
@@ -495,7 +497,7 @@ export default function ResultsWorkbench() {
               <select className={input} value={entryDrive} onChange={(e) => setEntryDrive(e.target.value)}>
                 <option value="">Select a drive…</option>
                 {drives.map((d) => (
-                  <option key={d._id} value={d._id}>{d.companyName} — {d.role}</option>
+                  <option key={d._id} value={d._id}>{d.companyName} · {d.role}</option>
                 ))}
               </select>
             </div>
@@ -553,7 +555,7 @@ export default function ResultsWorkbench() {
               2”, “GD”, “HR” and “Round 1…4” are all understood, and a sheet
               with more or fewer rounds than usual still reads. Values like
               “Pass”, “Y”, “Cleared” and “NA” are understood too. Preview
-              first — it shows exactly how the file was read, and what it would
+              first. It shows exactly how the file was read, and what it would
               do, without changing anything.
             </p>
             <button
@@ -589,7 +591,7 @@ export default function ResultsWorkbench() {
               <option value="">Use the company column in the sheet</option>
               {drives.map((d) => (
                 <option key={d._id} value={d._id}>
-                  {d.companyName} — {d.role}
+                  {d.companyName} · {d.role}
                 </option>
               ))}
             </select>
@@ -608,7 +610,7 @@ export default function ResultsWorkbench() {
                 Adds anyone in the sheet who is not here yet, using their USN,
                 name and department. Their department comes from a Department
                 column if the sheet has one, otherwise from the USN itself.
-                CGPA is left at 0 and no password is set — the record exists so
+                CGPA is left at 0 and no password is set. The record exists so
                 results can be attached, and the student claims it by
                 registering.
               </span>
@@ -666,7 +668,7 @@ export default function ResultsWorkbench() {
               {detected.rounds?.length > 0 && (
                 <div>
                   <p className="text-xs text-slate-500 mb-1.5">
-                    Round columns — {detected.rounds.length} found, folded onto the
+                    Round columns: {detected.rounds.length} found, folded onto the
                     rounds this system records
                   </p>
                   <div className="flex flex-wrap gap-1.5">
@@ -688,7 +690,7 @@ export default function ResultsWorkbench() {
               {detected.ignored?.length > 0 && (
                 <div>
                   <p className="text-xs text-slate-500 mb-1.5">
-                    Ignored — nothing in the system matches these
+                    Ignored, because nothing in the system matches these
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {detected.ignored.map((h, i) => (
@@ -753,7 +755,7 @@ export default function ResultsWorkbench() {
                     {preview.dryRun
                       ? createMissing
                         ? "These students will be added when you import"
-                        : "These students are not in CareerCore — tick the box above to add them"
+                        : "These students are not in CareerCore. Tick the box above to add them"
                       : "Added to CareerCore"}
                   </p>
                   <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">

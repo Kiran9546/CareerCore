@@ -13,6 +13,7 @@ import Job from "../models/Job.js";
 import Company from "../models/Company.js";
 import { ROLES } from "../config/constants.js";
 import { OFFICER, FACULTY, STUDENTS } from "./cohortData.js";
+import { assertDevelopmentDatabase, currentDecision } from "./guard.js";
 
 /**
  * CareerCore — development database cleanup
@@ -30,9 +31,9 @@ import { OFFICER, FACULTY, STUDENTS } from "./cohortData.js";
  *   REMOVED every randomly generated demo student, every account left behind
  *          by a test run, and the orphaned rows that pointed at them.
  *
- * DEVELOPMENT ONLY. This deletes user records. It refuses to run against a
- * database whose name does not look like a development one unless --force is
- * passed, because the same connection string style is used in production.
+ * DEVELOPMENT ONLY. This deletes user records. It refuses to run against any
+ * database other than the one declared in DEMO_SEED_DATABASE, and always
+ * when NODE_ENV is production (see seed/guard.js).
  *
  * Usage:
  *   node seed/cleanDatabase.js --dry-run    show what would go, change nothing
@@ -42,7 +43,6 @@ import { OFFICER, FACULTY, STUDENTS } from "./cohortData.js";
 dotenv.config();
 
 const DRY_RUN = process.argv.includes("--dry-run");
-const FORCE = process.argv.includes("--force");
 
 /** The accounts that survive, by email: the demo roster in cohortData.js. */
 const KEEP_EMAILS = [
@@ -70,11 +70,14 @@ const run = async () => {
     const dbName = mongoose.connection.name;
     console.log(`\nConnected to ${dbName}`);
 
-    if (!/dev|test|local|careercore/i.test(dbName) && !FORCE) {
-      throw new Error(
-        `Refusing to clean "${dbName}" — the name does not look like a ` +
-          "development database. Re-run with --force if that is wrong.",
-      );
+    // Only a declared development database (see seed/guard.js). There is no
+    // override flag: a name check alone could not tell a production database
+    // called "careercore" from a development one.
+    if (DRY_RUN) {
+      const d = currentDecision(mongoose.connection);
+      console.log(d.allowed ? "  A real run would be allowed." : `  A real run would be REFUSED: ${d.reason}.`);
+    } else {
+      assertDevelopmentDatabase(mongoose.connection, "db:clean");
     }
 
     if (DRY_RUN) console.log("\nDRY RUN — nothing will be deleted.\n");

@@ -96,7 +96,7 @@ export default function Skills() {
           <input
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Search skills — try 'reactjs' or 'mongo db'"
+            placeholder="Search skills, for example reactjs or mongo db"
             className={input}
           />
           {results.length > 0 && (
@@ -119,10 +119,10 @@ export default function Skills() {
           {skills.map((s) => (
             <div
               key={s.name}
-              className="flex items-center gap-4 px-4 py-3 rounded-lg border border-slate-200"
+              className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 rounded-lg border border-slate-200"
             >
-              <span className="flex-1 text-slate-800">{s.name}</span>
-              <div className="flex gap-1">
+              <span className="min-w-0 basis-full sm:basis-auto flex-1 text-slate-800">{s.name}</span>
+              <div className="flex gap-1" role="group" aria-label={`Proficiency for ${s.name}`}>
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
                     key={n}
@@ -139,7 +139,7 @@ export default function Skills() {
               </div>
               <button
                 onClick={() => remove(s.name)}
-                className="text-sm text-slate-400 hover:text-red-600"
+                className="ml-auto text-sm text-slate-400 hover:text-red-600"
               >
                 Remove
               </button>
@@ -166,7 +166,7 @@ export default function Skills() {
           >
             {busy ? "Saving…" : "Save skills"}
           </button>
-          {msg && <span className="text-sm text-slate-500">{msg}</span>}
+          {msg && <span role="status" className="feedback-in text-sm text-slate-500">{msg}</span>}
         </div>
       </section>
     </div>

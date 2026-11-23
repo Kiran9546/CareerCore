@@ -99,7 +99,7 @@ export const computePRS = async (student, options = {}) => {
     return {
       total: null,
       computable: false,
-      message: "Selected career path no longer exists — please choose another",
+      message: "Selected career path no longer exists. Please choose another",
       partial: {
         academic: round(A),
         certifications: round(C),
@@ -130,7 +130,7 @@ export const computePRS = async (student, options = {}) => {
       skillServiceUnavailable: true,
       message:
         "Skill analysis is unavailable right now, so your PRS can't be recalculated. " +
-        "Your last saved score is unchanged — please try again later.",
+        "Your last saved score is unchanged. Please try again later.",
       partial: {
         academic: round(A),
         certifications: round(C),
@@ -181,6 +181,10 @@ export const computePRS = async (student, options = {}) => {
       similarity: gapResult.similarity,
       matchPercent: gapResult.matchPercent,
       gaps: gapResult.gaps,
+      // Required skills the student already meets ({ skill, importance,
+      // level }), so the dashboard can show the whole requirement, not just
+      // what is missing.
+      matched: gapResult.matched || [],
       matchedCount: gapResult.matchedCount,
       totalGaps: gapResult.totalGaps,
     },

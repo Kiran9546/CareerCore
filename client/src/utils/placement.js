@@ -61,7 +61,7 @@ export const DRIVE_STATUS_STYLE = {
 
 export const CONFIDENCE_LABEL = {
   reliable: "Supported by the recorded results",
-  provisional: "Provisional — limited attempts so far",
+  provisional: "Provisional: limited attempts so far",
   insufficient: "Not enough history",
 };
 
@@ -93,10 +93,10 @@ export const OUTCOME_STYLE = (outcome) => {
  * one, which is the exact confusion this module exists to prevent.
  */
 export const showMetric = (value, suffix = "") =>
-  value === null || value === undefined ? "—" : `${value}${suffix}`;
+  value === null || value === undefined ? "–" : `${value}${suffix}`;
 
 export const formatDate = (d) =>
-  d ? new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "—";
+  d ? new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "–";
 
 // ─── Recruitment workflow (managed drives) ──────────────────
 
@@ -193,7 +193,7 @@ export const OFFER_STATUSES = ["pending", "accepted", "declined", "revoked"];
 export const formatDateTime = (d) =>
   d
     ? new Date(d).toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })
-    : "—";
+    : "–";
 
 /** "2026-10-27T17:00" for a datetime-local input, in local time. */
 export const toLocalInput = (d) => {
@@ -217,14 +217,14 @@ export const errorMessage = (e, fallback) => e?.response?.data?.message || fallb
 export const ui = {
   input: "w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900",
   label: "block text-xs font-medium text-slate-600 mb-1",
-  select: "px-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-white",
+  select: "min-w-0 max-w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-white",
   card: "bg-white rounded-xl border border-slate-200 p-5",
   primary: "px-3 py-1.5 text-sm rounded-lg bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50",
   secondary: "px-3 py-1.5 text-sm rounded-lg border border-slate-300 hover:bg-slate-50 disabled:opacity-50",
   danger: "px-3 py-1.5 text-sm rounded-lg border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50",
   badge: "px-2 py-0.5 rounded text-xs",
-  error: "rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700",
-  notice: "rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700",
+  error: "feedback-in rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700",
+  notice: "feedback-in rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700",
 };
 
 /** Round types, matching ROUND_TYPES on the server. */

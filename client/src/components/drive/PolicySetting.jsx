@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import { ui } from "../../utils/placement";
+import { confirmAction } from "../ui/confirm";
 
 /**
  * The college's participation policy for students who already hold a final
@@ -22,7 +23,7 @@ export default function PolicySetting() {
   }, []);
 
   const change = async (next) => {
-    if (!window.confirm(`Change the participation policy to: "${options[next]}"?`)) return;
+    if (!(await confirmAction(`Change the participation policy to: "${options[next]}"?`))) return;
     try {
       const r = await api.put("/placement/policy", { policy: next });
       setPolicy(r.data.policy);
@@ -39,7 +40,7 @@ export default function PolicySetting() {
         <h3 className="font-semibold text-slate-900">Participation policy</h3>
         <p className="text-xs text-slate-500">What a student who is already finally selected may do</p>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
         {message && <span className="text-xs text-slate-500">{message}</span>}
         <select className={ui.select} value={policy} onChange={(e) => change(e.target.value)} aria-label="Participation policy">
           {Object.entries(options).map(([k, l]) => <option key={k} value={k}>{l}</option>)}

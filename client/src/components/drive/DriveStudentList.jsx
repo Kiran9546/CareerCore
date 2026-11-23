@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../../api/axios";
 import Pager from "./Pager";
 import { formatDate, ui } from "../../utils/placement";
+import { SkeletonRows } from "../ui/Skeleton";
 
 const VIEWS = [
   ["all", "All students"],
@@ -107,7 +108,7 @@ export default function DriveStudentList({ drive, params, setParams, onChanged, 
       </div>
 
       {!data ? (
-        <p className="text-slate-400 text-sm">Loading…</p>
+        <SkeletonRows rows={6} />
       ) : (
         <>
           <div className="overflow-x-auto">
@@ -128,15 +129,15 @@ export default function DriveStudentList({ drive, params, setParams, onChanged, 
                 {data.students.map((s) => (
                   <tr key={s.studentId} className="border-b border-slate-100 align-top">
                     <td className="py-2.5">
-                      <Link to={`/placement_officer/students/${s.studentId}`} className="text-slate-800 hover:underline">{s.name || "—"}</Link>
+                      <Link to={`/placement-officer/students/${s.studentId}`} className="text-slate-800 hover:underline">{s.name || "–"}</Link>
                     </td>
                     <td className="py-2.5 text-slate-600">{s.usn}</td>
                     <td className="py-2.5 text-slate-600">{s.branch}</td>
-                    <td className="py-2.5 text-slate-600">{s.cgpa ?? "—"}</td>
-                    <td className="py-2.5 text-slate-600">{s.backlogs ?? "—"}</td>
+                    <td className="py-2.5 text-slate-600">{s.cgpa ?? "–"}</td>
+                    <td className="py-2.5 text-slate-600">{s.backlogs ?? "–"}</td>
                     {view === "selected" ? (
                       <>
-                        <td className="py-2.5 text-slate-600">{s.offer?.ctc ? `₹${s.offer.ctc} LPA` : "—"}{s.offer?.location ? ` · ${s.offer.location}` : ""}</td>
+                        <td className="py-2.5 text-slate-600">{s.offer?.ctc ? `₹${s.offer.ctc} LPA` : "–"}{s.offer?.location ? ` · ${s.offer.location}` : ""}</td>
                         <td className="py-2.5 text-slate-600">{s.offer?.status || "pending"}</td>
                         <td />
                       </>
@@ -156,7 +157,7 @@ export default function DriveStudentList({ drive, params, setParams, onChanged, 
                         <td className="py-2.5 text-slate-600">
                           {s.registration ? REG_LABEL[s.registration.status] : "Not registered"}
                           {s.registration?.flaggedIneligible && (
-                            <p className="text-[11px] text-amber-700">{s.registration.overridden ? "No longer eligible — override recorded" : "No longer eligible"}</p>
+                            <p className="text-[11px] text-amber-700">{s.registration.overridden ? "No longer eligible (override recorded)" : "No longer eligible"}</p>
                           )}
                         </td>
                         <td className="py-2.5 text-right">

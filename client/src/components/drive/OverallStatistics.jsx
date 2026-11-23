@@ -2,6 +2,36 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
 import { DRIVE_STATUS_LABEL, DRIVE_STATUS_STYLE, formatDate, showMetric, ui } from "../../utils/placement";
+import { Skeleton, SkeletonRows } from "../ui/Skeleton";
+import TiltCard from "../../motion/TiltCard";
+import AnimatedNumber from "../../motion/AnimatedNumber";
+import RecruitmentPipeline from "./RecruitmentPipeline";
+import ErrorState from "../ui/ErrorState";
+
+/** The statistics layout in grey, so nothing jumps when the numbers arrive. */
+function StatisticsSkeleton() {
+  return (
+    <div role="status" aria-label="Loading placement statistics" className="space-y-5">
+      <Skeleton className="h-4 w-48" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        {Array.from({ length: 7 }, (_, i) => (
+          <div key={i} className="rounded-xl border border-slate-200 bg-white p-4">
+            <Skeleton className="h-7 w-12" />
+            <Skeleton className="mt-2 h-3 w-20" />
+          </div>
+        ))}
+      </div>
+      <div className="grid lg:grid-cols-3 gap-5">
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i} className="rounded-xl border border-slate-200 bg-white p-5">
+            <Skeleton className="h-4 w-36" />
+            <SkeletonRows rows={4} className="mt-5" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Placement statistics across every drive — recorded and recruitment
@@ -14,6 +44,7 @@ export default function OverallStatistics({ batch, branch }) {
   const [companyId, setCompanyId] = useState("");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     api.get("/placement/companies?limit=200").then((r) => setCompanies(r.data.companies)).catch(() => {});
@@ -31,17 +62,26 @@ export default function OverallStatistics({ batch, branch }) {
         setError("");
       })
       .catch((e) => setError(e.response?.data?.message || "Could not load placement statistics"));
-  }, [batch, branch, companyId]);
+  }, [batch, branch, companyId, attempt]);
 
-  if (error) return <div className={`${ui.card} text-sm text-slate-500`}>{error}</div>;
-  if (!data) return <p className="text-slate-400">Loading…</p>;
+  if (error)
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          setError("");
+          setAttempt((a) => a + 1);
+        }}
+      />
+    );
+  if (!data) return <StatisticsSkeleton />;
   const t = data.totals;
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="font-semibold text-slate-900">Placement statistics{batch ? ` — batch ${batch}` : ""}</h3>
+          <h3 className="font-semibold text-slate-900">Placement statistics{batch ? ` (batch ${batch})` : ""}</h3>
           <p className="text-xs text-slate-500">{data.definitions.population}</p>
         </div>
         <select className={ui.select} value={companyId} onChange={(e) => setCompanyId(e.target.value)} aria-label="Company">
@@ -54,22 +94,27 @@ export default function OverallStatistics({ batch, branch }) {
         {[
           ["Total students", t.totalStudents],
           ["Students placed", t.placedStudents],
-          ["Placement %", showMetric(t.placementPercentage, "%")],
+          ["Placement %", t.placementPercentage, "%"],
           ["Companies visited", t.companiesVisited],
           ["Active drives", t.activeDrives],
           ["In recruitment now", t.studentsInRecruitment],
           ["Final selections", t.finalSelections],
-        ].map(([label, value]) => (
-          <div key={label} className="bg-white rounded-xl border border-slate-200 p-4">
-            <p className="text-2xl font-bold text-slate-900">{value}</p>
+        ].map(([label, value, suffix], i) => (
+          <TiltCard key={label} className="rise-in bg-white rounded-xl border border-slate-200 p-4" style={{ "--i": i }}>
+            <p className="text-2xl font-bold text-slate-900">
+              <AnimatedNumber value={value} suffix={value === null || value === undefined ? "" : suffix} />
+            </p>
             <p className="text-xs text-slate-500 mt-1">{label}</p>
-          </div>
+          </TiltCard>
         ))}
       </div>
+
+      <RecruitmentPipeline totals={t} definitions={data.definitions} />
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className={ui.card}>
           <h4 className="font-semibold text-slate-900 mb-3">Branch-wise placement</h4>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="text-left text-slate-500 border-b border-slate-200"><th className="pb-2 font-medium">Branch</th><th className="pb-2 font-medium text-right">Students</th><th className="pb-2 font-medium text-right">Placed</th><th className="pb-2 font-medium text-right">%</th></tr></thead>
             <tbody>
@@ -80,21 +125,24 @@ export default function OverallStatistics({ batch, branch }) {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
 
         <div className={ui.card}>
           <h4 className="font-semibold text-slate-900 mb-3">Company-wise selections</h4>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="text-left text-slate-500 border-b border-slate-200"><th className="pb-2 font-medium">Company</th><th className="pb-2 font-medium text-right">Drives</th><th className="pb-2 font-medium text-right">Selected</th><th className="pb-2 font-medium text-right">Top CTC</th></tr></thead>
             <tbody>
               {data.companyWise.map((c) => (
                 <tr key={`${c.companyId || c.company}`} className="border-b border-slate-100">
-                  <td className="py-2">{c.company}</td><td className="py-2 text-right">{c.drives}</td><td className="py-2 text-right font-medium">{c.selections}</td><td className="py-2 text-right">{c.highestCtc ? `₹${c.highestCtc}` : "—"}</td>
+                  <td className="py-2">{c.company}</td><td className="py-2 text-right">{c.drives}</td><td className="py-2 text-right font-medium">{c.selections}</td><td className="py-2 text-right">{c.highestCtc ? `₹${c.highestCtc}` : "–"}</td>
                 </tr>
               ))}
               {!data.companyWise.length && <tr><td colSpan={4} className="py-4 text-center text-slate-400">No drives yet.</td></tr>}
             </tbody>
           </table>
+          </div>
         </div>
 
         <div className={`${ui.card} space-y-4`}>
@@ -113,7 +161,7 @@ export default function OverallStatistics({ batch, branch }) {
             <ul className="space-y-1.5">
               {data.activeDrives.map((d) => (
                 <li key={d._id} className="text-sm flex justify-between gap-2">
-                  <Link to={`/placement_officer/drives/${d._id}`} className="text-slate-800 hover:underline">{d.companyName} · {d.role}</Link>
+                  <Link to={`/placement-officer/drives/${d._id}`} className="text-slate-800 hover:underline">{d.companyName} · {d.role}</Link>
                   <span className={`${ui.badge} ${DRIVE_STATUS_STYLE[d.status] ?? ""}`}>{DRIVE_STATUS_LABEL[d.status]}</span>
                 </li>
               ))}

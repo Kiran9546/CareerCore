@@ -16,6 +16,7 @@ import {
   registerStudent,
   withdrawStudent,
   registrationOpen,
+  participationPolicyBlock,
 } from "../services/recruitmentService.js";
 import { studentRecruitmentHistory } from "../services/placementStatsService.js";
 
@@ -53,6 +54,8 @@ const publicDrive = (d) => ({
   status: d.status,
   criteria: describeEligibility(d.eligibility),
   process: [...(d.rounds || [])].sort((a, b) => a.order - b.order).map((r) => ROUND_TYPE_LABEL[r.type]),
+  createdAt: d.createdAt,
+  updatedAt: d.updatedAt,
 });
 
 /** GET /api/student/drives — opportunities and drives I registered for. */
@@ -74,21 +77,26 @@ export const listMyDrives = handle(async (req, res) => {
     .lean();
 
   const now = new Date();
-  res.json({
-    drives: drives
-      // An eligible-only drive that closed before I registered is no longer
-      // an opportunity; it stays visible only if I took part.
-      .filter((d) => regByDrive.has(String(d._id)) || d.status === MANAGED_DRIVE_STATUS.OPEN)
-      .map((d) => {
-        const p = regByDrive.get(String(d._id));
-        return {
-          ...publicDrive(d),
-          registrationStatus: p?.registrationStatus || (p ? REGISTRATION_STATUS.REGISTERED : null),
-          finalStatus: p?.stages?.final?.status,
-          canRegister: registrationOpen(d, now) && (!p || p.registrationStatus === REGISTRATION_STATUS.WITHDRAWN),
-        };
-      }),
-  });
+  const shown = drives
+    // An eligible-only drive that closed before I registered is no longer
+    // an opportunity; it stays visible only if I took part.
+    .filter((d) => regByDrive.has(String(d._id)) || d.status === MANAGED_DRIVE_STATUS.OPEN);
+  const rows = await Promise.all(
+    shown.map(async (d) => {
+      const p = regByDrive.get(String(d._id));
+      const open = registrationOpen(d, now) && (!p || p.registrationStatus === REGISTRATION_STATUS.WITHDRAWN);
+      // The placement policy can rule out an otherwise open drive.
+      const blockedReason = open ? await participationPolicyBlock(student, d) : null;
+      return {
+        ...publicDrive(d),
+        registrationStatus: p?.registrationStatus || (p ? REGISTRATION_STATUS.REGISTERED : null),
+        finalStatus: p?.stages?.final?.status,
+        canRegister: open && !blockedReason,
+        blockedReason,
+      };
+    }),
+  );
+  res.json({ drives: rows });
 });
 
 /** GET /api/student/drives/:id — detail, my rounds and results. */
@@ -113,6 +121,8 @@ export const getMyDrive = handle(async (req, res) => {
   const mine = history?.drives.find((d) => String(d.driveId) === String(drive._id)) || null;
   const verdict = evaluateStudent(student, drive.eligibility.toObject());
   const registered = participation?.registrationStatus === REGISTRATION_STATUS.REGISTERED;
+  const open = registrationOpen(drive) && (!participation || participation.registrationStatus === REGISTRATION_STATUS.WITHDRAWN);
+  const blockedReason = open ? await participationPolicyBlock(student, drive) : null;
 
   res.json({
     drive: publicDrive(drive),
@@ -132,7 +142,8 @@ export const getMyDrive = handle(async (req, res) => {
           withdrawnAt: participation.withdrawnAt,
         }
       : null,
-    canRegister: registrationOpen(drive) && (!participation || participation.registrationStatus === REGISTRATION_STATUS.WITHDRAWN),
+    canRegister: open && !blockedReason,
+    blockedReason,
     canWithdraw:
       registered &&
       [MANAGED_DRIVE_STATUS.OPEN, MANAGED_DRIVE_STATUS.REGISTRATION_CLOSED].includes(drive.status) &&

@@ -147,8 +147,21 @@ studentSchema.index({ updatedAt: -1 }); // "recently active students" queries
 /**
  * Append a PRS snapshot, capped to prevent unbounded document growth.
  * MongoDB documents have a hard 16 MB limit.
+ *
+ * The PRS is recomputed on every dashboard load, so an unchanged score
+ * within a day of the last snapshot is not appended again: otherwise the
+ * history fills with copies of one value and the trend chart goes flat.
  */
+const SNAPSHOT_REPEAT_MS = 24 * 60 * 60 * 1000;
 studentSchema.methods.pushPrsSnapshot = function (score, breakdown) {
+  const last = this.prsHistory[this.prsHistory.length - 1];
+  if (
+    last &&
+    last.score === score &&
+    Date.now() - new Date(last.computedAt).getTime() < SNAPSHOT_REPEAT_MS
+  ) {
+    return;
+  }
   this.prsHistory.push({ score, breakdown, computedAt: new Date() });
   if (this.prsHistory.length > PRS_HISTORY_CAP) {
     this.prsHistory = this.prsHistory.slice(-PRS_HISTORY_CAP);

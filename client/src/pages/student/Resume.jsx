@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useState, useRef } from "react";
-import api from "../../api/axios";
-import html2pdf from "html2pdf.js";
+import api, { fileUrl } from "../../api/axios";
+import { ResumeSkeleton } from "../../components/ui/Skeleton";
 
 /* ── A4 geometry ────────────────────────────────────────────────────────────
    The preview renders real A4 sheets rather than one long scrolling column,
@@ -117,6 +117,7 @@ function Sheet({ offset, windowH, height, screen, children }) {
   return (
     <div
       data-rz-sheet=""
+      className="keep-palette"
       style={{
         width: `${PAGE_W_MM}mm`,
         height: `${height}px`,
@@ -279,7 +280,7 @@ function buildResumeBlocks({ p, form, ed }) {
         <tbody>
           <tr>
             <td style={{ verticalAlign: "top", padding: 0 }}>
-              <h1
+              <h2
                 style={{
                   fontSize: "20pt",
                   fontWeight: "bold",
@@ -287,7 +288,7 @@ function buildResumeBlocks({ p, form, ed }) {
                 }}
               >
                 {p.name}
-              </h1>
+              </h2>
               {form.phone && (
                 <p style={contactLine}>
                   <b>Phone:</b> {form.phone}
@@ -324,8 +325,10 @@ function buildResumeBlocks({ p, form, ed }) {
                 }}
               >
                 <img
-                  src={form.photoUrl}
-                  alt=""
+                  src={fileUrl(form.photoUrl)}
+                  alt={p.name ? `Photo of ${p.name}` : "Resume photo"}
+                  width="82"
+                  height="100"
                   style={{
                     width: "82px",
                     height: "100px",
@@ -474,7 +477,7 @@ function buildResumeBlocks({ p, form, ed }) {
           <div style={rowBetween}>
             <b>
               {it.role}
-              {it.company ? ` — ${it.company}` : ""}
+              {it.company ? ` | ${it.company}` : ""}
             </b>
             <b style={{ whiteSpace: "nowrap" }}>{it.duration}</b>
           </div>
@@ -512,7 +515,7 @@ function buildResumeBlocks({ p, form, ed }) {
     "CERTIFICATIONS",
     (form.certifications || []).filter((c) => c.name),
     (c) =>
-      `${c.name}${c.issuer ? ` — ${c.issuer}` : ""}${c.year ? `, ${c.year}` : ""}`,
+      `${c.name}${c.issuer ? `, ${c.issuer}` : ""}${c.year ? `, ${c.year}` : ""}`,
   );
   bulletSection(
     "achievement",
@@ -737,6 +740,9 @@ export default function Resume() {
         ),
       );
 
+      // Loaded on demand: the PDF library is most of this page's weight and
+      // is only needed at the moment of download.
+      const { default: html2pdf } = await import("html2pdf.js");
       await html2pdf()
         .set({
           margin: 0,
@@ -769,7 +775,7 @@ export default function Resume() {
       </div>
     );
   }
-  if (!form) return <p className="text-slate-400">Loading…</p>;
+  if (!form) return <ResumeSkeleton />;
 
   const p = data.profile;
   const ed = form.education || {};
@@ -792,7 +798,7 @@ export default function Resume() {
     pageCount * PAGE_H_PX + (pageCount - 1) * PAGE_GAP_PX + pageCount * 22;
 
   return (
-    <div className="grid grid-cols-2 gap-6 items-start">
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
       {/* ─────────────── FORM ─────────────── */}
       <div className="max-h-[calc(100vh-12rem)] overflow-y-auto pr-2">
         <div className="sticky top-0 bg-slate-50 pb-3 z-10 flex gap-2">
@@ -811,12 +817,12 @@ export default function Resume() {
             {exporting ? "Generating…" : "Download PDF"}
           </button>
           {msg && (
-            <span className="text-sm text-slate-500 self-center">{msg}</span>
+            <span role="status" className="feedback-in text-sm text-slate-500 self-center">{msg}</span>
           )}
         </div>
 
         <Card title="Contact" subtitle="Appears in the header of your resume">
-          <Field label="Photo" hint="Optional — JPG or PNG, under 2 MB">
+          <Field label="Photo" hint="Optional. JPG or PNG, under 2 MB">
             <input
               ref={fileInputRef}
               type="file"
@@ -828,7 +834,7 @@ export default function Resume() {
             {form.photoUrl ? (
               <div className="flex items-center gap-4">
                 <img
-                  src={form.photoUrl}
+                  src={fileUrl(form.photoUrl)}
                   alt="Resume photo"
                   className="w-20 h-24 object-cover rounded border border-slate-300"
                 />
@@ -936,7 +942,7 @@ export default function Resume() {
               className={inputCls}
             />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Years">
               <input
                 value={ed.degree?.yearRange || ""}
@@ -969,7 +975,7 @@ export default function Resume() {
               placeholder="Vidyodaya PU College, Udupi."
             />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Years">
               <input
                 value={ed.twelfth?.yearRange || ""}
@@ -1011,7 +1017,7 @@ export default function Resume() {
               placeholder="School name, City."
             />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Years">
               <input
                 value={ed.tenth?.yearRange || ""}
@@ -1119,7 +1125,7 @@ export default function Resume() {
               </div>
               <input
                 value={pr.subtitle || ""}
-                placeholder="Subtitle — e.g. Ongoing, Final Year Project"
+                placeholder="Subtitle, e.g. Ongoing or Final Year Project"
                 className={`${inputCls} mb-3`}
                 onChange={(e) => {
                   const next = [...form.projects];
@@ -1181,7 +1187,7 @@ export default function Resume() {
                   ×
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                 <input
                   value={it.company || ""}
                   placeholder="Company"
@@ -1391,6 +1397,7 @@ export default function Resume() {
       <div
         ref={measureRef}
         aria-hidden="true"
+        className="keep-palette"
         style={{
           position: "absolute",
           left: "-10000px",
@@ -1416,6 +1423,7 @@ export default function Resume() {
               Hence the separate off-screen positioning wrapper above. */}
           <div
             ref={exportRef}
+            className="keep-palette"
             style={{ width: `${PAGE_W_MM}mm`, background: "#fff" }}
           >
             {offsets.map((offset, i) => (

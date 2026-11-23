@@ -1,8 +1,26 @@
+import { useEffect, useState } from "react";
+import AnimatedNumber from "../motion/AnimatedNumber";
+import { useReducedMotion } from "../motion/motion";
+
+/**
+ * The Placement Readiness Score ring. The ring draws itself from empty to the
+ * student's real score, and the number counts up alongside it; with reduced
+ * motion both appear at once.
+ */
 export default function PRSGauge({ score, level }) {
+  const reduce = useReducedMotion();
   const pct = Math.max(0, Math.min(100, score ?? 0));
   const r = 70;
   const circ = 2 * Math.PI * r;
-  const offset = circ - (pct / 100) * circ;
+
+  // Start empty, then fill on the next frame so the CSS transition runs.
+  const [drawn, setDrawn] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setDrawn(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  const shownPct = reduce || drawn ? pct : 0;
+  const offset = circ - (shownPct / 100) * circ;
 
   const color =
     pct <= 40
@@ -16,13 +34,13 @@ export default function PRSGauge({ score, level }) {
   return (
     <div className="flex flex-col items-center">
       <div className="relative w-44 h-44">
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 160 160">
+        <svg className="w-full h-full -rotate-90" viewBox="0 0 160 160" aria-hidden="true">
           <circle
             cx="80"
             cy="80"
             r={r}
             fill="none"
-            stroke="#e2e8f0"
+            className="stroke-slate-200"
             strokeWidth="12"
           />
           <circle
@@ -35,12 +53,12 @@ export default function PRSGauge({ score, level }) {
             strokeLinecap="round"
             strokeDasharray={circ}
             strokeDashoffset={offset}
-            style={{ transition: "stroke-dashoffset 0.8s ease" }}
+            style={{ transition: "stroke-dashoffset 1s cubic-bezier(0.22, 1, 0.36, 1)" }}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-4xl font-bold text-slate-900">
-            {pct.toFixed(1)}
+            <AnimatedNumber value={pct.toFixed(1)} duration={1000} />
           </span>
           <span className="text-xs text-slate-400 uppercase tracking-wide">
             PRS

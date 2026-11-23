@@ -41,7 +41,7 @@ export const createProfile = async (req, res, next) => {
     if (existing) {
       return res
         .status(409)
-        .json({ message: "Profile already exists — use PUT to update" });
+        .json({ message: "Profile already exists. Use PUT to update" });
     }
 
     const { usn, batch, branch, cgpa, backlogs, phone } = req.body;
@@ -430,7 +430,7 @@ export const getRecommendationsForStudent = async (req, res, next) => {
 
     const prs = await computePRS(student);
     if (prs.skillServiceUnavailable) {
-      return res.status(503).json({ message: "Skill analysis unavailable — ML service is not responding" });
+      return res.status(503).json({ message: "Skill analysis is unavailable because the ML service is not responding" });
     }
     if (!prs.computable) {
       return res.status(400).json({ message: prs.message });

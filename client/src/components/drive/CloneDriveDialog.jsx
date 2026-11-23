@@ -27,7 +27,7 @@ export default function CloneDriveDialog({ drive, onClose }) {
         role,
       });
       onClose();
-      navigate(`/placement_officer/drives/${r.data.drive._id}`, {
+      navigate(`/placement-officer/drives/${r.data.drive._id}`, {
         state: { notice: "Drive cloned as a new draft. Review the configuration before publishing." },
       });
     } catch (e) {
@@ -38,8 +38,8 @@ export default function CloneDriveDialog({ drive, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-40 bg-slate-900/30 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="bg-white rounded-xl border border-slate-200 p-5 w-full max-w-md space-y-4">
+    <div className="modal-backdrop fixed inset-0 z-40 bg-slate-900/30 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="modal-panel bg-white rounded-xl border border-slate-200 p-5 w-full max-w-md space-y-4 shadow-(--cc-shadow-float)">
         <div>
           <h3 className="font-semibold text-slate-900">Clone drive</h3>
           <p className="text-sm text-slate-500">

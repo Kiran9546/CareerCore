@@ -6,6 +6,7 @@ import EligibilityFields from "../../components/drive/EligibilityFields";
 import RoundEditor from "../../components/drive/RoundEditor";
 import Alerts from "../../components/drive/Alerts";
 import { errorMessage, toDateInput, toLocalInput, ui } from "../../utils/placement";
+import { FormSkeleton } from "../../components/ui/Skeleton";
 
 const EMPTY = {
   company: null,
@@ -65,7 +66,7 @@ export default function DriveForm() {
     if (!form.company) return setError("Select a company, or add it as a new company");
     if (!form.role.trim()) return setError("Job role is required");
     if (!form.driveDate) return setError("Drive date is required");
-    if (!editing && !eligibility.branches.length) return setError("No branch selected — choose at least one eligible branch");
+    if (!editing && !eligibility.branches.length) return setError("No branch selected. Choose at least one eligible branch.");
 
     const payload = {
       companyId: form.company._id,
@@ -81,7 +82,7 @@ export default function DriveForm() {
     try {
       if (editing) {
         await api.put(`/placement/drives/${id}`, payload);
-        navigate(`/placement_officer/drives/${id}`);
+        navigate(`/placement-officer/drives/${id}`);
       } else {
         const r = await api.post("/placement/drives", {
           ...payload,
@@ -92,8 +93,8 @@ export default function DriveForm() {
           batches: eligibility.batches,
           rounds: rounds.map((x) => x.type),
         });
-        navigate(`/placement_officer/drives/${r.data.drive._id}`, {
-          state: { notice: `Drive created as a draft — ${r.data.eligibility.eligible} of ${r.data.eligibility.total} students are eligible.` },
+        navigate(`/placement-officer/drives/${r.data.drive._id}`, {
+          state: { notice: `Drive created as a draft. ${r.data.eligibility.eligible} of ${r.data.eligibility.total} students are eligible.` },
         });
       }
     } catch (err) {
@@ -103,14 +104,14 @@ export default function DriveForm() {
     }
   };
 
-  if (!loaded) return error ? <Alerts error={error} /> : <p className="text-slate-400">Loading…</p>;
+  if (!loaded) return error ? <Alerts error={error} /> : <FormSkeleton label="Loading drive" fields={10} />;
   const started = ["in_progress", "completed", "cancelled"].includes(status);
 
   return (
     <form onSubmit={submit} className="space-y-5 max-w-4xl">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-slate-900">{editing ? "Edit drive details" : "Create placement drive"}</h2>
-        <Link to={editing ? `/placement_officer/drives/${id}` : "/placement_officer/drives"} className="text-sm text-slate-500 hover:text-slate-700">
+        <Link to={editing ? `/placement-officer/drives/${id}` : "/placement-officer/drives"} className="text-sm text-slate-500 hover:text-slate-700">
           Cancel
         </Link>
       </div>
@@ -160,7 +161,7 @@ export default function DriveForm() {
           </section>
           <section className={ui.card}>
             <h3 className="font-semibold text-slate-900 mb-1">Interview process</h3>
-            <p className="text-xs text-slate-400 mb-3">Optional now — it can be configured later, before the drive starts.</p>
+            <p className="text-xs text-slate-400 mb-3">Optional now. It can be configured later, before the drive starts.</p>
             <RoundEditor value={rounds} onChange={setRounds} />
           </section>
         </>

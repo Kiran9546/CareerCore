@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import api from "../../api/axios";
+import { SkeletonRows } from "../../components/ui/Skeleton";
 
 const LEVEL_STYLE = {
   "Not Ready": "bg-red-100 text-red-700",
@@ -13,8 +15,10 @@ export default function Students() {
   const [batch, setBatch] = useState("");
   const [branch, setBranch] = useState("");
   const [level, setLevel] = useState("");
-  const [students, setStudents] = useState([]);
-  const [search, setSearch] = useState("");
+  const [result, setResult] = useState({ key: null, students: [], failed: false });
+  const [params] = useSearchParams();
+  // Opened from the search dialog, the USN arrives as ?q=.
+  const [search, setSearch] = useState(() => params.get("q") || "");
 
   useEffect(() => {
     api
@@ -28,10 +32,17 @@ export default function Students() {
     if (batch) q.set("batch", batch);
     if (branch) q.set("branch", branch);
     if (level) q.set("level", level);
-    api.get(`/faculty/students${q.toString() ? `?${q}` : ""}`)
-      .then((r) => setStudents(r.data.students))
-      .catch(() => setStudents([]));
+    const key = q.toString();
+    api.get(`/faculty/students${key ? `?${key}` : ""}`)
+      .then((r) => setResult({ key, students: r.data.students, failed: false }))
+      .catch(() => setResult({ key, students: [], failed: true }));
   }, [batch, branch, level]);
+
+  const filterKey = new URLSearchParams(
+    Object.entries({ batch, branch, level }).filter(([, v]) => v),
+  ).toString();
+  const loading = result.key !== filterKey;
+  const { students, failed } = result;
 
   const shown = students.filter((s) =>
     !search ||
@@ -43,10 +54,11 @@ export default function Students() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-3 items-center">
-        <input value={search} onChange={(e) => setSearch(e.target.value)}
+      <div className="flex flex-wrap gap-3 items-center">
+        <input type="search" value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name or USN…"
-          className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-slate-300" />
+          aria-label="Search students by name or USN"
+          className="min-w-0 basis-full sm:basis-auto flex-1 px-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-white" />
         <select value={batch} onChange={(e) => setBatch(e.target.value)} className={select}>
           <option value="">All batches</option>
           {filters.batches.map((b) => <option key={b} value={b}>{b}</option>)}
@@ -62,8 +74,19 @@ export default function Students() {
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 p-6">
+        {loading ? (
+          <SkeletonRows rows={6} />
+        ) : failed ? (
+          <p className="text-sm text-red-700" role="alert">Students could not be loaded. Refresh the page to try again.</p>
+        ) : !shown.length ? (
+          <p className="py-6 text-center text-sm text-slate-500">
+            {search ? `No students match “${search}”.` : "No students match these filters."}
+          </p>
+        ) : (
+        <>
         <p className="text-sm text-slate-500 mb-4">{shown.length} students</p>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="text-left text-slate-500 border-b border-slate-200">
               <th className="pb-2 font-medium">Student</th>
@@ -87,7 +110,7 @@ export default function Students() {
                 <td className="py-2.5 text-slate-600">{s.cgpa}</td>
                 <td className="py-2.5 text-slate-600">{s.backlogs}</td>
                 <td className="py-2.5 text-slate-600">{s.skillCount}</td>
-                <td className="py-2.5 text-slate-500 text-xs">{s.careerInterest || "—"}</td>
+                <td className="py-2.5 text-slate-500 text-xs">{s.careerInterest || "–"}</td>
                 <td className="py-2.5 font-semibold text-slate-900">{s.prs}</td>
                 <td className="py-2.5">
                   <span className={`px-2 py-0.5 rounded text-xs ${LEVEL_STYLE[s.readinessLevel] || ""}`}>
@@ -98,6 +121,9 @@ export default function Students() {
             ))}
           </tbody>
         </table>
+        </div>
+        </>
+        )}
       </div>
     </div>
   );

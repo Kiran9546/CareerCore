@@ -7,6 +7,7 @@ import {
   STAGE_LABEL,
   showMetric,
 } from "../../utils/placement";
+import { CardSkeleton } from "../../components/ui/Skeleton";
 
 /**
  * Side-by-side placement comparison.
@@ -83,6 +84,7 @@ export default function Compare() {
           {ids.length} selected {ids.length >= 2 ? "" : "· select at least two"}
         </p>
         <div className="max-h-64 overflow-y-auto">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-slate-500 border-b border-slate-200">
@@ -130,6 +132,7 @@ export default function Compare() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
@@ -138,7 +141,7 @@ export default function Compare() {
           <p className="text-slate-500">{error}</p>
         </div>
       )}
-      {ready && loading && <p className="text-slate-400">Loading…</p>}
+      {ready && loading && <CardSkeleton rows={6} />}
 
       {ready && data && (
         <>
@@ -147,6 +150,7 @@ export default function Compare() {
             <h3 className="font-semibold text-slate-900 mb-4">
               Profile against outcome
             </h3>
+            <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="text-left text-slate-500 border-b border-slate-200">
@@ -154,7 +158,7 @@ export default function Compare() {
                   {data.profiles.map((p) => (
                     <th key={p.studentId} className="pb-2 font-medium">
                       <Link
-                        to={`/placement_officer/students/${p.studentId}`}
+                        to={`/placement-officer/students/${p.studentId}`}
                         className="text-slate-800 hover:underline"
                       >
                         {p.student?.name}
@@ -180,7 +184,7 @@ export default function Compare() {
                     <td className="py-2 text-slate-500">{label}</td>
                     {data.profiles.map((p) => (
                       <td key={p.studentId} className="py-2 text-slate-800">
-                        {get(p) ?? "—"}
+                        {get(p) ?? "–"}
                       </td>
                     ))}
                   </tr>
@@ -235,6 +239,7 @@ export default function Compare() {
                 </tr>
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* ── Stage-by-stage, with comparability caveats ──── */}
@@ -295,7 +300,7 @@ export default function Compare() {
                   </p>
                 ))}
                 <Link
-                  to={`/placement_officer/students/${p.studentId}`}
+                  to={`/placement-officer/students/${p.studentId}`}
                   className="inline-block mt-4 text-xs text-slate-600 underline"
                 >
                   Full placement profile

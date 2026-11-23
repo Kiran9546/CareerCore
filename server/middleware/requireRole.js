@@ -9,7 +9,7 @@ export const requireRole = (...allowed) => (req, res, next) => {
   }
   if (!allowed.includes(req.user.role)) {
     return res.status(403).json({
-      message: `Access denied — requires role: ${allowed.join(" or ")}`,
+      message: `Access denied. Requires role: ${allowed.join(" or ")}`,
     });
   }
   next();

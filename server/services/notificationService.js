@@ -57,7 +57,7 @@ export const notify = async ({ userId, type, title, body, link, metadata, email 
   if (email) {
     const user = await User.findById(userId).select("email name");
     if (user?.email) {
-      const sent = await sendEmail(user.email, `CareerCore — ${title}`, emailTemplate(title, body, link));
+      const sent = await sendEmail(user.email, `CareerCore: ${title}`, emailTemplate(title, body, link));
       if (sent) {
         notification.emailSent = true;
         await notification.save();
@@ -129,3 +129,19 @@ export const markRead = (userId, ids) =>
     { userId, ...(ids?.length ? { _id: { $in: ids } } : {}) },
     { isRead: true }
   );
+/**
+ * Plain-text email, for content written by users (contact messages): text
+ * rather than HTML, so nothing a visitor types is ever rendered as markup.
+ * Returns false when no mail server is configured or sending fails.
+ */
+export const sendTextEmail = async ({ to, subject, text, replyTo }) => {
+  const tx = getTransporter();
+  if (!tx || !to) return false;
+  try {
+    await tx.sendMail({ from: `"CareerCore" <${process.env.SMTP_USER}>`, to, subject, text, replyTo });
+    return true;
+  } catch (err) {
+    console.error(`Email failed to ${to}: ${err.message}`);
+    return false;
+  }
+};

@@ -1,16 +1,19 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
+import Icon from "./ui/Icon";
+import usePresence from "../motion/usePresence";
 
+// Icons from the app's own set (components/ui/Icon), one per notification type.
 const TYPE_ICON = {
-  new_job: "◆",
-  low_prs: "▲",
-  skill_reminder: "●",
-  application_status: "✓",
-  recommendation_update: "◇",
-  placement_update: "★",
-  drive_opportunity: "◆",
-  system: "■",
+  new_job: "briefcase",
+  low_prs: "target",
+  skill_reminder: "book",
+  application_status: "check",
+  recommendation_update: "zap",
+  placement_update: "award",
+  drive_opportunity: "briefcase",
+  system: "bell",
 };
 
 const TYPE_COLOR = {
@@ -18,7 +21,7 @@ const TYPE_COLOR = {
   low_prs: "text-amber-600",
   skill_reminder: "text-slate-500",
   application_status: "text-green-600",
-  recommendation_update: "text-purple-600",
+  recommendation_update: "text-sky-600",
   placement_update: "text-emerald-600",
   drive_opportunity: "text-indigo-600",
   system: "text-slate-400",
@@ -33,6 +36,16 @@ export default function NotificationBell() {
   const [now, setNow] = useState(() => Date.now());
   const ref = useRef(null);
   const navigate = useNavigate();
+  // Ring the bell once whenever the unread count goes up (including on
+  // arrival with unread notifications). Adjusted during render, React's
+  // pattern for state derived from a changing value.
+  const [ring, setRing] = useState(0);
+  const panel = usePresence(open, 140);
+  const [seenUnread, setSeenUnread] = useState(unread);
+  if (unread !== seenUnread) {
+    setSeenUnread(unread);
+    if (unread > seenUnread) setRing((r) => r + 1);
+  }
 
   const load = () => {
     api.get("/notifications")
@@ -44,7 +57,7 @@ export default function NotificationBell() {
     load();
     const t = setInterval(() => {
       setNow(Date.now());
-      api.get("/notifications/unread")
+      api.get("/notifications/unread", { background: true })
         .then((r) => setUnread(r.data.unread))
         .catch(() => {});
     }, 60000);
@@ -97,17 +110,19 @@ export default function NotificationBell() {
   return (
     <div className="relative" ref={ref}>
       <button onClick={toggle}
-        className="relative px-3 py-1.5 text-sm rounded-lg border border-slate-300 hover:bg-slate-50">
-        Notifications
+        aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
+        aria-expanded={open}
+        className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors">
+        <Icon key={ring} name="bell" className="icon-bell w-5 h-5" data-ring={ring ? "" : undefined} />
         {unread > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[11px] font-medium flex items-center justify-center">
+          <span key={unread} className="badge-pop absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-semibold flex items-center justify-center ring-2 ring-white">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
       </button>
 
-      {open && (
-        <div className="absolute right-0 mt-2 w-96 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-[28rem] overflow-hidden flex flex-col">
+      {panel.render && (
+        <div data-closing={panel.closing ? "" : undefined} inert={panel.closing} className="dropdown-in absolute right-0 mt-2 w-[min(24rem,calc(100vw-2rem))] bg-white border border-slate-200 rounded-xl shadow-(--cc-shadow-raised) z-50 max-h-[28rem] overflow-hidden flex flex-col">
           <div className="flex justify-between items-center px-4 py-3 border-b border-slate-100">
             <span className="font-semibold text-slate-900 text-sm">Notifications</span>
             {unread > 0 && (
@@ -124,7 +139,7 @@ export default function NotificationBell() {
                   !n.isRead ? "bg-blue-50/40" : ""
                 }`}>
                 <div className="flex gap-3">
-                  <span className={`text-sm mt-0.5 ${TYPE_COLOR[n.type]}`}>{TYPE_ICON[n.type]}</span>
+                  <Icon name={TYPE_ICON[n.type] ?? "bell"} className={`mt-0.5 h-4 w-4 shrink-0 ${TYPE_COLOR[n.type] ?? "text-slate-400"}`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-900">{n.title}</p>
                     <p className="text-xs text-slate-500 mt-0.5 line-clamp-3 whitespace-pre-line">{n.body}</p>

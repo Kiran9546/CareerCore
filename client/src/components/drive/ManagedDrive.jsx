@@ -10,6 +10,8 @@ import RoundManager from "./RoundManager";
 import SelectionsPanel from "./SelectionsPanel";
 import AuditPanel from "./AuditPanel";
 import CloneDriveDialog from "./CloneDriveDialog";
+import TiltCard from "../../motion/TiltCard";
+import AnimatedNumber from "../../motion/AnimatedNumber";
 import {
   DRIVE_STATUS_LABEL,
   DRIVE_STATUS_STYLE,
@@ -21,6 +23,8 @@ import {
   formatDateTime,
   ui,
 } from "../../utils/placement";
+import { DetailSkeleton } from "../ui/Skeleton";
+import { confirmAction } from "../ui/confirm";
 
 const TABS = [
   ["overview", "Dashboard"],
@@ -44,12 +48,12 @@ const CONFIRM = {
 /** A clickable statistic card. */
 function Stat({ label, value, onClick, hint }) {
   return (
-    <button type="button" onClick={onClick} disabled={!onClick}
-      className={`text-left rounded-xl border border-slate-200 bg-white p-4 ${onClick ? "hover:border-slate-400 hover:shadow-sm" : "cursor-default"}`}>
+    <TiltCard as="button" type="button" onClick={onClick} disabled={!onClick}
+      className={`text-left rounded-xl border border-slate-200 bg-white p-4 ${onClick ? "hover:border-slate-400" : "cursor-default"}`}>
       <p className="text-xs text-slate-500">{label}</p>
-      <p className="text-2xl font-bold text-slate-900 mt-1">{value}</p>
+      <p className="text-2xl font-bold text-slate-900 mt-1"><AnimatedNumber value={value} /></p>
       {hint && <p className="text-[11px] text-slate-400 mt-0.5">{hint}</p>}
-    </button>
+    </TiltCard>
   );
 }
 
@@ -97,7 +101,7 @@ export default function ManagedDrive({ id }) {
 
   const changeStatus = async (to) => {
     let reason;
-    if (!window.confirm(CONFIRM[to])) return;
+    if (!(await confirmAction(CONFIRM[to]))) return;
     if (to === "cancelled") {
       reason = window.prompt("Reason for cancelling (recorded in the audit history):") || undefined;
     }
@@ -117,23 +121,23 @@ export default function ManagedDrive({ id }) {
   };
 
   const remove = async () => {
-    if (!window.confirm("Delete this draft drive?")) return;
+    if (!(await confirmAction("Delete this draft drive?"))) return;
     try {
       await api.delete(`/placement/drives/${id}`);
-      navigate("/placement_officer/drives");
+      navigate("/placement-officer/drives");
     } catch (e) {
       fail(e, "Could not delete the drive");
     }
   };
 
-  if (!data) return error ? <Alerts error={error} /> : <p className="text-slate-400">Loading…</p>;
+  if (!data) return error ? <Alerts error={error} /> : <DetailSkeleton label="Loading drive" stats={8} />;
   const { drive, dashboard, allowedTransitions } = data;
   const s = dashboard.stats;
   const isAdmin = user?.role === "admin";
 
   return (
     <div className="space-y-5">
-      <Link to="/placement_officer/drives" className="text-sm text-slate-500 hover:text-slate-700">← All drives</Link>
+      <Link to="/placement-officer/drives" className="text-sm text-slate-500 hover:text-slate-700">← All drives</Link>
 
       <div className={ui.card}>
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -155,7 +159,7 @@ export default function ManagedDrive({ id }) {
               <button key={t} className={ui.primary} disabled={busy} onClick={() => changeStatus(t)}>{STATUS_ACTION[t]}</button>
             ))}
             {!["completed", "cancelled"].includes(drive.status) && (
-              <Link to={`/placement_officer/drives/${id}/edit`} className={ui.secondary}>Edit details</Link>
+              <Link to={`/placement-officer/drives/${id}/edit`} className={ui.secondary}>Edit details</Link>
             )}
             <button className={ui.secondary} onClick={() => setCloning(true)}>Clone drive</button>
             {allowedTransitions.includes("cancelled") && (
@@ -181,7 +185,7 @@ export default function ManagedDrive({ id }) {
       {tab === "overview" && (
         <div className="space-y-5">
           {dashboard.eligibilityStale && (
-            <div className={ui.error}>The criteria changed since eligibility was last calculated — recalculate on the Eligibility tab.</div>
+            <div className={ui.error}>The criteria changed since eligibility was last calculated. Recalculate on the Eligibility tab.</div>
           )}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <Stat label="Total students" value={s.totalStudents} onClick={() => go({ tab: "students", view: "all" })} />
@@ -222,7 +226,7 @@ export default function ManagedDrive({ id }) {
                       const cell = (n, filter) =>
                         r.counts ? (
                           <button className="underline decoration-dotted hover:text-slate-900" onClick={() => open(filter)}>{n}</button>
-                        ) : "—";
+                        ) : "–";
                       return (
                         <tr key={r._id} className="border-b border-slate-100">
                           <td className="py-2.5 text-slate-800">{i + 1}. {r.name}</td>

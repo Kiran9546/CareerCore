@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
+import { ListSkeleton } from "../../components/ui/Skeleton";
 
 const TYPE_STYLE = {
   course: "bg-blue-100 text-blue-700",
@@ -33,14 +34,14 @@ export default function Recommendations() {
     );
   }
 
-  if (!data) return <p className="text-slate-400">Loading…</p>;
+  if (!data) return <ListSkeleton label="Loading recommendations" />;
 
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="font-semibold text-slate-900 mb-1">Your Priority Gaps</h2>
         <p className="text-sm text-slate-500 mb-4">
-          Targeting <strong className="text-slate-700">{data.careerPath.name}</strong> — resources below are
+          Targeting <strong className="text-slate-700">{data.careerPath.name}</strong>. Resources below are
           ranked by how much they close these gaps.
         </p>
         <div className="flex flex-wrap gap-2">

@@ -79,7 +79,7 @@ const tally = (parts, stage) => {
 
 /** Percentage, or an em dash when there is nothing to divide by. */
 const pctOrDash = (num, den) =>
-  den > 0 ? Math.round((num / den) * 1000) / 10 : "—";
+  den > 0 ? Math.round((num / den) * 1000) / 10 : "–";
 
 export const buildPlacementWorkbook = async (filter = {}) => {
   const studentFilter = {};
@@ -132,14 +132,14 @@ export const buildPlacementWorkbook = async (filter = {}) => {
     { metric: "Students tracked", value: summary.studentsTracked },
     { metric: "Students with drive history", value: summary.studentsWithHistory },
     { metric: "Students placed", value: summary.studentsPlaced },
-    { metric: "Placement %", value: summary.placementPercent ?? "—" },
+    { metric: "Placement %", value: summary.placementPercent ?? "–" },
     { metric: "Total registrations", value: summary.registrations },
     { metric: "Aptitude attempted", value: summary.aptitudeAttempts },
     { metric: "Aptitude cleared", value: summary.aptitudePassed },
-    { metric: "Aptitude pass %", value: summary.aptitudePassPercent ?? "—" },
+    { metric: "Aptitude pass %", value: summary.aptitudePassPercent ?? "–" },
     { metric: "Technical attempted", value: summary.technicalAttempts },
     { metric: "Technical cleared", value: summary.technicalPassed },
-    { metric: "Technical pass %", value: summary.technicalPassPercent ?? "—" },
+    { metric: "Technical pass %", value: summary.technicalPassPercent ?? "–" },
     { metric: "Interviews reached", value: summary.interviewsReached },
     { metric: "Offers", value: summary.offers },
     { metric: "Drives conducted", value: drives.length },
@@ -214,8 +214,8 @@ export const buildPlacementWorkbook = async (filter = {}) => {
       intR: i.attempts, intP: i.passed, intF: i.failed,
       offers: offers.length,
       bestCtc: offers.length
-        ? Math.max(...offers.map((p) => p.stages.final.offer?.ctc || 0)) || "—"
-        : "—",
+        ? Math.max(...offers.map((p) => p.stages.final.offer?.ctc || 0)) || "–"
+        : "–",
       success: pctOrDash(offers.length, attended),
       status: offers.length ? "Placed" : attended ? "Unplaced" : "No history",
       offerCos: offers.map((p) => p.driveId.companyName).join(", "),
@@ -253,7 +253,7 @@ export const buildPlacementWorkbook = async (filter = {}) => {
       company: d.companyName,
       role: d.role,
       date: d.driveDate ? new Date(d.driveDate).toLocaleDateString() : "",
-      ctc: d.ctc ?? "—",
+      ctc: d.ctc ?? "–",
       location: d.location ?? "",
       status: d.status,
       minCgpa: d.eligibility?.minCgpa ?? 0,
@@ -329,8 +329,8 @@ export const buildPlacementWorkbook = async (filter = {}) => {
       final: STATUS_TEXT[p.stages?.final?.status] ?? "Not reached",
       ctc:
         p.stages?.final?.status === FINAL_STATUS.SELECTED
-          ? (p.stages.final.offer?.ctc ?? "—")
-          : "—",
+          ? (p.stages.final.offer?.ctc ?? "–")
+          : "–",
       outcome: outcomeOf(p),
     });
   }

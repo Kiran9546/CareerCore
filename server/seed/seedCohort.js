@@ -22,6 +22,8 @@ import {
   DRIVES, STUDENTS, FACULTY, OFFICER, OFFERS,
   SKILLS_BY_DEPT, PROJECTS_BY_DEPT, CERTIFICATIONS,
 } from "./cohortData.js";
+import { assertDevelopmentDatabase, currentDecision } from "./guard.js";
+import { companyIdForName } from "../services/companyLink.js";
 
 /**
  * CareerCore — demo roster
@@ -111,6 +113,20 @@ const run = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
     console.log(`\nConnected to ${mongoose.connection.name}\n`);
+
+    // Demo accounts and deletions only ever go to a declared development
+    // database (see seed/guard.js). A dry run only reads, so it may look at
+    // any database, and says whether a real run would be allowed.
+    if (DRY_RUN) {
+      const d = currentDecision(mongoose.connection);
+      console.log(
+        d.allowed
+          ? `  A real run would be allowed: ${d.identity} is the declared development database.\n`
+          : `  A real run would be REFUSED for ${d.identity}: ${d.reason}.\n`,
+      );
+    } else {
+      assertDevelopmentDatabase(mongoose.connection, "seed:cohort");
+    }
 
     const skills = await Skill.find({}).select("name");
     const paths = await CareerPath.find({}).select("name code requiredSkills");
@@ -204,7 +220,14 @@ const run = async () => {
     for (const d of DRIVES) {
       const drive = await Drive.findOneAndUpdate(
         { seedKey: d.seedKey },
-        { ...d, status: "completed", stages: ["aptitude", "technical", "interview", "final"], createdBy: officer._id },
+        {
+          ...d,
+          // Linked to a company record, like drives recorded through the app.
+          companyId: DRY_RUN ? undefined : await companyIdForName(d.companyName, officer._id),
+          status: "completed",
+          stages: ["aptitude", "technical", "interview", "final"],
+          createdBy: officer._id,
+        },
         { upsert: true, new: true, setDefaultsOnInsert: true },
       );
       driveByKey.set(d.seedKey, drive);

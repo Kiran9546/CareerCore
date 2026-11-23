@@ -106,7 +106,7 @@ test("complete recruitment workflow: 500 → 200 → 150 → 90 → 60 → 30 �
   assert.equal(published.body.notified, 200);
   assert.equal(await Notification.countDocuments({ type: "drive_opportunity", "metadata.kind": "opportunity" }), 200);
   const sample = await Notification.findOne({ type: "drive_opportunity" });
-  assert.match(sample.title, /ABC Technologies — Placement Opportunity/);
+  assert.match(sample.title, /ABC Technologies: Placement Opportunity/);
   assert.match(sample.body, /CGPA ≥ 7.5/);
   assert.match(sample.body, /Aptitude Test → Coding Test → Technical Interview → HR Interview/);
   assert.equal(sample.link, `/student/drives/${driveId}`);

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
 import { OFFER_STATUSES, toDateInput, ui } from "../../utils/placement";
+import { CardSkeleton } from "../ui/Skeleton";
 
 /** Inline editor for one selected student's offer. */
 function OfferRow({ s, onSave }) {
@@ -18,7 +19,7 @@ function OfferRow({ s, onSave }) {
   };
   return (
     <tr className="border-b border-slate-100">
-      <td className="py-2"><Link to={`/placement_officer/students/${s.studentId}`} className="text-slate-800 hover:underline">{s.name}</Link></td>
+      <td className="py-2"><Link to={`/placement-officer/students/${s.studentId}`} className="text-slate-800 hover:underline">{s.name}</Link></td>
       <td className="py-2 text-slate-600">{s.usn}</td>
       <td className="py-2 text-slate-600">{s.branch}</td>
       <td className="py-2 text-slate-600">{s.cgpa}</td>
@@ -69,7 +70,7 @@ export default function SelectionsPanel({ drive, onError, onNotice }) {
     }
   };
 
-  if (!data) return <p className="text-slate-400">Loading…</p>;
+  if (!data) return <CardSkeleton rows={5} />;
 
   return (
     <div className={ui.card}>
@@ -93,7 +94,7 @@ export default function SelectionsPanel({ drive, onError, onNotice }) {
           <tbody>
             {data.students.map((s) => <OfferRow key={s.participationId} s={s} onSave={save} />)}
             {!data.students.length && (
-              <tr><td colSpan={9} className="py-6 text-center text-slate-400">No final selections yet — they are recorded when the last round is finalized.</td></tr>
+              <tr><td colSpan={9} className="py-6 text-center text-slate-400">No final selections yet. They are recorded when the last round is finalized.</td></tr>
             )}
           </tbody>
         </table>

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../../api/axios";
 import { STAGES, STAGE_LABEL, DRIVE_STATUS_STYLE, DRIVE_STATUS_LABEL, ROUND_SHORT_LABEL as ROUND_LABEL, formatDate } from "../../utils/placement";
 import CloneDriveDialog from "../../components/drive/CloneDriveDialog";
+import { confirmAction } from "../../components/ui/confirm";
 
 /** Statuses of a drive recorded after the fact (the original form below). */
 const DRIVE_STATUSES = ["planned", "ongoing", "completed", "cancelled"];
@@ -143,6 +144,7 @@ export default function Drives() {
   };
 
   const remove = async (d) => {
+    if (!(await confirmAction(`Delete the ${d.role} drive at ${d.companyName}? This cannot be undone.`))) return;
     setError("");
     setNotice("");
     try {
@@ -186,7 +188,7 @@ export default function Drives() {
             {showForm ? "Cancel" : "Record past drive"}
           </button>
           <Link
-            to="/placement_officer/drives/new"
+            to="/placement-officer/drives/new"
             className="px-3 py-1.5 text-sm rounded-lg bg-slate-900 text-white hover:bg-slate-800"
           >
             + Create placement drive
@@ -294,7 +296,7 @@ export default function Drives() {
               <label className={label}>Eligible branches</label>
               <input
                 className={input}
-                placeholder="ISE, CSE — blank means all"
+                placeholder="ISE, CSE (blank means all)"
                 value={form.branches}
                 onChange={(e) => set("branches", e.target.value)}
               />
@@ -303,7 +305,7 @@ export default function Drives() {
               <label className={label}>Eligible batches</label>
               <input
                 className={input}
-                placeholder="2026 — blank means all"
+                placeholder="2026 (blank means all)"
                 value={form.batches}
                 onChange={(e) => set("batches", e.target.value)}
               />
@@ -380,7 +382,7 @@ export default function Drives() {
               <tr key={d._id} className="border-b border-slate-100">
                 <td className="py-2.5">
                   <Link
-                    to={`/placement_officer/drives/${d._id}`}
+                    to={`/placement-officer/drives/${d._id}`}
                     className="text-slate-800 hover:underline"
                   >
                     {d.companyName}
@@ -421,7 +423,7 @@ export default function Drives() {
                 <td className="py-2.5 text-right whitespace-nowrap">
                   {d.workflow === "managed" ? (
                     <Link
-                      to={`/placement_officer/drives/${d._id}`}
+                      to={`/placement-officer/drives/${d._id}`}
                       className="text-xs text-slate-600 hover:text-slate-900 underline mr-3"
                     >
                       Dashboard
@@ -435,7 +437,7 @@ export default function Drives() {
                         Edit
                       </button>
                       <Link
-                        to={`/placement_officer/drives/${d._id}`}
+                        to={`/placement-officer/drives/${d._id}`}
                         className="text-xs text-slate-600 hover:text-slate-900 underline mr-3"
                       >
                         Results

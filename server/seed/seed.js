@@ -7,8 +7,37 @@ import AptitudeQuestion from "../models/AptitudeQuestion.js";
 import LearningResource from "../models/LearningResource.js";
 import Skill from "../models/Skill.js";
 import CareerPath from "../models/CareerPath.js";
+import { currentDecision } from "./guard.js";
 
 dotenv.config();
+
+/**
+ * Two modes:
+ *
+ *   npm run seed          Full seed: inserts missing reference records and
+ *                         updates existing ones to match the JSON files. Only
+ *                         against the declared development database (see
+ *                         seed/guard.js), because it overwrites edits that
+ *                         administrators made to questions, skills or paths.
+ *   npm run seed:missing  Insert-only: adds reference records that do not
+ *                         exist yet and leaves every existing record exactly
+ *                         as it is. Safe for the first load of a production
+ *                         database. Never touches accounts.
+ */
+const INSERT_ONLY = process.argv.includes("--insert-only");
+
+/** Runs the upserts, or in insert-only mode inserts just the missing records. */
+const apply = async (Model, ops) => {
+  if (!INSERT_ONLY) return Model.bulkWrite(ops);
+  const missing = new Map();
+  for (const { updateOne } of ops) {
+    const key = JSON.stringify(updateOne.filter);
+    if (missing.has(key) || (await Model.exists(updateOne.filter))) continue;
+    missing.set(key, { ...updateOne.filter, ...updateOne.update.$set });
+  }
+  if (missing.size) await Model.insertMany([...missing.values()]);
+  return { upsertedCount: missing.size, modifiedCount: 0 };
+};
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -29,7 +58,7 @@ const seedAptitudeQuestions = async () => {
     },
   }));
 
-  const result = await AptitudeQuestion.bulkWrite(ops);
+  const result = await apply(AptitudeQuestion, ops);
   const all = await AptitudeQuestion.find({});
 
   console.log(
@@ -85,7 +114,7 @@ const seedSkills = async () => {
     },
   }));
 
-  const result = await Skill.bulkWrite(ops);
+  const result = await apply(Skill, ops);
 
   const jsonNames = new Set(data.map((s) => normalize(s.name)));
   const stale = await Skill.find({
@@ -154,7 +183,7 @@ const seedCareerPaths = async (skills) => {
     );
   }
 
-  const result = await CareerPath.bulkWrite(ops);
+  const result = await apply(CareerPath, ops);
   const paths = await CareerPath.find({}).sort("name");
 
   console.log(
@@ -189,7 +218,7 @@ const seedLearningResources = async (skills) => {
     };
   });
 
-  const result = await LearningResource.bulkWrite(ops);
+  const result = await apply(LearningResource, ops);
   console.log(`  Upserted: ${result.upsertedCount} new, ${result.modifiedCount} updated`);
 
   if (missing.size) {
@@ -206,6 +235,18 @@ const run = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
     console.log(`\nConnected to database: ${mongoose.connection.name}\n`);
+
+    const d = currentDecision(mongoose.connection);
+    if (INSERT_ONLY) {
+      console.log("Insert-only: missing reference records are added; existing records are left unchanged.\n");
+    } else if (!d.allowed) {
+      throw new Error(
+        `Refusing the full seed against ${d.identity}: ${d.reason}.\n` +
+          "  The full seed overwrites existing skills, career paths, questions and learning resources.\n" +
+          "  To add only what is missing and change nothing that exists, run: npm run seed:missing\n" +
+          `  If this is a development database, declare it in your development .env:\n\n    DEMO_SEED_DATABASE=${d.identity}`,
+      );
+    }
 
     console.log("Seeding skills...");
     const skills = await seedSkills();

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import Pager from "./Pager";
 import { formatDateTime, ui } from "../../utils/placement";
+import { SkeletonRows } from "../ui/Skeleton";
 
 const ACTION_LABEL = {
   "drive.created": "Created the drive",
@@ -62,7 +63,7 @@ export default function AuditPanel({ driveId }) {
       </div>
       {error && <p className="text-sm text-red-700">{error}</p>}
       {!data ? (
-        <p className="text-slate-400 text-sm">Loading…</p>
+        <SkeletonRows rows={6} />
       ) : (
         <>
           <ul className="divide-y divide-slate-100">
@@ -70,7 +71,7 @@ export default function AuditPanel({ driveId }) {
               <li key={e._id} className="py-2.5 text-sm">
                 <p className="text-slate-800">
                   <span className="font-medium">{e.actorName}</span>
-                  <span className="text-slate-400"> ({e.actorRole})</span> — {ACTION_LABEL[e.action] || e.action}
+                  <span className="text-slate-400"> ({e.actorRole})</span>: {ACTION_LABEL[e.action] || e.action}
                   {e.studentUsn && <> · student <span className="font-mono">{e.studentUsn}</span></>}
                   {e.roundName && <> · {e.roundName}</>}
                 </p>

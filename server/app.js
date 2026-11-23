@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import compression from "compression";
+import mongoose from "mongoose";
 import authRoutes from "./routes/auth.routes.js";
 import studentRoutes from "./routes/student.routes.js";
 import facultyRoutes from "./routes/faculty.routes.js";
@@ -10,8 +12,9 @@ import adminRoutes from "./routes/admin.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import placementRoutes from "./routes/placement.routes.js";
 import resultRoutes from "./routes/results.routes.js";
-import path from "path";
-import { fileURLToPath } from "url";
+import contactRoutes from "./routes/contact.routes.js";
+import searchRoutes from "./routes/search.routes.js";
+import { UPLOAD_ROOT } from "./config/paths.js";
 // Load .env before anything reads process.env
 dotenv.config();
 
@@ -23,11 +26,24 @@ dotenv.config();
 const app = express();
 
 // ─── Middleware ──────────────────────────────────────────────
+// Behind a load balancer or reverse proxy every request arrives from the
+// proxy's address. Trusting the first hop makes req.ip the real client, which
+// the rate limiters key on — otherwise one user's failed logins would lock
+// out everyone. TRUST_PROXY takes Express's values (a hop count, "loopback",
+// a subnet list); production defaults to one hop.
+const trustProxy = process.env.TRUST_PROXY || (process.env.NODE_ENV === "production" ? "1" : "");
+if (trustProxy) app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
+
+app.disable("x-powered-by");
 app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(compression());
+
+// CLIENT_URL may list several origins, comma-separated (e.g. the production
+// domain plus a staging or white-labelled domain). The local dev-server
+// origins are allowed only outside production.
 const allowedOrigins = [
-  process.env.CLIENT_URL,
-  "http://localhost:5173",
-  "http://localhost:5174",
+  ...(process.env.CLIENT_URL || "").split(",").map((o) => o.trim().replace(/\/$/, "")),
+  ...(process.env.NODE_ENV === "production" ? [] : ["http://localhost:5173", "http://localhost:5174"]),
 ].filter(Boolean);
 
 app.use(cors({
@@ -43,9 +59,10 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
-if (process.env.NODE_ENV !== "test") app.use(morgan("dev"));
+if (process.env.NODE_ENV !== "test") {
+  app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+}
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use(
   "/uploads",
   (req, res, next) => {
@@ -53,10 +70,13 @@ app.use(
     res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     next();
   },
-  express.static(path.join(__dirname, "uploads"))
+  express.static(UPLOAD_ROOT, { maxAge: "1d" })
 );
 
-// ─── Health check ────────────────────────────────────────────
+// ─── Health checks ───────────────────────────────────────────
+// /api/health  liveness: the process is up (restart it if this fails).
+// /api/ready   readiness: the process can serve traffic, i.e. the database
+//              is connected (take it out of the load balancer if this fails).
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
@@ -65,7 +85,15 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// ─── Routes (added in later steps) ───────────────────────────
+app.get("/api/ready", (req, res) => {
+  const ready = mongoose.connection.readyState === 1;
+  res.status(ready ? 200 : 503).json({
+    status: ready ? "ready" : "unavailable",
+    database: ready ? "connected" : "disconnected",
+  });
+});
+
+// ─── Routes ──────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/api/student", studentRoutes);
 app.use("/api/faculty", facultyRoutes);
@@ -73,6 +101,8 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/placement", placementRoutes);
 app.use("/api/results", resultRoutes);
+app.use("/api/contact", contactRoutes);
+app.use("/api/search", searchRoutes);
 // ─── 404 handler ─────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ message: `Route not found: ${req.originalUrl}` });

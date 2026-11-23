@@ -1,0 +1,125 @@
+# CareerCore web client.
+#
+# Environment (substituted when the container starts):
+#   API_UPSTREAM  where /api and /uploads are proxied, e.g. http://server:4000
+#   SITE_HOST     the preferred host name, e.g. careercore.example.edu.
+#                 When set, any other host name (such as www.) and any request
+#                 that reached the TLS proxy over plain http are sent there
+#                 with a 301, over https. Leave empty to serve every host as-is
+#                 (local use, or when the proxy in front already does this).
+
+# HSTS only on requests that arrived over https.
+map $http_x_forwarded_proto $cc_hsts {
+  https   "max-age=31536000";
+  default "";
+}
+
+server {
+  listen 80;
+  server_name _;
+  root /usr/share/nginx/html;
+
+  # Location headers stay relative, so redirects keep the scheme and host the
+  # visitor used even though this server only sees plain http from the proxy.
+  absolute_redirect off;
+
+  gzip on;
+  gzip_vary on;
+  gzip_types text/plain text/css text/xml application/xml application/json application/javascript application/manifest+json image/svg+xml;
+  gzip_min_length 1024;
+
+  # ── Preferred host and https ─────────────────────────────────────────
+  set $cc_site_host "${SITE_HOST}";
+  set $cc_redirect "";
+  if ($cc_site_host != "") {
+    set $cc_redirect "check";
+  }
+  if ($host = $cc_site_host) {
+    set $cc_redirect "${cc_redirect}-host-ok";
+  }
+  if ($http_x_forwarded_proto = "https") {
+    set $cc_redirect "${cc_redirect}-https";
+  }
+  if ($cc_redirect = "check") {
+    return 301 https://$cc_site_host$request_uri;
+  }
+  if ($cc_redirect = "check-https") {
+    return 301 https://$cc_site_host$request_uri;
+  }
+  if ($cc_redirect = "check-host-ok") {
+    return 301 https://$cc_site_host$request_uri;
+  }
+
+  error_page 404 /404.html;
+
+  # ── Static files ─────────────────────────────────────────────────────
+  # Hashed build assets never change: cache them for a year.
+  location ^~ /assets/ {
+    include /etc/nginx/snippets/cc-headers.conf;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+    try_files $uri =404;
+  }
+  location ^~ /fonts/ {
+    include /etc/nginx/snippets/cc-headers.conf;
+    add_header Cache-Control "public, max-age=2592000";
+    try_files $uri =404;
+  }
+
+  # ── API and uploaded files ───────────────────────────────────────────
+  location ^~ /api/ {
+    proxy_pass ${API_UPSTREAM};
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    client_max_body_size 12m;
+  }
+  location ^~ /uploads/ {
+    proxy_pass ${API_UPSTREAM};
+    proxy_set_header Host $host;
+    # Uploaded photos are never search results.
+    add_header X-Robots-Tag "noindex, nofollow" always;
+  }
+
+  # ── URL clean-up ─────────────────────────────────────────────────────
+  # The placement workspace moved from /placement_officer to /placement-officer.
+  location ^~ /placement_officer {
+    rewrite ^/placement_officer(.*)$ /placement-officer$1 permanent;
+  }
+  # One address per page: no .html, no trailing slash.
+  location = /index.html {
+    return 301 /$is_args$args;
+  }
+  location = /404.html {
+    internal;
+  }
+  location ~ ^/(.+)\.html$ {
+    return 301 /$1$is_args$args;
+  }
+  location ~ ^/(.+)/$ {
+    return 301 /$1$is_args$args;
+  }
+
+  # ── Signed-in workspaces ─────────────────────────────────────────────
+  # One app shell for every workspace URL; it is never indexed.
+  location ~ ^/(student|faculty|placement-officer|admin)(/|$) {
+    include /etc/nginx/snippets/cc-headers.conf;
+    add_header Cache-Control "no-cache";
+    add_header X-Robots-Tag "noindex, nofollow" always;
+    try_files /app.html =404;
+  }
+
+  # ── Public pages ─────────────────────────────────────────────────────
+  # Each is a pre-rendered file: / is index.html, /privacy is privacy.html.
+  # Anything else gets 404.html with a real 404 status.
+  location = / {
+    include /etc/nginx/snippets/cc-headers.conf;
+    add_header Cache-Control "no-cache";
+    try_files /index.html =404;
+  }
+  location / {
+    include /etc/nginx/snippets/cc-headers.conf;
+    add_header Cache-Control "no-cache";
+    try_files $uri $uri.html =404;
+  }
+}

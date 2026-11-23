@@ -51,7 +51,7 @@ export default function RoundEditor({ value, onChange, disabled }) {
         <div className="flex flex-wrap items-center gap-2">
           <label className="text-xs font-medium text-slate-600" htmlFor="tpl">Start from template</label>
           <select id="tpl" className={ui.select} value={templateId} disabled={disabled} onChange={(e) => applyTemplate(e.target.value)}>
-            <option value="">— choose —</option>
+            <option value="">Choose…</option>
             {templates.map((t) => (
               <option key={t._id} value={t._id}>{t.name}: {t.rounds.map(label).join(" → ")}</option>
             ))}
@@ -85,7 +85,7 @@ export default function RoundEditor({ value, onChange, disabled }) {
                 <span className="w-6 text-slate-400">{i + 1}.</span>
                 <span className="flex-1 text-slate-800">{label(r.type)}</span>
                 {r.locked ? (
-                  <span className="text-xs text-slate-400">Started — fixed</span>
+                  <span className="text-xs text-slate-400">Started, cannot change</span>
                 ) : (
                   <span className="flex gap-1">
                     <button type="button" className={ui.secondary} aria-label={`Move ${label(r.type)} up`} disabled={disabled || i <= lockedCount} onClick={() => move(i, -1)}>↑</button>

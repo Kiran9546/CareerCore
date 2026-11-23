@@ -146,7 +146,7 @@ const templateBody = (body) => {
   const name = String(body.name || "").trim();
   if (!name) throw httpError(400, "Template name is required");
   const rounds = Array.isArray(body.rounds) ? body.rounds : [];
-  if (!rounds.length) throw httpError(400, "No interview process selected — a template needs at least one round");
+  if (!rounds.length) throw httpError(400, "No interview process selected. A template needs at least one round");
   if (rounds.some((r) => !ROUND_TYPE_CODES.includes(r))) throw httpError(400, "Unknown round type in template");
   if (new Set(rounds).size !== rounds.length) throw httpError(400, "Duplicate round in template");
   return { name, rounds };

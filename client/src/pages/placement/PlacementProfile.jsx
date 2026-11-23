@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import api from "../../api/axios";
 import PlacementProfileView from "../../components/PlacementProfileView";
 import RecruitmentHistory from "../../components/drive/RecruitmentHistory";
+import { DetailSkeleton } from "../../components/ui/Skeleton";
 
 /**
  * The placement cell's view of one student's placement profile.
@@ -36,23 +37,23 @@ export default function PlacementProfile() {
       <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
         <p className="text-slate-500">{error}</p>
         <Link
-          to={"/placement_officer/students"}
+          to={"/placement-officer/students"}
           className="inline-block mt-4 text-sm text-slate-700 underline"
         >
           Back to students
         </Link>
       </div>
     );
-  if (!profile) return <p className="text-slate-400">Loading…</p>;
+  if (!profile) return <DetailSkeleton label="Loading placement profile" />;
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <Link to={"/placement_officer/students"} className="text-sm text-slate-500 hover:text-slate-700">
+        <Link to={"/placement-officer/students"} className="text-sm text-slate-500 hover:text-slate-700">
           ← All students
         </Link>
         <Link
-          to={`/placement_officer/compare?ids=${profile.studentId}`}
+          to={`/placement-officer/compare?ids=${profile.studentId}`}
           className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 hover:bg-slate-50"
         >
           Compare with another student
@@ -94,7 +95,7 @@ export default function PlacementProfile() {
                   <li key={p._id}>
                     <p className="text-sm text-slate-800">{p.title}</p>
                     <p className="text-xs text-slate-400">
-                      {(p.techStack || []).join(", ") || "—"}
+                      {(p.techStack || []).join(", ") || "–"}
                     </p>
                   </li>
                 ))}

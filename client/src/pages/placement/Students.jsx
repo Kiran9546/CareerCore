@@ -11,7 +11,7 @@ export default function Students() {
           full placement profile, or download the whole batch as a spreadsheet.
         </p>
       </div>
-      <StudentOutcomesTable basePath="/placement_officer" />
+      <StudentOutcomesTable basePath="/placement-officer" />
     </div>
   );
 }

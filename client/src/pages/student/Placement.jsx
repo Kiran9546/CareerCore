@@ -4,6 +4,7 @@ import PlacementProfileView from "../../components/PlacementProfileView";
 import MyResultSubmissions from "../../components/MyResultSubmissions";
 import RecruitmentHistory from "../../components/drive/RecruitmentHistory";
 import { PLACEMENT_STATUS_LABEL, PLACEMENT_STATUS_STYLE } from "../../utils/placement";
+import { DetailSkeleton } from "../../components/ui/Skeleton";
 
 /**
  * The student's own placement journey.
@@ -35,7 +36,7 @@ export default function Placement() {
         <p className="text-slate-500">{error}</p>
       </div>
     );
-  if (!profile) return <p className="text-slate-400">Loading…</p>;
+  if (!profile) return <DetailSkeleton label="Loading your placement journey" />;
 
   return (
     <div className="space-y-5">
@@ -58,7 +59,7 @@ export default function Placement() {
       <div className="rounded-lg bg-slate-50 border border-slate-200 px-4 py-3">
         <p className="text-xs text-slate-600 leading-relaxed">
           These are official records. Stage results are entered and corrected
-          only by the placement cell and authorized faculty — you cannot edit
+          only by the placement cell and authorized faculty. You cannot edit
           them here. If something looks wrong, contact the placement cell.
         </p>
       </div>

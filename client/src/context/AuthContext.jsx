@@ -1,67 +1,55 @@
 import { useState, useEffect } from "react";
 import api from "../api/axios";
 import { AuthContext } from "./useAuth";
+import { loadSession, saveSession, updateUser, clearSession } from "../auth/session";
 
 /**
- * Read the cached user out of localStorage. A corrupt `cc_user` value used to
- * throw straight out of JSON.parse inside the effect and blank the whole app,
- * so a parse failure clears the cache and falls back to signed-out.
+ * `deferSession` is set when React hydrates a pre-rendered public page. That
+ * HTML was rendered signed out, so the first render must be signed out too;
+ * the saved session is applied straight after. Otherwise the session is read
+ * during the first render, which avoids a signed-out flash on workspace pages.
  */
-const readStoredUser = () => {
-  const stored = localStorage.getItem("cc_user");
-  const token = localStorage.getItem("cc_token");
-  if (!stored || !token) return null;
-  try {
-    return JSON.parse(stored);
-  } catch {
-    localStorage.removeItem("cc_user");
-    localStorage.removeItem("cc_token");
-    return null;
-  }
-};
-
-export function AuthProvider({ children }) {
-  // Hydrate on the first render instead of via setState in an effect — that
-  // avoided a cascading render and the signed-out flash on reload.
-  const [user, setUser] = useState(readStoredUser);
-  const [loading, setLoading] = useState(() => !!readStoredUser());
+export function AuthProvider({ children, deferSession = false }) {
+  const [user, setUser] = useState(() => (deferSession ? null : loadSession()?.user ?? null));
+  const [loading, setLoading] = useState(() => !deferSession && !!loadSession());
 
   useEffect(() => {
-    if (!readStoredUser()) return;
+    const session = loadSession();
+    if (!session) return;
+    // Show the cached account at once, then confirm it with the server.
+    if (deferSession) Promise.resolve().then(() => setUser(session.user));
 
+    // Revalidate against the server: the account may have been deactivated
+    // or changed since the session was cached.
     api
       .get("/auth/me")
       .then((res) => {
         setUser(res.data.user);
-        localStorage.setItem("cc_user", JSON.stringify(res.data.user));
+        updateUser(res.data.user);
       })
       .catch(() => {
-        localStorage.removeItem("cc_token");
-        localStorage.removeItem("cc_user");
+        clearSession();
         setUser(null);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [deferSession]);
 
-  const login = async (email, password) => {
+  const login = async (email, password, { remember = false } = {}) => {
     const res = await api.post("/auth/login", { email, password });
-    localStorage.setItem("cc_token", res.data.token);
-    localStorage.setItem("cc_user", JSON.stringify(res.data.user));
+    saveSession(res.data.token, res.data.user, { remember });
     setUser(res.data.user);
     return res.data.user;
   };
 
   const register = async (payload) => {
     const res = await api.post("/auth/register", payload);
-    localStorage.setItem("cc_token", res.data.token);
-    localStorage.setItem("cc_user", JSON.stringify(res.data.user));
+    saveSession(res.data.token, res.data.user);
     setUser(res.data.user);
     return res.data.user;
   };
 
   const logout = () => {
-    localStorage.removeItem("cc_token");
-    localStorage.removeItem("cc_user");
+    clearSession();
     setUser(null);
   };
 

@@ -1,10 +1,9 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { fileURLToPath } from "url";
+import { UPLOAD_ROOT } from "../config/paths.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "resume-photos");
+const UPLOAD_DIR = path.join(UPLOAD_ROOT, "resume-photos");
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 

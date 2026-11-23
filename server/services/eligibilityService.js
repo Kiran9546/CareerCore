@@ -104,15 +104,15 @@ export const evaluateStudent = (student, eligibility = {}) => {
 export const parseEligibilityInput = (body = {}) => {
   const minCgpa = body.minCgpa === undefined || body.minCgpa === "" ? 0 : Number(body.minCgpa);
   if (!Number.isFinite(minCgpa) || minCgpa < 0 || minCgpa > 10) {
-    throw httpError(400, "Invalid CGPA — minimum CGPA must be a number between 0 and 10");
+    throw httpError(400, "Invalid CGPA: minimum CGPA must be a number between 0 and 10");
   }
   const maxBacklogs =
     body.maxBacklogs === undefined || body.maxBacklogs === "" ? 0 : Number(body.maxBacklogs);
   if (!Number.isInteger(maxBacklogs) || maxBacklogs < 0 || maxBacklogs > 50) {
-    throw httpError(400, "Invalid backlog value — maximum backlogs must be a whole number of 0 or more");
+    throw httpError(400, "Invalid backlog value: maximum backlogs must be a whole number of 0 or more");
   }
   const branches = [...new Set((Array.isArray(body.branches) ? body.branches : []).map((b) => String(b).toUpperCase()))];
-  if (!branches.length) throw httpError(400, "No branch selected — choose at least one eligible branch");
+  if (!branches.length) throw httpError(400, "No branch selected. Choose at least one eligible branch.");
   const unknown = branches.filter((b) => !DEPARTMENTS.includes(b));
   if (unknown.length) throw httpError(400, `Unknown branch: ${unknown.join(", ")}`);
 
@@ -244,14 +244,14 @@ export const calculateEligibility = async (drive, actor, { notify = true } = {})
 };
 
 const formatDay = (d) =>
-  d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : "—";
+  d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : "–";
 
 const formatDateTime = (d) =>
   d
     ? new Date(d).toLocaleString("en-IN", {
         day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit",
       })
-    : "—";
+    : "–";
 
 /** The notification text for a new opportunity. */
 export const opportunityMessage = (drive) => {
@@ -265,7 +265,7 @@ export const opportunityMessage = (drive) => {
   ];
   if (rounds.length) lines.push(`Process: ${rounds.map((r) => ROUND_TYPE_LABEL[r.type]).join(" → ")}`);
   return {
-    title: `${drive.companyName} — Placement Opportunity`,
+    title: `${drive.companyName}: Placement Opportunity`,
     body: lines.join("\n"),
   };
 };

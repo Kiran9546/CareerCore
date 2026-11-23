@@ -1,3 +1,38 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "redirects": [
+    { "source": "/placement_officer", "destination": "/placement-officer", "statusCode": 301 },
+    { "source": "/placement_officer/:path*", "destination": "/placement-officer/:path*", "statusCode": 301 }
+  ],
+  "rewrites": [
+    { "source": "/:workspace(student|faculty|placement-officer|admin)", "destination": "/app" },
+    { "source": "/:workspace(student|faculty|placement-officer|admin)/:path*", "destination": "/app" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/fonts/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=2592000" }]
+    },
+    {
+      "source": "/:workspace(student|faculty|placement-officer|admin)/:path*",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/:workspace(student|faculty|placement-officer|admin)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    }
+  ]
 }

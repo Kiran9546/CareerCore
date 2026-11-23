@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
+import { confirmAction } from "../../components/ui/confirm";
 
 export default function Skills() {
   const [skills, setSkills] = useState([]);
@@ -33,6 +34,8 @@ export default function Skills() {
   };
 
   const remove = async (id) => {
+    const skill = skills.find((s) => s._id === id);
+    if (!(await confirmAction(`Delete the skill "${skill?.name ?? "this skill"}"? Students who list it keep it on their profile, but it leaves the taxonomy.`))) return;
     setMsg("");
     try {
       await api.delete(`/admin/skills/${id}`);
@@ -54,13 +57,13 @@ export default function Skills() {
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="font-semibold text-slate-900 mb-1">Add Skill</h2>
         <p className="text-sm text-slate-500 mb-4">
-          Aliases must be unique across the entire taxonomy — duplicates are rejected.
+          Aliases must be unique across the entire taxonomy. Duplicates are rejected.
         </p>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="Skill name" className={input} />
           <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className={`${input} bg-white`}>
+            className={`${input} min-w-0 bg-white`}>
             <option value="">Category…</option>
             {categories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -71,14 +74,14 @@ export default function Skills() {
             Add skill
           </button>
         </div>
-        {msg && <p className="text-sm text-slate-600 mt-3">{msg}</p>}
+        {msg && <p role="status" className="feedback-in text-sm text-slate-600 mt-3">{msg}</p>}
       </div>
 
-      <div className="flex gap-3">
-        <input value={search} onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search skills…" className={`flex-1 ${input}`} />
-        <select value={category} onChange={(e) => setCategory(e.target.value)}
-          className={`${input} bg-white`}>
+      <div className="flex flex-wrap gap-3">
+        <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search skills"
+          placeholder="Search skills…" className={`min-w-0 basis-full sm:basis-auto flex-1 bg-white ${input}`} />
+        <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Category"
+          className={`${input} min-w-0 max-w-full bg-white`}>
           <option value="">All categories</option>
           {categories.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>

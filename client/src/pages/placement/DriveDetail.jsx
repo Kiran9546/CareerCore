@@ -11,6 +11,8 @@ import {
   DRIVE_STATUS_STYLE,
   formatDate,
 } from "../../utils/placement";
+import { DetailSkeleton } from "../../components/ui/Skeleton";
+import { confirmAction } from "../../components/ui/confirm";
 
 /**
  * Participant and result management for one drive.
@@ -41,7 +43,7 @@ export default function DriveDetail() {
   }, [id]);
 
   if (error) return <p className="text-slate-500">{error}</p>;
-  if (!workflow) return <p className="text-slate-400">Loading…</p>;
+  if (!workflow) return <DetailSkeleton label="Loading drive" />;
   return workflow === "managed" ? <ManagedDrive key={id} id={id} /> : <RecordedDriveDetail key={id} id={id} />;
 }
 
@@ -132,6 +134,7 @@ function RecordedDriveDetail({ id }) {
   };
 
   const removeParticipant = async (p) => {
+    if (!(await confirmAction(`Remove ${p.student?.name ?? p.name ?? "this student"} from the drive? Their recorded results for it are removed too.`))) return;
     setError("");
     setNotice("");
     try {
@@ -148,14 +151,14 @@ function RecordedDriveDetail({ id }) {
       <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
         <p className="text-slate-500">{error}</p>
         <Link
-          to="/placement_officer/drives"
+          to="/placement-officer/drives"
           className="inline-block mt-4 text-sm text-slate-700 underline"
         >
           Back to drives
         </Link>
       </div>
     );
-  if (!drive) return <p className="text-slate-400">Loading…</p>;
+  if (!drive) return <DetailSkeleton label="Loading drive" />;
 
   const shownEligible = eligible.filter(
     (s) =>
@@ -171,7 +174,7 @@ function RecordedDriveDetail({ id }) {
   return (
     <div className="space-y-5">
       <Link
-        to="/placement_officer/drives"
+        to="/placement-officer/drives"
         className="text-sm text-slate-500 hover:text-slate-700"
       >
         ← All drives
@@ -255,6 +258,7 @@ function RecordedDriveDetail({ id }) {
             and eligibility is re-checked on the server when they are registered.
           </p>
           <div className="max-h-72 overflow-y-auto">
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-slate-500 border-b border-slate-200">
@@ -306,6 +310,7 @@ function RecordedDriveDetail({ id }) {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}
@@ -353,7 +358,7 @@ function RecordedDriveDetail({ id }) {
                         title={
                           editable
                             ? undefined
-                            : `Locked — the student has not cleared the ${
+                            : `Locked: the student has not cleared the ${
                                 STAGE_LABEL[
                                   orderedStages[orderedStages.indexOf(stage) - 1]
                                 ]
@@ -382,7 +387,7 @@ function RecordedDriveDetail({ id }) {
 
                 <td className="py-2.5 text-right whitespace-nowrap">
                   <Link
-                    to={`/placement_officer/students/${p.student._id}`}
+                    to={`/placement-officer/students/${p.student._id}`}
                     className="text-xs text-slate-600 hover:text-slate-900 underline mr-3"
                   >
                     Profile

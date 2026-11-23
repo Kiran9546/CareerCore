@@ -164,7 +164,7 @@ export const applyStages = async ({
         skipped.push({
           stage,
           reason:
-            `cannot record ${stage} — ${previous} is ` +
+            `cannot record ${stage}: ${previous} is ` +
             `"${participation.stages[previous]?.status ?? "not_reached"}"`,
         });
         continue;
@@ -548,7 +548,7 @@ export const parseResultsWorkbook = async (buffer, opts = {}) => {
     throw Object.assign(
       new Error(
         "Could not identify a student column. The sheet needs a column of " +
-          "USNs — it can be called USN, Reg No, Roll No or similar. " +
+          "USNs. It can be called USN, Reg No, Roll No or similar. " +
           `Row ${headerRow} of "${sheet.name}" reads: ` +
           (Array.isArray(seen)
             ? seen.filter(Boolean).map((v) => String(v)).join(" | ").slice(0, 300)
@@ -562,7 +562,7 @@ export const parseResultsWorkbook = async (buffer, opts = {}) => {
     throw Object.assign(
       new Error(
         "Found students but no round columns. Add at least one column for a " +
-          "round — Aptitude, Technical, Interview, Final, or Round 1, Round 2 " +
+          "round: Aptitude, Technical, Interview, Final, or Round 1, Round 2 " +
           "and so on.",
       ),
       { status: 400, detected },
@@ -670,7 +670,7 @@ export const parseResultsWorkbook = async (buffer, opts = {}) => {
         reason: outOfScope
           ? `This student is in ${branch}, not ${opts.department}`
           : candidate.creatable
-            ? "Not in CareerCore yet — tick “Create students missing from CareerCore” to add them"
+            ? "Not in CareerCore yet. Tick “Create students missing from CareerCore” to add them"
             : "Not in CareerCore, and the department could not be worked out " +
               "from the sheet or the USN. Add a Department column.",
       });
@@ -691,7 +691,7 @@ export const parseResultsWorkbook = async (buffer, opts = {}) => {
         rowNumber, usn,
         reason: company
           ? `No drive found for "${company}"${role ? ` (${role})` : ""}`
-          : "No company column on this sheet — pick a drive to apply the whole file to",
+          : "No company column on this sheet. Pick a drive to apply the whole file to",
       });
       continue;
     }
@@ -798,7 +798,7 @@ export const buildImportTemplate = async () => {
     { c: "CTC (LPA)", d: "Optional, only read when Final is Selected. Plain number, e.g. 7.5" },
     { c: "", d: "" },
     { c: "Note", d: "A round can only be recorded as passed if the previous round was passed. Rows that break that are reported back and skipped, not guessed at." },
-    { c: "Note", d: "\"Not reached\" is not a failure — it means the student never sat that round, and it is never counted as an attempt." },
+    { c: "Note", d: "\"Not reached\" is not a failure. It means the student never sat that round, and it is never counted as an attempt." },
   ]);
   const nhead = notes.getRow(1);
   nhead.font = { bold: true, color: { argb: "FFFFFFFF" } };

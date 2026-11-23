@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
+import { confirmAction } from "../../components/ui/confirm";
 
 const SECTIONS = ["quantitative", "logical", "verbal", "technical"];
 const LABELS = ["A", "B", "C", "D"];
@@ -41,14 +42,32 @@ export default function Questions() {
     }
   };
 
-  const toggle = async (id) => { await api.patch(`/admin/questions/${id}/toggle`); load(); };
-  const remove = async (id) => { await api.delete(`/admin/questions/${id}`); load(); };
+  const toggle = async (id) => {
+    setMsg("");
+    try {
+      await api.patch(`/admin/questions/${id}/toggle`);
+      load();
+    } catch (e) {
+      setMsg(e.response?.data?.message || "Could not change the question");
+    }
+  };
+  const remove = async (id) => {
+    if (!(await confirmAction("Delete this question from the bank? Past test attempts keep their scores."))) return;
+    setMsg("");
+    try {
+      await api.delete(`/admin/questions/${id}`);
+      setMsg("Question deleted");
+      load();
+    } catch (e) {
+      setMsg(e.response?.data?.message || "Could not delete the question");
+    }
+  };
 
   const input = "px-3 py-1.5 text-sm rounded-lg border border-slate-300 w-full";
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {SECTIONS.map((s) => {
           const count = bySection.find((b) => b.section === s)?.count || 0;
           return (
@@ -72,11 +91,11 @@ export default function Questions() {
         </button>
       </div>
 
-      {msg && <p className="text-sm text-slate-600">{msg}</p>}
+      {msg && <p role="status" className="feedback-in text-sm text-slate-600">{msg}</p>}
 
       {showForm && (
         <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <select value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })}
               className={`${input} bg-white`}>
               {SECTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -142,7 +161,7 @@ export default function Questions() {
                   </div>
                   <p className="text-sm text-slate-800">{q.questionText}</p>
                   <p className="text-xs text-slate-400 mt-1">
-                    Answer: {q.correctOption} — {q.options.find((o) => o.label === q.correctOption)?.text}
+                    Answer: {q.correctOption} · {q.options.find((o) => o.label === q.correctOption)?.text}
                   </p>
                 </div>
                 <div className="flex gap-2 ml-4">

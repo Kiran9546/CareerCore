@@ -14,6 +14,7 @@ import {
   formatDate,
   ui,
 } from "../../utils/placement";
+import { CardSkeleton } from "../ui/Skeleton";
 
 /**
  * Overall placement status and drive-by-drive history, round by round.
@@ -32,7 +33,7 @@ export default function RecruitmentHistory({ endpoint, linkDrives = false }) {
   }, [endpoint]);
 
   if (error) return <div className={`${ui.card} text-sm text-slate-500`}>{error}</div>;
-  if (!data) return <p className="text-slate-400">Loading…</p>;
+  if (!data) return <CardSkeleton rows={4} />;
   const o = data.overall;
 
   return (
@@ -74,7 +75,7 @@ export default function RecruitmentHistory({ endpoint, linkDrives = false }) {
                   const style = managed ? RESULT_STYLE[r.result] : STATUS_STYLE[r.result];
                   return (
                     <span key={r.roundId || i} className={`${ui.badge} ${r.attendance === "absent" ? "bg-amber-100 text-amber-700" : style || "bg-slate-50 text-slate-400"}`}>
-                      {r.name}: {r.attendance === "absent" ? "Absent" : label || (r.entered ? "Awaited" : "—")}
+                      {r.name}: {r.attendance === "absent" ? "Absent" : label || (r.entered ? "Awaited" : "–")}
                     </span>
                   );
                 })}

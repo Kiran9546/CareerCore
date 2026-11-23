@@ -44,7 +44,7 @@ export const register = async (req, res, next) => {
     // self-served — otherwise anyone could POST role:"admin" and take over.
     if (!SELF_REGISTERABLE_ROLES.includes(role)) {
       return res.status(403).json({
-        message: "This role cannot be self-registered — contact the placement cell",
+        message: "This role cannot be self-registered. Contact the placement cell",
       });
     }
 

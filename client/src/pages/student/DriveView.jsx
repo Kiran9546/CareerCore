@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api from "../../api/axios";
+import CopyButton from "../../components/ui/CopyButton";
 import {
   ATTENDANCE_LABEL,
   DRIVE_OUTCOME_LABEL,
@@ -15,6 +16,8 @@ import {
   formatDateTime,
   ui,
 } from "../../utils/placement";
+import { DetailSkeleton } from "../../components/ui/Skeleton";
+import { confirmAction } from "../../components/ui/confirm";
 
 /**
  * One drive from the student's side: what it is, whether they can register,
@@ -38,7 +41,7 @@ export default function DriveView() {
   useEffect(load, [load]);
 
   const act = async (action) => {
-    if (action === "withdraw" && !window.confirm("Withdraw your registration? You can register again only while registration is open.")) return;
+    if (action === "withdraw" && !(await confirmAction("Withdraw your registration? You can register again only while registration is open."))) return;
     setBusy(true);
     setError("");
     try {
@@ -53,7 +56,7 @@ export default function DriveView() {
     }
   };
 
-  if (!data) return error ? <div className={`${ui.card} text-center text-slate-500`}>{error}</div> : <p className="text-slate-400">Loading…</p>;
+  if (!data) return error ? <div className={`${ui.card} text-center text-slate-500`}>{error}</div> : <DetailSkeleton label="Loading drive" stats={0} className="max-w-4xl" />;
   const { drive, me, registration, progress } = data;
 
   return (
@@ -97,8 +100,15 @@ export default function DriveView() {
           {data.canWithdraw && (
             <button className={ui.secondary} disabled={busy} onClick={() => act("withdraw")}>Withdraw registration</button>
           )}
-          {!data.canRegister && !registration && <span className="text-sm text-slate-500">Registration is closed.</span>}
+          {!data.canRegister && !registration && !data.blockedReason && <span className="text-sm text-slate-500">Registration is closed.</span>}
         </div>
+        {/* The placement policy rules this drive out for you: say why up front
+            rather than offering a Register button that would be refused. */}
+        {data.blockedReason && (
+          <p role="status" className="feedback-in mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
+            {data.blockedReason}
+          </p>
+        )}
       </div>
 
       {progress && (
@@ -129,7 +139,12 @@ export default function DriveView() {
                       {formatDate(r.schedule.date)} {r.schedule.startTime}{r.schedule.endTime ? `–${r.schedule.endTime}` : ""} ·{" "}
                       {r.schedule.mode === "online"
                         ? r.schedule.meetingLink
-                          ? <a href={r.schedule.meetingLink} target="_blank" rel="noreferrer" className="underline">Join online</a>
+                          ? (
+                            <span className="inline-flex items-center gap-1">
+                              <a href={r.schedule.meetingLink} target="_blank" rel="noreferrer" className="underline">Join online</a>
+                              <CopyButton value={r.schedule.meetingLink} label="meeting link" />
+                            </span>
+                          )
                           : "Online"
                         : r.schedule.venue}
                       {r.schedule.instructions && <span className="block text-slate-400">{r.schedule.instructions}</span>}

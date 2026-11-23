@@ -405,7 +405,7 @@ test("reopen: admin only, reason required, audited, refused when downstream has 
   await mark(O, drive._id, rounds[1], [ids[0]], "appeared");
   const blocked = await A.post(reopenUrl, { reason: "Wrong result" });
   assert.equal(blocked.status, 409);
-  assert.match(blocked.body.message, /clear them before reopening/);
+  assert.match(blocked.body.message, /clear them before reopening/i);
 
   await mark(O, drive._id, rounds[1], [ids[0]], "unmarked");
   const ok = await A.post(reopenUrl, { reason: "Wrong result for one student" });
@@ -565,6 +565,14 @@ test("participation policy: block, allow, higher package only", async () => {
   const S = api(a.token);
 
   assert.equal((await O.get("/placement/policy")).body.policy, "block_selected");
+  // The student is told before trying: listed, not registrable, with the reason.
+  const listed = (await S.get("/student/drives")).body.drives.find((d) => String(d._id) === String(high._id));
+  assert.ok(listed, "a policy-blocked drive stays listed");
+  assert.equal(listed.canRegister, false);
+  assert.match(listed.blockedReason, /already selected elsewhere/);
+  const detail = (await S.get(`/student/drives/${high._id}`)).body;
+  assert.equal(detail.canRegister, false);
+  assert.match(detail.blockedReason, /already selected elsewhere/);
   let r = await S.post(`/student/drives/${high._id}/register`);
   assert.equal(r.status, 409);
   assert.match(r.body.message, /already selected elsewhere/);
@@ -575,6 +583,9 @@ test("participation policy: block, allow, higher package only", async () => {
   assert.equal((await S.post(`/student/drives/${high._id}/register`)).status, 201);
 
   await O.put("/placement/policy", { policy: "allow_all" });
+  const lowNow = (await S.get(`/student/drives/${low._id}`)).body;
+  assert.equal(lowNow.canRegister, true);
+  assert.equal(lowNow.blockedReason, null);
   assert.equal((await S.post(`/student/drives/${low._id}/register`)).status, 201);
   assert.equal(await AuditLog.countDocuments({ action: "policy.changed" }), 2);
 });
@@ -636,6 +647,16 @@ test("recorded drives keep working and refuse workflow-only operations", async (
   assert.equal(legacy.status, 201);
   const id = legacy.body.drive._id;
   assert.equal(legacy.body.drive.workflow, "recorded");
+  // Recorded drives are linked to a company record, so company filters and
+  // the company picker find them; renaming relinks.
+  const legacyCo = await Company.findOne({ name: "Legacy Co" });
+  assert.ok(legacyCo, "company record created for a recorded drive");
+  assert.equal(String((await Drive.findById(id)).companyId), String(legacyCo._id));
+  assert.equal((await O.put(`/placement/drives/${id}`, { companyName: "Legacy Renamed" })).status, 200);
+  const renamed = await Company.findOne({ name: "Legacy Renamed" });
+  assert.ok(renamed);
+  assert.equal(String((await Drive.findById(id)).companyId), String(renamed._id));
+  assert.equal((await O.put(`/placement/drives/${id}`, { companyName: "Legacy Co" })).status, 200);
   assert.equal((await O.post(`/placement/drives/${id}/participants`, { studentIds: [a.student._id] })).status, 201);
   const p = await DriveParticipation.findOne({ driveId: id });
   assert.equal((await O.patch(`/placement/participations/${p._id}/stage`, { stage: "aptitude", status: "passed" })).status, 200);

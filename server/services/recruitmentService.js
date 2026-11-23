@@ -118,7 +118,7 @@ const isLockedRound = (r) => r.status === ROUND_STATUS.FINALIZED || Boolean(r.pa
  */
 const buildRounds = (drive, requested) => {
   if (!Array.isArray(requested) || !requested.length) {
-    throw httpError(400, "No interview process selected — choose at least one round");
+    throw httpError(400, "No interview process selected. Choose at least one round");
   }
   const types = requested.map((r) => (typeof r === "string" ? r : r?.type));
   const invalid = types.filter((t) => !ROUND_TYPE_CODES.includes(t));
@@ -146,7 +146,7 @@ const buildRounds = (drive, requested) => {
     if (!at || String(at._id) !== String(r._id)) {
       throw httpError(
         409,
-        `${ROUND_TYPE_LABEL[r.type]} has already started — it cannot be removed or moved. Change only the rounds after it.`,
+        `${ROUND_TYPE_LABEL[r.type]} has already started. It cannot be removed or moved. Change only the rounds after it.`,
       );
     }
   });
@@ -241,7 +241,7 @@ export const scheduleRound = async (drive, roundId, body, actor) => {
         dedupeKey: `round:${round._id}:schedule:${stamp}:${s._id}`,
         userId: s.userId,
         type: "placement_update",
-        title: `${drive.companyName} — ${ROUND_TYPE_LABEL[round.type]} rescheduled`,
+        title: `${drive.companyName}: ${ROUND_TYPE_LABEL[round.type]} rescheduled`,
         body: `New schedule: ${date.toLocaleDateString("en-IN", { day: "numeric", month: "long" })} at ${startTime}.`,
         link: `/student/drives/${drive._id}`,
         metadata: { driveId: drive._id, roundId: round._id, kind: "rescheduled" },
@@ -269,9 +269,9 @@ export const ensureDefaultTemplates = async () => {
 // ─────────────────────────────────────────────────────────────
 
 const resolveCompany = async (companyId) => {
-  if (!companyId || !mongoose.isValidObjectId(companyId)) throw httpError(400, "Invalid company — select a company");
+  if (!companyId || !mongoose.isValidObjectId(companyId)) throw httpError(400, "Invalid company. Select a company");
   const company = await Company.findById(companyId).select("name");
-  if (!company) throw httpError(400, "Invalid company — it does not exist");
+  if (!company) throw httpError(400, "Invalid company. It does not exist");
   return company;
 };
 
@@ -416,10 +416,10 @@ export const changeDriveStatus = async (drive, to, actor, { reason } = {}) => {
   if (to === MANAGED_DRIVE_STATUS.OPEN) {
     if (!drive.registrationDeadline) throw httpError(400, "Set a registration deadline before opening registration");
     if (drive.registrationDeadline <= now) throw httpError(400, "The registration deadline must be in the future to open registration");
-    if (!drive.eligibility?.branches?.length) throw httpError(400, "No branch selected — configure eligibility before publishing");
+    if (!drive.eligibility?.branches?.length) throw httpError(400, "No branch selected. Configure eligibility before publishing");
   }
   if (to === MANAGED_DRIVE_STATUS.IN_PROGRESS) {
-    if (!drive.rounds?.length) throw httpError(400, "No interview process selected — configure the rounds before starting the drive");
+    if (!drive.rounds?.length) throw httpError(400, "No interview process selected. Configure the rounds before starting the drive");
     const registered = await DriveParticipation.countDocuments({
       driveId: drive._id,
       registrationStatus: REGISTRATION_STATUS.REGISTERED,
@@ -439,7 +439,7 @@ export const changeDriveStatus = async (drive, to, actor, { reason } = {}) => {
   if (to === MANAGED_DRIVE_STATUS.OPEN && !drive.publishedAt) update.publishedAt = now;
   if (to === MANAGED_DRIVE_STATUS.COMPLETED) update.completedAt = now;
   const flip = await Drive.updateOne({ _id: drive._id, status: from }, { $set: update });
-  if (flip.modifiedCount === 0) throw httpError(409, "The drive status was changed by someone else — reload and try again");
+  if (flip.modifiedCount === 0) throw httpError(409, "The drive status was changed by someone else. Reload and try again");
   Object.assign(drive, update);
 
   await audit(actor, "drive.status_changed", { drive, from, to, note: reason });
@@ -571,6 +571,21 @@ export const setParticipationPolicy = async (policy, actor) => {
   return policy;
 };
 
+/**
+ * Why the participation policy stops this student registering for this
+ * drive, or null when it allows it. Used to refuse a registration and to tell
+ * the student before they try.
+ */
+export const participationPolicyBlock = async (student, drive) => {
+  try {
+    await checkParticipationPolicy(student, drive);
+    return null;
+  } catch (err) {
+    if (err?.status === 409) return err.message;
+    throw err;
+  }
+};
+
 /** Refuse a registration the participation policy does not allow. */
 const checkParticipationPolicy = async (student, drive) => {
   const policy = await getParticipationPolicy();
@@ -587,14 +602,14 @@ const checkParticipationPolicy = async (student, drive) => {
 
   if (policy === PARTICIPATION_POLICY.BLOCK_SELECTED) {
     const at = selections[0].driveId?.companyName || "another company";
-    throw httpError(409, `Student already selected elsewhere (${at}) — the placement policy does not allow registering for another drive`);
+    throw httpError(409, `Student already selected elsewhere (${at}). The placement policy does not allow registering for another drive`);
   }
   // HIGHER_PACKAGE_ONLY
   const best = Math.max(...selections.map((s) => s.stages?.final?.offer?.ctc ?? s.driveId?.ctc ?? 0));
   if (!(Number(drive.ctc) > best)) {
     throw httpError(
       409,
-      `Student already selected elsewhere with a package of ${best} LPA — the placement policy allows registering only for a higher package` +
+      `Student already selected elsewhere with a package of ${best} LPA. The placement policy allows registering only for a higher package` +
         (drive.ctc ? ` (this drive offers ${drive.ctc} LPA)` : " (this drive has no package set)"),
     );
   }
@@ -613,7 +628,7 @@ export const registrationOpen = (drive, now = new Date()) =>
  * from the Student document, never from the request body.
  */
 export const registerStudent = async (drive, student, actor) => {
-  if (!registrationOpen(drive)) throw httpError(409, "Registration closed — this drive is not accepting registrations");
+  if (!registrationOpen(drive)) throw httpError(409, "Registration closed. This drive is not accepting registrations");
 
   // Live check against the current record and criteria, not a cached list.
   const verdict = evaluateStudent(student, drive.eligibility?.toObject?.() ?? drive.eligibility);
@@ -629,7 +644,7 @@ export const registerStudent = async (drive, student, actor) => {
   let participation;
   if (existing) {
     if (existing.registrationStatus !== REGISTRATION_STATUS.WITHDRAWN) {
-      throw httpError(409, "Duplicate registration — you are already registered for this drive");
+      throw httpError(409, "Duplicate registration. You are already registered for this drive");
     }
     // Re-registering after a withdrawal, still before the deadline.
     participation = await DriveParticipation.findOneAndUpdate(
@@ -641,7 +656,7 @@ export const registerStudent = async (drive, student, actor) => {
       },
       { new: true },
     );
-    if (!participation) throw httpError(409, "Duplicate registration — you are already registered for this drive");
+    if (!participation) throw httpError(409, "Duplicate registration. You are already registered for this drive");
   } else {
     try {
       participation = await DriveParticipation.create({
@@ -654,7 +669,7 @@ export const registerStudent = async (drive, student, actor) => {
         history: [{ stage: "registration", from: null, to: "registered", changedAt: new Date(), changedBy: actor._id }],
       });
     } catch (err) {
-      if (err.code === 11000) throw httpError(409, "Duplicate registration — you are already registered for this drive");
+      if (err.code === 11000) throw httpError(409, "Duplicate registration. You are already registered for this drive");
       throw err;
     }
   }

@@ -112,7 +112,7 @@ export const submitTest = async (req, res, next) => {
       await attempt.save();
       return res.status(410).json({
         message:
-          "Time limit exceeded — this attempt has expired. Please start a new test.",
+          "Time limit exceeded. This attempt has expired. Please start a new test.",
         elapsedSeconds: Math.round(elapsedSeconds),
         timeLimitSeconds: attempt.timeLimitSeconds,
       });
@@ -153,7 +153,7 @@ export const submitTest = async (req, res, next) => {
       attempt.status = "expired";
       await attempt.save();
       return res.status(400).json({
-        message: "No questions answered — attempt discarded",
+        message: "No questions answered, so the attempt was discarded",
       });
     }
 

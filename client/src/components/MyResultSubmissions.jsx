@@ -33,7 +33,7 @@ const PASS_FAIL = [
 ];
 const FINAL = [
   ["not_reached", "Did not reach this round"],
-  ["selected", "Selected — got the offer"],
+  ["selected", "Selected, received the offer"],
   ["rejected", "Not selected"],
 ];
 
@@ -119,7 +119,7 @@ export default function MyResultSubmissions() {
         <p className="text-xs text-slate-500 mt-0.5">
           When your department asks you to report how a drive went, it appears
           here. Your faculty reviews what you send and forwards it to the
-          placement cell — you cannot change your official record directly.
+          placement cell. You cannot change your official record directly.
         </p>
       </div>
 

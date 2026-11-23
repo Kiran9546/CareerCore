@@ -1,25 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import api from "../../api/axios";
+import { ROLE_META, workspacePath } from "../../config/roles";
+import AuthFrame, { ErrorNote, PasswordInput } from "./AuthFrame";
+import { fieldClass, labelClass, primaryButton } from "./authStyles";
+import FieldError from "../../components/ui/FieldError";
+import Icon from "../../components/ui/Icon";
 
-const ROLES = [
-  {
-    value: "student",
-    label: "Student",
-    hint: "Build your profile and track placement readiness",
-  },
-  {
-    value: "faculty",
-    label: "Faculty",
-    hint: "Monitor and record results for your own department",
-  },
-  {
-    value: "placement_officer",
-    label: "Placement Officer",
-    hint: "Post openings, run drives and record official results",
-  },
-];
+/** Categories open to self-registration; administrators are provisioned. */
+const ROLES = Object.entries(ROLE_META)
+  .filter(([, m]) => m.selfRegister)
+  .map(([value, m]) => ({ value, ...m }));
+
+const ROLE_HINT = {
+  student: "Build your profile and track placement readiness",
+  faculty: "Monitor and record results for your department",
+  placement_officer: "Run drives and record official results",
+};
 
 export default function Register() {
   const { register } = useAuth();
@@ -34,7 +32,9 @@ export default function Register() {
     department: "",
   });
   const [error, setError] = useState("");
+  const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
+  const sending = useRef(false);
   // Fetched rather than hardcoded: a duplicated list had already drifted out
   // of step with the server, leaving whole departments unable to register.
   const [departments, setDepartments] = useState([]);
@@ -46,18 +46,36 @@ export default function Register() {
       .catch(() => setDepartments([]));
   }, []);
 
-  const submit = async () => {
+  const set = (k) => (e) => {
+    setForm({ ...form, [k]: e.target.value });
+    if (errors[k]) setErrors((x) => ({ ...x, [k]: undefined }));
+  };
+
+  const fieldProps = (k) => ({
+    "aria-invalid": !!errors[k],
+    "aria-describedby": errors[k] ? `${k}-error` : undefined,
+    className: fieldClass(errors[k]),
+  });
+
+  const submit = async (e) => {
+    e.preventDefault();
     setError("");
 
-    if (!form.name.trim()) return setError("Name is required");
-    if (!form.email.trim()) return setError("Email is required");
-    if (form.password.length < 8)
-      return setError("Password must be at least 8 characters");
-    if (form.password !== form.confirm)
-      return setError("Passwords do not match");
-    if (form.role === "faculty" && !form.department)
-      return setError("Select your department");
+    if (sending.current) return;
 
+    const found = {};
+    if (form.role === "faculty" && !form.department) found.department = "Select your department.";
+    if (form.name.trim().length < 2) found.name = "Enter your full name.";
+    if (!form.email.trim()) found.email = "Enter your email address.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) found.email = "Enter a valid email address, like name@college.edu.";
+    if (form.password.length < 8) found.password = "Use at least 8 characters.";
+    if (!form.confirm) found.confirm = "Type the password again.";
+    else if (form.password !== form.confirm) found.confirm = "The passwords do not match.";
+    setErrors(found);
+    const first = Object.keys(found)[0];
+    if (first) return document.getElementById(first)?.focus();
+
+    sending.current = true;
     setBusy(true);
     try {
       const user = await register({
@@ -67,136 +85,147 @@ export default function Register() {
         role: form.role,
         ...(form.role === "faculty" ? { department: form.department } : {}),
       });
-      navigate(`/${user.role}`);
+      navigate(workspacePath(user.role), { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || "Registration failed");
+      setError(
+        err.response?.data?.message ||
+          (err.request ? "Can't reach the server. Check your connection and try again." : "Registration failed"),
+      );
     } finally {
+      sending.current = false;
       setBusy(false);
     }
   };
 
-  const input =
-    "w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900";
-  const label = "block text-sm font-medium text-slate-700 mb-1";
-
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">CareerCore</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Placement Intelligence Platform
-          </p>
-        </div>
+    <AuthFrame
+      title="Create your account"
+      subtitle="Choose the category that matches your role. Each one opens its own workspace."
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-500">
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <ErrorNote>{error}</ErrorNote>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">
-            Create an account
-          </h2>
-
-          {error && (
-            <div className="mb-4 px-3 py-2 rounded bg-red-50 border border-red-200 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          <label className={label}>I am a</label>
-          <div className="space-y-2 mb-5">
-            {ROLES.map((r) => (
-              <button
-                key={r.value}
-                onClick={() => setForm({ ...form, role: r.value })}
-                className={`w-full text-left px-4 py-2.5 rounded-lg border transition-colors ${
-                  form.role === r.value
-                    ? "border-slate-900 bg-slate-50"
-                    : "border-slate-200 hover:border-slate-300"
-                }`}
-              >
-                <p className="text-sm font-medium text-slate-800">{r.label}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{r.hint}</p>
-              </button>
-            ))}
+      <form onSubmit={submit} className="space-y-5" noValidate>
+        <fieldset>
+          <legend className={labelClass}>I am a</legend>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {ROLES.map((r) => {
+              const selected = form.role === r.value;
+              return (
+                <label
+                  key={r.value}
+                  className={`relative flex cursor-pointer flex-col rounded-xl p-3.5 ring-1 ring-inset transition ${
+                    selected ? "bg-indigo-50/60 ring-2 ring-indigo-600" : "ring-slate-200 hover:ring-slate-300"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="role"
+                    value={r.value}
+                    checked={selected}
+                    onChange={set("role")}
+                    className="sr-only"
+                  />
+                  <Icon name={r.icon} className={`w-5 h-5 ${selected ? "text-indigo-600" : "text-slate-400"}`} />
+                  <span className="mt-2 text-sm font-medium text-slate-900">{r.label}</span>
+                  <span className="mt-0.5 text-xs leading-4 text-slate-500">{ROLE_HINT[r.value]}</span>
+                </label>
+              );
+            })}
           </div>
+        </fieldset>
 
-          {/* Faculty are scoped to one department everywhere in the app, so
-              this is required rather than optional — an account without one
-              can see nothing. */}
-          {form.role === "faculty" && (
-            <div className="mb-5">
-              <label className={label}>Department</label>
-              <select
-                value={form.department}
-                onChange={(e) => setForm({ ...form, department: e.target.value })}
-                className={input}
-              >
-                <option value="">Select your department…</option>
-                {departments.map((d) => (
-                  <option key={d.code} value={d.code}>
-                    {d.code} — {d.label}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-slate-500 mt-1">
-                You will only see students from this department.
-              </p>
-            </div>
-          )}
+        {/* Faculty are scoped to one department everywhere in the app, so
+            this is required rather than optional: an account without one
+            can see nothing. */}
+        {form.role === "faculty" && (
+          <div>
+            <label htmlFor="department" className={labelClass}>Department</label>
+            <select id="department" value={form.department} onChange={set("department")} {...fieldProps("department")}>
+              <option value="">Select your department…</option>
+              {departments.map((d) => (
+                <option key={d.code} value={d.code}>
+                  {d.code} · {d.label}
+                </option>
+              ))}
+            </select>
+            <FieldError id="department-error">{errors.department}</FieldError>
+            <p className="mt-1.5 text-xs text-slate-500">You will only see students from this department.</p>
+          </div>
+        )}
 
-          <label className={label}>Full name</label>
-          <input
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className={`${input} mb-4`}
-            placeholder="e.g. Asha Rao"
-          />
-
-          <label className={label}>Email</label>
-          <input
-            type="email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className={`${input} mb-4`}
-            placeholder="you@mite.ac.in"
-          />
-
-          <label className={label}>Password</label>
-          <input
-            type="password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            className={`${input} mb-1`}
-            placeholder="At least 8 characters"
-          />
-          <p className="text-xs text-slate-400 mb-4">Minimum 8 characters</p>
-
-          <label className={label}>Confirm password</label>
-          <input
-            type="password"
-            value={form.confirm}
-            onChange={(e) => setForm({ ...form, confirm: e.target.value })}
-            onKeyDown={(e) => e.key === "Enter" && submit()}
-            className={`${input} mb-5`}
-          />
-
-          <button
-            onClick={submit}
-            disabled={busy}
-            className="w-full py-2 rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-800 disabled:opacity-50"
-          >
-            {busy ? "Creating account…" : "Create account"}
-          </button>
-
-          <p className="text-sm text-slate-500 text-center mt-4">
-            Already have an account?{" "}
-            <Link
-              to="/login"
-              className="text-slate-900 font-medium hover:underline"
-            >
-              Sign in
-            </Link>
-          </p>
+        <div>
+          <label htmlFor="name" className={labelClass}>Full name</label>
+          <input id="name" autoComplete="name" value={form.name} onChange={set("name")} maxLength={100} {...fieldProps("name")} placeholder="e.g. Asha Rao" />
+          <FieldError id="name-error">{errors.name}</FieldError>
         </div>
-      </div>
-    </div>
+
+        <div>
+          <label htmlFor="email" className={labelClass}>Email address</label>
+          <input
+            id="email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            value={form.email}
+            onChange={set("email")}
+            {...fieldProps("email")}
+            placeholder="you@college.edu"
+          />
+          <FieldError id="email-error">{errors.email}</FieldError>
+        </div>
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="password" className={labelClass}>Password</label>
+            <PasswordInput
+              id="password"
+              autoComplete="new-password"
+              value={form.password}
+              onChange={set("password")}
+              placeholder="8+ characters"
+              invalid={!!errors.password}
+              describedBy={errors.password ? "password-error" : undefined}
+            />
+            <FieldError id="password-error">{errors.password}</FieldError>
+          </div>
+          <div>
+            <label htmlFor="confirm" className={labelClass}>Confirm password</label>
+            <PasswordInput
+              id="confirm"
+              autoComplete="new-password"
+              value={form.confirm}
+              onChange={set("confirm")}
+              invalid={!!errors.confirm}
+              describedBy={errors.confirm ? "confirm-error" : undefined}
+            />
+            <FieldError id="confirm-error">{errors.confirm}</FieldError>
+          </div>
+        </div>
+
+        <button type="submit" disabled={busy} className={primaryButton}>
+          {busy && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />}
+          {busy ? "Creating account…" : "Create account"}
+        </button>
+
+        <p className="text-xs leading-5 text-slate-500">
+          By creating an account you agree to the{" "}
+          <Link to="/terms" className="font-medium text-slate-700 underline underline-offset-2 hover:text-slate-900">Terms and Conditions</Link>
+          {" "}and confirm you have read the{" "}
+          <Link to="/privacy" className="font-medium text-slate-700 underline underline-offset-2 hover:text-slate-900">Privacy Policy</Link>.
+        </p>
+
+        <p className="text-xs text-slate-500">
+          Administrator accounts are created by your institution. Contact the placement cell if you need one.
+        </p>
+      </form>
+    </AuthFrame>
   );
 }

@@ -172,7 +172,7 @@ export const requestResults = async (req, res, next) => {
       return res.status(409).json({
         message:
           existing.status === SUBMISSION_STATUS.SUBMITTED
-            ? "This student has already submitted results for that drive — review them instead."
+            ? "This student has already submitted results for that drive. Review them instead."
             : "You have already asked this student for that drive.",
       });
     }

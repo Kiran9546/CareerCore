@@ -157,7 +157,7 @@ export const ROLES = {
 
 /** Shown to recruiter accounts, whose area was removed with job postings. */
 export const RECRUITER_RETIRED =
-  "Recruiter accounts are no longer supported — companies now reach students " +
+  "Recruiter accounts are no longer supported. Companies now reach students " +
   "through placement drives run by the placement cell.";
 
 /** Staff who may create and manage placement drives. */

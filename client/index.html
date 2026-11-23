@@ -2,11 +2,52 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>client</title>
+    <!-- Page-specific title, description, robots, canonical, Open Graph and
+         structured data are written per page at build time
+         (scripts/prerender.mjs) and kept current in the app by
+         src/seo/SeoManager.jsx. Both read src/seo/meta.js. -->
+    <title>CareerCore</title>
+    <meta name="theme-color" content="#ffffff" />
+    <script>
+      // Apply the saved or system theme before the first paint, so a dark-mode
+      // visitor never sees a white flash. Kept in sync with src/theme/theme.js.
+      (function () {
+        try {
+          var saved = localStorage.getItem("cc_theme");
+          var dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          if (dark) {
+            document.documentElement.classList.add("dark");
+            document.querySelector('meta[name="theme-color"]').setAttribute("content", "#0b1120");
+          }
+        } catch (e) {}
+        // Low-power devices skip the looping and pointer-tracking effects
+        // (src/motion/motion.js): Data Saver on, or at most two CPU cores or
+        // 2 GB of memory where the browser reports it.
+        try {
+          var n = navigator;
+          if ((n.connection && n.connection.saveData) || (n.hardwareConcurrency && n.hardwareConcurrency <= 2) || (n.deviceMemory && n.deviceMemory <= 2)) {
+            document.documentElement.classList.add("cc-lowfx");
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <!-- Self-hosted Inter (SIL Open Font License, see /fonts/Inter-LICENSE.txt).
+         The Latin file covers nearly every page; it is preloaded so text does
+         not reflow when it arrives. -->
+    <link rel="preload" href="/fonts/inter-latin-variable.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
+    <noscript>
+      <p style="padding: 1rem; font-family: system-ui, sans-serif">
+        CareerCore's workspaces need JavaScript. The public pages can still be read without it.
+      </p>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

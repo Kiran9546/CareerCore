@@ -7,13 +7,13 @@
 #   client      :5173    React + Vite
 #
 # Usage:
-#   docker compose up -d mongo        start a local MongoDB (works today)
+#   docker compose up -d mongo        start just a local MongoDB
+#   docker compose up -d              start everything
 #   docker compose down               stop (data survives)
 #   docker compose down -v            stop AND wipe the database
 #
-# NOTE: only `mongo` can start. The server, client and ml-service entries
-#       below expect a Dockerfile in each folder, and none exist yet — run
-#       those three directly as described in README.md.
+# For a production-style deployment (built client behind nginx, scalable
+# API replicas) use docker-compose.prod.yml instead.
 # ═══════════════════════════════════════════════════════════════════
 
 services:
@@ -89,9 +89,6 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
       JWT_EXPIRES_IN: 7d
       CLIENT_URL: http://localhost:5173
-    volumes:
-      - ./server:/app
-      - /app/node_modules      # anonymous volume: keeps container's node_modules
     depends_on:
       mongo:
         condition: service_healthy
@@ -101,7 +98,7 @@ services:
       - careercore-net
 
   # ─────────────────────────────────────────────────────────────
-  # React frontend (Vite dev server)
+  # React frontend (built, served by nginx; proxies /api to the server)
   # ─────────────────────────────────────────────────────────────
   client:
     build:
@@ -109,14 +106,11 @@ services:
       dockerfile: Dockerfile
     container_name: careercore-client
     restart: unless-stopped
+    # Dockerfile builds the static site and serves it with nginx on port 80.
     ports:
-      - "5173:5173"
+      - "5173:80"
     environment:
-      # Browser-side variable — must be localhost, NOT the service name
-      VITE_API_URL: http://localhost:4000/api
-    volumes:
-      - ./client:/app
-      - /app/node_modules
+      API_UPSTREAM: http://server:4000
     depends_on:
       - server
     networks:

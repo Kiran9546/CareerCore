@@ -98,7 +98,7 @@ export const createSkill = async (req, res, next) => {
 
     if (clash) {
       return res.status(409).json({
-        message: `Conflicts with existing skill "${clash.name}" — aliases must be unique across the taxonomy`,
+        message: `Conflicts with existing skill "${clash.name}". Aliases must be unique across the taxonomy`,
       });
     }
 
@@ -148,7 +148,7 @@ export const deleteSkill = async (req, res, next) => {
 
     if (inUse || inPath) {
       return res.status(409).json({
-        message: `Cannot delete — used by ${inUse} student(s) and ${inPath} career path(s)`,
+        message: `Cannot delete: used by ${inUse} student(s) and ${inPath} career path(s)`,
       });
     }
 
@@ -185,7 +185,7 @@ export const updateCareerPathWeights = async (req, res, next) => {
 
     res.json({
       careerPath: path,
-      warning: "Weight changes invalidate the trained model — regenerate the dataset and retrain before relying on career predictions.",
+      warning: "Weight changes invalidate the trained model. Regenerate the dataset and retrain before relying on career predictions.",
     });
   } catch (err) { next(err); }
 };

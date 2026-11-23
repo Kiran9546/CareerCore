@@ -2,6 +2,7 @@ import express from "express";
 import { protect } from "../middleware/auth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { ROLES } from "../config/constants.js";
+import { listContactMessages, updateContactMessage } from "../controllers/contact.controller.js";
 import {
   getPlatformStats,
   listUsers, toggleUserActive,
@@ -13,6 +14,9 @@ import {
 const router = express.Router();
 
 router.use(protect, requireRole(ROLES.ADMIN));
+
+router.get("/messages", listContactMessages);
+router.patch("/messages/:id", updateContactMessage);
 
 router.get("/stats", getPlatformStats);
 

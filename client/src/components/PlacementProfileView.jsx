@@ -1,3 +1,6 @@
+import CopyButton from "./ui/CopyButton";
+import TiltCard from "../motion/TiltCard";
+import AnimatedNumber from "../motion/AnimatedNumber";
 import {
   STAGES,
   STAGE_LABEL,
@@ -35,11 +38,11 @@ const Card = ({ title, subtitle, children, className = "" }) => (
 );
 
 const Stat = ({ label, value, hint }) => (
-  <div className="bg-white rounded-xl border border-slate-200 p-4">
-    <p className="text-2xl font-bold text-slate-900">{value}</p>
+  <TiltCard className="bg-white rounded-xl border border-slate-200 p-4">
+    <p className="text-2xl font-bold text-slate-900"><AnimatedNumber value={value} /></p>
     <p className="text-xs text-slate-500 mt-1">{label}</p>
     {hint && <p className="text-[10px] text-slate-400 mt-0.5">{hint}</p>}
-  </div>
+  </TiltCard>
 );
 
 /**
@@ -119,10 +122,17 @@ export default function PlacementProfileView({ profile, showIdentity = true }) {
           <div className="flex flex-wrap justify-between items-start gap-4">
             <div>
               <h2 className="text-lg font-bold text-slate-900">{student.name}</h2>
-              <p className="text-sm text-slate-500">
-                {student.usn} · {student.branch} · Batch {student.batch}
+              <p className="flex flex-wrap items-center gap-x-1 text-sm text-slate-500">
+                <span>{student.usn}</span>
+                <CopyButton value={student.usn} label="USN" />
+                <span>· {student.branch} · Batch {student.batch}</span>
               </p>
-              <p className="text-xs text-slate-400 mt-1">{student.email}</p>
+              {student.email && (
+                <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+                  <a href={`mailto:${student.email}`} className="hover:text-slate-700 hover:underline">{student.email}</a>
+                  <CopyButton value={student.email} label="email address" />
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <span
@@ -189,7 +199,7 @@ export default function PlacementProfileView({ profile, showIdentity = true }) {
       {/* ── Insights ───────────────────────────────────────── */}
       <Card
         title="Placement pattern"
-        subtitle="Generated from the official drive records below — not from the profile score"
+        subtitle="Generated from the official drive records below, not from the profile score"
       >
         <p className="text-sm text-slate-700 leading-relaxed">{insights.summary}</p>
 
@@ -255,8 +265,9 @@ export default function PlacementProfileView({ profile, showIdentity = true }) {
       <div className="grid lg:grid-cols-2 gap-5">
         <Card
           title="Stage record"
-          subtitle="Rounds never reached are counted separately — they are not failures"
+          subtitle="Rounds never reached are counted separately. They are not failures"
         >
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-slate-500 border-b border-slate-200">
@@ -281,6 +292,7 @@ export default function PlacementProfileView({ profile, showIdentity = true }) {
               />
             </tbody>
           </table>
+          </div>
         </Card>
 
         <Card title="Stage funnel" subtitle="Where the pipeline narrows">

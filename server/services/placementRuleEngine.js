@@ -211,7 +211,7 @@ export const deriveInsights = (metrics, context = {}) => {
       summary:
         `${factual} With fewer than ${MIN_DRIVES_FOR_PATTERN} drives attended ` +
         "there is insufficient placement history to identify a reliable " +
-        "pattern — a single result is a data point, not a trend.",
+        "pattern. A single result is a data point, not a trend.",
       strengths: [],
       weakAreas: [],
       observations: [
@@ -260,7 +260,7 @@ export const deriveInsights = (metrics, context = {}) => {
         detail:
           `Eliminated before the technical round in all ${aptAttempts} drives ` +
           "attempted, so there is no evidence either way about technical " +
-          "ability — it has never been tested in a drive.",
+          "ability. It has never been tested in a drive.",
         confidence: "reliable",
         evidence: { aptitudeAttempts: aptAttempts, technicalAttempts: 0 },
       }),
@@ -336,7 +336,7 @@ export const deriveInsights = (metrics, context = {}) => {
         detail:
           `PRS of ${prs} sits in the ${context.readinessLevel ?? "ready"} band, ` +
           `but ${attended} drives attended have produced no offer. The profile ` +
-          "is not what is holding this student back — the drive results show " +
+          "is not what is holding this student back. The drive results show " +
           "where the process is actually breaking down.",
         confidence: "reliable",
         evidence: {
@@ -421,7 +421,7 @@ export const compareProfiles = (profiles) => {
       })),
       note: everyoneHasEnough
         ? null
-        : `Not comparable — at least one student has fewer than ` +
+        : `Not comparable. At least one student has fewer than ` +
           `${MIN_ATTEMPTS_PROVISIONAL} recorded attempts at this stage.`,
     });
   }

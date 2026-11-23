@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
 import { downloadPlacementExport } from "../utils/download";
+import { Skeleton } from "./ui/Skeleton";
 
 /**
  * The placement cell's student roster — one row per student, showing how far
@@ -39,9 +40,9 @@ const RoundCell = ({ passed, attempts }) => {
     return (
       <td
         className="py-2.5 text-slate-300"
-        title="Never reached this round — not counted as an attempt"
+        title="Never reached this round, so not counted as an attempt"
       >
-        —
+        –
       </td>
     );
   }
@@ -214,6 +215,7 @@ export default function StudentOutcomesTable({ basePath }) {
             was never reached, which is not a failure.
           </span>
         </p>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[860px]">
           <thead>
             <tr className="text-left text-slate-500 border-b border-slate-200">
@@ -229,6 +231,14 @@ export default function StudentOutcomesTable({ basePath }) {
             </tr>
           </thead>
           <tbody>
+            {loading && !shown.length &&
+              Array.from({ length: 6 }, (_, r) => (
+                <tr key={`sk-${r}`} className="border-b border-slate-100" aria-hidden="true">
+                  {Array.from({ length: 9 }, (_, c) => (
+                    <td key={c} className="py-3 pr-3"><Skeleton className={c === 0 ? "h-4 w-32" : "h-4 w-12"} /></td>
+                  ))}
+                </tr>
+              ))}
             {shown.map((s, i) => (
               <Fragment key={s._id}>
                 {s.group !== shown[i - 1]?.group && (
@@ -291,6 +301,7 @@ export default function StudentOutcomesTable({ basePath }) {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

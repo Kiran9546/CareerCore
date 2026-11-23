@@ -175,7 +175,7 @@ export const seedRoundParticipants = async (drive, roundIndex) => {
       type: "placement_update",
       title:
         roundIndex === 0
-          ? `${drive.companyName} — ${roundName(round)}`
+          ? `${drive.companyName}: ${roundName(round)}`
           : `Congratulations! You qualified for the ${roundName(round)}`,
       body:
         (roundIndex === 0
@@ -266,10 +266,10 @@ const assertRoundWritable = (drive, round) => {
     throw httpError(409, "Attendance and results can only be recorded while the drive is in progress");
   }
   if (round.status === ROUND_STATUS.FINALIZED) {
-    throw httpError(409, `${roundName(round)} is finalized — its results are read-only`);
+    throw httpError(409, `${roundName(round)} is finalized. Its results are read-only`);
   }
   if (!round.participantsSeededAt) {
-    throw httpError(409, `${roundName(round)} has not started yet — finalize the previous round first`);
+    throw httpError(409, `${roundName(round)} has not started yet. Finalize the previous round first`);
   }
 };
 
@@ -312,7 +312,7 @@ const applyChange = async (docs, field, to, actor, extraSet = () => ({})) => {
     const extra = extraSet(d);
     const history = [{ field, from: d[field], to, at: now, by: actor._id }];
     if (extra.result !== undefined && extra.result !== d.result) {
-      history.push({ field: "result", from: d.result, to: extra.result, at: now, by: actor._id, note: `cleared — marked ${to}` });
+      history.push({ field: "result", from: d.result, to: extra.result, at: now, by: actor._id, note: `cleared, marked ${to}` });
     }
     return {
       updateOne: {
@@ -340,7 +340,7 @@ export const recordAttendance = async (drive, roundId, body, actor) => {
   }
 
   const docs = await resolveTargets(round, body);
-  if (docs.some((d) => d.locked)) throw httpError(409, `${roundName(round)} is finalized — its results are read-only`);
+  if (docs.some((d) => d.locked)) throw httpError(409, `${roundName(round)} is finalized. Its results are read-only`);
 
   // Absent or unmarked students cannot hold a result, so one recorded
   // earlier is cleared (and the clearing is logged).
@@ -364,18 +364,18 @@ export const recordResults = async (drive, roundId, body, actor) => {
 
   const result = body.result;
   if (!Object.values(ROUND_RESULT).includes(result)) {
-    throw httpError(400, `Invalid result — must be one of: ${Object.values(ROUND_RESULT).join(", ")}`);
+    throw httpError(400, `Invalid result. Must be one of: ${Object.values(ROUND_RESULT).join(", ")}`);
   }
 
   const docs = await resolveTargets(round, body);
-  if (docs.some((d) => d.locked)) throw httpError(409, `${roundName(round)} is finalized — its results are read-only`);
+  if (docs.some((d) => d.locked)) throw httpError(409, `${roundName(round)} is finalized. Its results are read-only`);
 
   // Attendance first: a result for a student not marked Appeared is refused.
   const notAppeared = docs.filter((d) => d.attendance !== ATTENDANCE.APPEARED);
   if (notAppeared.length) {
     throw httpError(
       400,
-      `${notAppeared.length} of the selected students are not marked Appeared — record attendance before results`,
+      `${notAppeared.length} of the selected students are not marked Appeared. Record attendance before results`,
     );
   }
 
@@ -498,7 +498,7 @@ const notifySelections = async (drive, round) => {
         dedupeKey: `drive:${drive._id}:selected:${s._id}`,
         userId: s.userId,
         type: "placement_update",
-        title: `Selected — ${drive.companyName}`,
+        title: `Selected: ${drive.companyName}`,
         body: `Congratulations! You have been selected for ${drive.role} at ${drive.companyName}.`,
         link: `/student/drives/${drive._id}`,
         metadata: { driveId: drive._id, kind: "selected" },
@@ -529,7 +529,7 @@ export const reopenRound = async (drive, roundId, reason, actor) => {
   const next = rounds[index + 1];
   if (next) {
     if (next.status === ROUND_STATUS.FINALIZED) {
-      throw httpError(409, `${roundName(next)} is already finalized — reopen it first`);
+      throw httpError(409, `${roundName(next)} is already finalized. Reopen it first`);
     }
     const touched = await RoundResult.countDocuments({
       roundId: next._id,
@@ -538,7 +538,7 @@ export const reopenRound = async (drive, roundId, reason, actor) => {
     if (touched > 0) {
       throw httpError(
         409,
-        `${roundName(next)} already has ${touched} recorded attendance/result entr${touched === 1 ? "y" : "ies"} — clear them before reopening ${roundName(round)}`,
+        `${roundName(next)} already has ${touched} recorded attendance/result entr${touched === 1 ? "y" : "ies"}. Clear them before reopening ${roundName(round)}`,
       );
     }
     const del = await RoundResult.deleteMany({ roundId: next._id });

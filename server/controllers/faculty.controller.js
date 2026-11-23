@@ -194,7 +194,7 @@ export const getTopSkillGaps = async (req, res, next) => {
           gaps: [],
           studentsAnalysed: 0,
           available: false,
-          message: "Skill-gap analysis is unavailable right now — the ML service is not responding.",
+          message: "Skill-gap analysis is unavailable right now: the ML service is not responding.",
         });
       }
 

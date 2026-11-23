@@ -28,12 +28,12 @@ export default function Overview() {
       .catch(() => {});
   }, []);
 
-  const select = "px-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-white";
+  const select = "min-w-0 max-w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-white";
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-3 items-center justify-between">
-        <div className="flex gap-3">
+        <div className="flex min-w-0 flex-wrap gap-3">
           <select value={batch} onChange={(e) => setBatch(e.target.value)} className={select} aria-label="Batch">
             <option value="">All batches</option>
             {filters.batches.map((b) => (
@@ -48,7 +48,7 @@ export default function Overview() {
           </select>
         </div>
         <Link
-          to="/placement_officer/drives"
+          to="/placement-officer/drives"
           className="px-3 py-1.5 text-sm rounded-lg bg-slate-900 text-white hover:bg-slate-800"
         >
           Manage drives

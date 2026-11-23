@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../../api/axios";
 import { errorMessage, ui } from "../../utils/placement";
+import usePresence from "../../motion/usePresence";
 
 /**
  * Searchable company selection with "+ Add new company".
@@ -13,6 +14,7 @@ export default function CompanyPicker({ value, onChange, disabled }) {
   const [query, setQuery] = useState(value?.name || "");
   const [options, setOptions] = useState([]);
   const [open, setOpen] = useState(false);
+  const list = usePresence(open && !disabled, 140);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState({ name: "", industry: "", location: "", website: "" });
   const [error, setError] = useState("");
@@ -77,8 +79,8 @@ export default function CompanyPicker({ value, onChange, disabled }) {
         )}
       </div>
 
-      {open && !disabled && (
-        <div className="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg">
+      {list.render && (
+        <div data-closing={list.closing ? "" : undefined} inert={list.closing} className="dropdown-in-start absolute z-20 mt-1 w-full max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-(--cc-shadow-raised)">
           {options.map((c) => (
             <button
               key={c._id}

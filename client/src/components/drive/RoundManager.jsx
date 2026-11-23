@@ -12,6 +12,7 @@ import {
   formatDate,
   ui,
 } from "../../utils/placement";
+import { confirmAction } from "../ui/confirm";
 
 /**
  * Attendance, results and finalization for one round.
@@ -93,7 +94,7 @@ export default function RoundManager({ drive, rounds, params, setParams, isAdmin
 
   const bulk = async (kind, value, label) => {
     if (!count) return onError({ response: { data: { message: "Select at least one student" } } });
-    if (allMatching && !window.confirm(`Mark all ${count} matching students as ${label}?`)) return;
+    if (allMatching && !(await confirmAction(`Mark all ${count} matching students as ${label}?`))) return;
     setBusy(true);
     try {
       const body = allMatching
@@ -116,7 +117,7 @@ export default function RoundManager({ drive, rounds, params, setParams, isAdmin
     const msg = round.isLast
       ? `Finalize ${round.name}? ${c.passed} student(s) will be recorded as finally selected. Results become read-only.`
       : `Finalize ${round.name}? ${c.passed} student(s) who passed will move to the next round automatically. Results become read-only.`;
-    if (!window.confirm(msg)) return;
+    if (!(await confirmAction(msg))) return;
     setBusy(true);
     try {
       const r = await api.post(`/placement/drives/${drive._id}/rounds/${roundId}/finalize`);
@@ -167,7 +168,7 @@ export default function RoundManager({ drive, rounds, params, setParams, isAdmin
         <div className={ui.card}>
           <div className="flex flex-wrap justify-between gap-3 mb-4">
             <div>
-              <h3 className="font-semibold text-slate-900">{round.name}{round.isLast ? " — final round" : ""}</h3>
+              <h3 className="font-semibold text-slate-900">{round.name}{round.isLast ? " (final round)" : ""}</h3>
               <p className="text-xs text-slate-500">
                 {round.schedule?.date ? `${formatDate(round.schedule.date)} ${round.schedule.startTime || ""}${round.schedule.endTime ? `–${round.schedule.endTime}` : ""} · ${round.schedule.mode === "online" ? "Online" : round.schedule.venue || ""}` : "Not scheduled"}
               </p>
@@ -250,7 +251,7 @@ export default function RoundManager({ drive, rounds, params, setParams, isAdmin
                       <td className="py-2 text-slate-600">{r.student?.branch}</td>
                       <td className="py-2 text-slate-600">{r.student?.cgpa}</td>
                       <td className="py-2"><span className={`${ui.badge} ${ATTENDANCE_STYLE[r.attendance]}`}>{ATTENDANCE_LABEL[r.attendance]}</span></td>
-                      <td className="py-2">{r.attendance === "appeared" ? <span className={`${ui.badge} ${RESULT_STYLE[r.result]}`}>{resultLabel[r.result]}</span> : <span className="text-slate-300">—</span>}</td>
+                      <td className="py-2">{r.attendance === "appeared" ? <span className={`${ui.badge} ${RESULT_STYLE[r.result]}`}>{resultLabel[r.result]}</span> : <span className="text-slate-300">–</span>}</td>
                     </tr>
                   );
                 })}

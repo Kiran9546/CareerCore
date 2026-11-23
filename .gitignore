@@ -11,13 +11,14 @@ build/
 client/dist/
 
 ### Environment & secrets — NEVER COMMIT
+# Every .env file (.env, .env.local, .env.production, .env.staging, ...)
+# except the blank templates ending in .example.
 .env
-.env.local
-.env.development
-.env.production
+.env.*
 *.pem
 *.key
 !.env.example
+!.env.*.example
 
 ### Python / Flask
 __pycache__/

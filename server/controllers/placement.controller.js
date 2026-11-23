@@ -15,6 +15,7 @@ import {
   REGISTRATION_STATUS,
 } from "../config/constants.js";
 import DriveCandidate from "../models/DriveCandidate.js";
+import { companyIdForName } from "../services/companyLink.js";
 import { escapeRegex } from "../utils/escapeRegex.js";
 import {
   createManagedDrive,
@@ -53,7 +54,7 @@ const refuseManaged = (res, drive) => {
   if (drive?.workflow !== DRIVE_WORKFLOW.MANAGED) return false;
   res.status(409).json({
     message:
-      "This drive runs the recruitment workflow — students register themselves " +
+      "This drive runs the recruitment workflow. Students register themselves " +
       "and results are recorded per round. Use the drive dashboard instead.",
   });
   return true;
@@ -173,6 +174,8 @@ export const createDrive = async (req, res, next) => {
 
     const drive = await Drive.create({
       companyName,
+      // Linked to the company record, so the drive counts in company filters.
+      companyId: await companyIdForName(companyName, req.user?._id),
       role,
       driveDate,
       description: req.body.description,
@@ -215,6 +218,9 @@ export const updateDrive = async (req, res, next) => {
 
     for (const f of ["companyName", "role", "description", "location", "status"]) {
       if (req.body[f] !== undefined) drive[f] = req.body[f];
+    }
+    if (req.body.companyName !== undefined || !drive.companyId) {
+      drive.companyId = await companyIdForName(drive.companyName, req.user?._id);
     }
     if (req.body.driveDate) drive.driveDate = req.body.driveDate;
     if (req.body.ctc !== undefined) drive.ctc = toNumberOrUndefined(req.body.ctc);
@@ -433,7 +439,7 @@ export const registerParticipants = async (req, res, next) => {
       alreadyRegistered: eligible.length - (result.upsertedCount ?? 0),
       rejectedIneligible: rejected.length,
       message: rejected.length
-        ? `${result.upsertedCount ?? 0} registered. ${rejected.length} skipped — ` +
+        ? `${result.upsertedCount ?? 0} registered. ${rejected.length} skipped because ` +
           "they do not meet this drive's eligibility criteria."
         : `${result.upsertedCount ?? 0} student(s) registered`,
     });
@@ -485,7 +491,7 @@ const STAGE_NOTIFICATION = {
     `Your ${stage} result for the ${drive.role} drive at ${drive.companyName} has been recorded as cleared.`,
   ],
   [STAGE_STATUS.FAILED]: (drive, stage) => [
-    `${drive.companyName} — ${stage} result recorded`,
+    `${drive.companyName}: ${stage} result recorded`,
     `Your ${stage} result for the ${drive.role} drive at ${drive.companyName} has been recorded.`,
   ],
 };
@@ -547,7 +553,7 @@ export const updateStageResult = async (req, res, next) => {
       if (previousStatus !== STAGE_STATUS.PASSED) {
         return res.status(400).json({
           message:
-            `Cannot record a ${stage} result — the student has not cleared ` +
+            `Cannot record a ${stage} result: the student has not cleared ` +
             `the ${previous} stage (currently "${previousStatus}").`,
         });
       }
@@ -596,7 +602,7 @@ export const updateStageResult = async (req, res, next) => {
                   `You have been selected for ${drive.role} at ${drive.companyName}.`,
                 ]
               : [
-                  `${drive.companyName} — final result recorded`,
+                  `${drive.companyName}: final result recorded`,
                   `Your final result for the ${drive.role} drive at ${drive.companyName} has been recorded.`,
                 ]
             : STAGE_NOTIFICATION[status]?.(drive, stage);

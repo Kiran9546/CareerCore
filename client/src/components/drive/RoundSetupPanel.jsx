@@ -2,6 +2,7 @@ import { useState } from "react";
 import api from "../../api/axios";
 import RoundEditor from "./RoundEditor";
 import { ROUND_STATUS_LABEL, ROUND_STATUS_STYLE, ROUND_TYPE_LABEL as LABEL, toDateInput, ui } from "../../utils/placement";
+import { confirmAction } from "../ui/confirm";
 
 const isLocked = (r) => r.status === "finalized" || Boolean(r.participantsSeededAt);
 
@@ -22,7 +23,7 @@ function ScheduleForm({ drive, round, onSaved, onError }) {
   const finalized = round.status === "finalized";
 
   const save = async () => {
-    if (s.date && round.participantsSeededAt && !window.confirm("Students are already in this round. Reschedule and notify them?")) return;
+    if (s.date && round.participantsSeededAt && !(await confirmAction("Students are already in this round. Reschedule and notify them?"))) return;
     setBusy(true);
     try {
       await api.patch(`/placement/drives/${drive._id}/rounds/${round._id}/schedule`, v);
