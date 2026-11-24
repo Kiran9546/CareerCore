@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "../../components/ui/toast";
 import { PageSkeleton } from "../../components/ui/Skeleton";
 import { confirmAction } from "../../components/ui/confirm";
+import NotificationPreferences from "../../components/NotificationPreferences";
 
 const savedAt = (d) =>
   d ? new Date(d).toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }) : "";
@@ -317,6 +318,8 @@ export default function Profile() {
           )}
         </div>
       </section>
+
+      <NotificationPreferences />
 
       <section className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="font-semibold text-slate-900 mb-1">Projects</h2>

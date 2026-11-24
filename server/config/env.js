@@ -8,7 +8,9 @@
  * values in server/.env.
  */
 
-const EXAMPLE_SECRETS = new Set(["replace_with_a_long_random_string", "changeme", "secret", "jwt_secret"]);
+import { deliveryEnvProblems } from "./notifications.js";
+
+const EXAMPLE_SECRETS =new Set(["replace_with_a_long_random_string", "changeme", "secret", "jwt_secret"]);
 
 /** Returns a list of problems; empty when the production settings are usable. */
 export const productionEnvProblems = (env) => {
@@ -34,6 +36,7 @@ export const productionEnvProblems = (env) => {
   if (env.DEMO_SEED_DATABASE) {
     problems.push("DEMO_SEED_DATABASE is set: it marks a database for demo seeding and must never be set in production.");
   }
+  problems.push(...deliveryEnvProblems(env));
   return problems;
 };
 

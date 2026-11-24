@@ -9,6 +9,7 @@ import {
   POLICY_EDITOR_ROLES,
 } from "../config/constants.js";
 import * as recruitment from "../controllers/recruitment.controller.js";
+import * as delivery from "../controllers/notificationDelivery.controller.js";
 import { exportPlacementData } from "../controllers/placement.controller.js";
 import {
   listDrives,
@@ -108,6 +109,12 @@ router.put("/drives/:id/eligibility", canManageDrives, recruitment.setEligibilit
 router.post("/drives/:id/eligibility/calculate", canManageDrives, recruitment.recalculateEligibility);
 router.get("/drives/:id/students", canView, recruitment.listStudents);
 router.get("/drives/:id/audit", canManageDrives, recruitment.auditHistory);
+
+// Notification delivery report (in-app, email, WhatsApp). Addresses are
+// masked; retrying only re-queues rows that failed.
+router.get("/drives/:id/notifications/summary", canView, delivery.deliverySummary);
+router.get("/drives/:id/notifications/deliveries", canView, delivery.deliveryList);
+router.post("/drives/:id/notifications/retry", canManageDrives, delivery.retryDeliveries);
 
 router.put("/drives/:id/rounds", canManageDrives, recruitment.setRounds);
 router.patch("/drives/:id/rounds/:roundId/schedule", canManageDrives, recruitment.setSchedule);

@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import connectDB from "./config/db.js";
 import { checkProductionEnv } from "./config/env.js";
 import { startCronJobs, stopCronJobs } from "./jobs/cronTasks.js";
+import { startDeliveryWorker, stopDeliveryWorker } from "./jobs/deliveryWorker.js";
 import app from "./app.js";
 
 // Load .env before anything reads process.env
@@ -65,6 +66,7 @@ const startServer = async () => {
   server.headersTimeout = 66 * 1000;
 
   startCronJobs();
+  startDeliveryWorker();
 
   // Graceful shutdown: stop taking new connections, let in-flight requests
   // finish, then close the database. Deploys and autoscaling send SIGTERM;
@@ -75,9 +77,13 @@ const startServer = async () => {
     closing = true;
     console.log(`${signal} received: shutting down`);
     stopCronJobs();
+    // Started now, awaited before the database closes: in-flight email and
+    // WhatsApp sends finish and are recorded (bounded by the force timer).
+    const deliveries = stopDeliveryWorker().catch(() => {});
     const force = setTimeout(() => process.exit(1), 15 * 1000);
     force.unref();
     server.close(async () => {
+      await deliveries;
       await mongoose.disconnect().catch(() => {});
       process.exit(0);
     });

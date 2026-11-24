@@ -14,6 +14,7 @@ import placementRoutes from "./routes/placement.routes.js";
 import resultRoutes from "./routes/results.routes.js";
 import contactRoutes from "./routes/contact.routes.js";
 import searchRoutes from "./routes/search.routes.js";
+import webhookRoutes from "./routes/webhook.routes.js";
 import { UPLOAD_ROOT } from "./config/paths.js";
 // Load .env before anything reads process.env
 dotenv.config();
@@ -57,6 +58,9 @@ app.use(cors({
   },
   credentials: true,
 }));
+// Provider callbacks verify a signature over the raw body, so they are
+// mounted before the JSON parser consumes it.
+app.use("/api/webhooks", webhookRoutes);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 if (process.env.NODE_ENV !== "test") {

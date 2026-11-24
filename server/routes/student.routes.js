@@ -41,6 +41,11 @@ import {
 } from "../controllers/studentDrive.controller.js";
 
 import {
+  getNotificationPreferences,
+  updateNotificationPreferences,
+} from "../controllers/notificationDelivery.controller.js";
+
+import {
   startTest,
   submitTest,
   getHistory,
@@ -55,6 +60,8 @@ router.use(protect, requireRole(ROLES.STUDENT));
 router.get("/profile", getProfile);
 router.post("/profile", createProfile);
 router.put("/profile", updateProfile);
+router.get("/notification-preferences", getNotificationPreferences);
+router.put("/notification-preferences", updateNotificationPreferences);
 
 router.get("/resume", getResume);
 router.put("/resume", updateResume);

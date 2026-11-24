@@ -96,6 +96,21 @@ const studentSchema = new mongoose.Schema(
     backlogs: { type: Number, default: 0, min: 0 },
     phone: String,
 
+    // ── WhatsApp alerts (opt-in) ──
+    // Business-initiated WhatsApp messages need the recipient's explicit
+    // consent, so nothing is sent until the student opts in on their profile.
+    // `number` is stored already normalised to E.164; when the student leaves
+    // it blank, their phone above is normalised and used instead.
+    whatsapp: {
+      number: String,
+      optIn: { type: Boolean, default: false },
+      consentAt: Date,
+      /** Which consent wording they agreed to (see notificationPreferences). */
+      consentVersion: String,
+      consentSource: { type: String, enum: ["profile", "whatsapp_reply"] },
+      optOutAt: Date,
+    },
+
     // ── Profile content ──
     resumeUrl: String,
     githubUsername: String,
@@ -141,6 +156,7 @@ studentSchema.index({ batch: 1, branch: 1 }); // faculty batch analytics
 studentSchema.index({ currentPRS: -1 }); // recruiter ranking, leaderboard
 studentSchema.index({ "skills.skillId": 1 }); // candidate search by skill
 studentSchema.index({ updatedAt: -1 }); // "recently active students" queries
+studentSchema.index({ "whatsapp.number": 1 }, { sparse: true }); // WhatsApp "STOP" replies
 
 // ─── Methods ─────────────────────────────────────────────────
 

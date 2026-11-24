@@ -110,6 +110,10 @@ These are read from `server/.env`. Values are never committed.
 | `ML_SERVICE_URL` | no | ML service URL (default `http://localhost:5000`) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | no | Email copies of notifications; in-app only when unset |
 | `CONTACT_INBOX` | no | Address that receives a copy of each contact-form message (needs SMTP) |
+| `NOTIFICATION_DELIVERY_MODE` | no | `sandbox` (default outside production; nothing is sent), `live`, or `off` |
+| `PUBLIC_APP_URL` | no | Website address used in registration links (defaults to the first `CLIENT_URL`) |
+| `EMAIL_FROM_ADDRESS`, `EMAIL_FROM_NAME` | no | Sender of drive announcement emails |
+| `NOTIFY_WHATSAPP_ENABLED`, `WHATSAPP_*` | no | WhatsApp drive alerts through the Meta Cloud API; see DEPLOYMENT.md section 10 |
 | `DISABLE_CRON` | no | `true` turns off scheduled jobs |
 | `WEB_CONCURRENCY` | no | Worker processes per instance: a number, or `auto` for one per CPU core (default 1) |
 | `MONGO_POOL_SIZE` | no | MongoDB connections per process (default 20) |

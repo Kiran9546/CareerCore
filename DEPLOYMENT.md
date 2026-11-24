@@ -78,6 +78,8 @@ Every setting with its development and production value. **Production values are
 | `DEMO_SEED_DATABASE` | `<hosts>/<dev database name>` (see section 4) | **Empty**. The API refuses to start if it is set. | Not set |
 | `UPLOAD_DIR` | Empty (uses `server/uploads`) | A path on a persistent disk (paid Render plans) | Render |
 | `SMTP_*`, `CONTACT_INBOX` | Optional | Optional | Render |
+| `NOTIFICATION_DELIVERY_MODE` | `sandbox` (nothing is sent) | `live` | Render |
+| `PUBLIC_APP_URL`, `EMAIL_FROM_*`, `WHATSAPP_*` | Optional | See section 10 | Render |
 | `VITE_API_URL` | Empty (the dev server proxies `/api`) | `https://<api-host>/api` | Vercel, Production environment |
 | `VITE_SITE_URL` | Empty | Empty until the final domain is chosen, then `https://<domain>` | Vercel, Production environment |
 | `VITE_SITE_NOINDEX` | Empty | `true` while on a temporary address (recommended), removed once the domain is final | Vercel, Production environment |
@@ -296,3 +298,95 @@ Not the chosen setup; kept for reference and **not tested** (Docker was not avai
 5. **Production data.** Load reference data and the first administrator with `seed:missing` and `admin:create`, as in 5.5.
 
 The images use `node:20`, which reached end of life in April 2026. Moving them to Node 24, the version tested here, is advisable before using this path.
+
+## 10. Placement drive notifications (in-app, website, email, WhatsApp)
+
+When an officer publishes a managed drive (or a recalculation makes more students eligible while it is open), the existing eligibility engine decides who is eligible and then:
+
+1. **In-app / website**: one `notifications` record per eligible student, created inside the publish request. The header bell and the student notification centre (`/student/notifications`) both read it.
+2. **Email and WhatsApp**: one row per student and channel in `notificationdeliveries`, a durable queue. The background worker (`server/jobs/deliveryWorker.js`) sends them, retries transient failures with exponential backoff (`DELIVERY_MAX_ATTEMPTS`, default 5) and records every outcome. The publish request never waits on SMTP or Meta.
+3. Officers see channel-wise figures and per-student detail on the drive's **Notifications** tab, and can retry failed messages. Retry only re-queues rows whose status is `failed`; anything already sent is never resent.
+
+**Duplicate policy:** a student receives **one** announcement per drive per channel, ever. Republishing, reopening registration, recalculating, concurrent clicks and worker restarts cannot send a second one (unique `idempotencyKey`, atomic claims). Reopening a closed drive only notifies students who have become eligible since. A message whose worker stopped mid-send is marked failed with code `INTERRUPTED` instead of being resent automatically, because the provider may already have accepted it.
+
+### 10.1 Modes
+
+| `NOTIFICATION_DELIVERY_MODE` | Behaviour |
+| --- | --- |
+| `sandbox` (default outside production) | Messages are rendered and recorded as **simulated**. Nothing leaves the server, and the officer dashboard says so. |
+| `live` (default in production) | Real delivery. A channel without credentials fails with `CHANNEL_NOT_CONFIGURED` and is never reported as sent. |
+| `off` | In-app notifications only; nothing is queued. |
+
+### 10.2 Activate email
+
+1. Choose a transactional SMTP service (for example Amazon SES, SendGrid, Mailgun, Brevo, or the college's own mail server). A personal Gmail account works for testing but is limited to a few hundred messages a day, which is not enough for a full cohort.
+2. Verify the sending domain with the provider and publish its **SPF** and **DKIM** DNS records (and a DMARC record). Without them, Gmail and Outlook will junk the messages.
+3. On the API host set `SMTP_HOST`, `SMTP_PORT` (587, or 465 with `SMTP_SECURE=true`), `SMTP_USER`, `SMTP_PASS`, and `EMAIL_FROM_ADDRESS` (an address on the verified domain). Optionally set `EMAIL_FROM_NAME` and `EMAIL_REPLY_TO`.
+4. Set `PUBLIC_APP_URL` to the website's https address. Registration links are `PUBLIC_APP_URL/student/drives/<driveId>`; a signed-out student is sent to sign-in and brought back to the drive.
+5. Keep `NOTIFY_EMAIL_ENABLED=true` and `NOTIFICATION_DELIVERY_MODE=live`, then redeploy.
+6. Test on a staging drive whose eligibility matches only a test student account, and check that the drive's Notifications tab shows the email as **Sent**.
+
+For email, "Sent" means the SMTP server accepted the message. Bounces that arrive later are not tracked (see 10.5).
+
+### 10.3 Activate WhatsApp (Meta WhatsApp Cloud API)
+
+Only the official WhatsApp Business Platform is used: no WhatsApp Web automation, personal accounts or QR-code tools.
+
+1. In Meta for Developers, create a **Business** app and add the **WhatsApp** product. Connect it to the college's **Meta Business Account** and complete **business verification**.
+2. Add and verify the **phone number** that will send messages (it cannot also be in use on the WhatsApp app). Note its **Phone number ID** and the **WhatsApp Business Account ID**.
+3. Create a **System User** in Business Settings, assign it the app and the WhatsApp account, and generate a **permanent access token** with `whatsapp_business_messaging` and `whatsapp_business_management`. Temporary tokens from the API setup page expire after 24 hours.
+4. In WhatsApp Manager → **Message templates**, create this template and submit it for approval:
+   - Name `placement_drive_alert`, category **Utility**, language English (`en`).
+   - Body, with exactly seven parameters in this order:
+     ```
+     Hello {{1}}!
+
+     A new placement opportunity is available on CareerCore.
+
+     Company: {{2}}
+     Role: {{3}}
+     Package: {{4}}
+     Location: {{5}}
+     Registration Deadline: {{6}}
+
+     You are eligible to apply!
+
+     Register here:
+     {{7}}
+
+     Complete your registration before the deadline.
+     ```
+   - Footer: `- CareerCore Placement Team`
+   - Button: **Visit website**, type **Dynamic**, URL `https://<your website>/student/drives/{{1}}` (the API passes the drive id as `{{1}}`). If you leave the button out, set `WHATSAPP_TEMPLATE_URL_BUTTON=false`.
+   - Sample values for the review: `Asha`, `Acme Systems`, `Graduate Engineer`, `₹8.5 LPA`, `Mangaluru`, `30 November 2026, 5:00 pm IST`, `https://<your website>/student/drives/abc123`.
+5. In the app's **Webhooks** settings, subscribe the WhatsApp Business Account to the `messages` field with callback URL `https://<api-host>/api/webhooks/whatsapp` and a verify token you choose. Copy the **App secret** from App settings → Basic.
+6. On the API host set `NOTIFY_WHATSAPP_ENABLED=true`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_TEMPLATE_NAME` (`placement_drive_alert`), `WHATSAPP_TEMPLATE_LANGUAGE` (`en`, matching the approved template), `WHATSAPP_API_VERSION` (the current Graph API version), `WHATSAPP_APP_SECRET` and `WHATSAPP_WEBHOOK_VERIFY_TOKEN`. In production the API refuses to start if WhatsApp is enabled and any of the secrets is missing.
+7. Redeploy, then publish a staging drive aimed at a test student who has opted in with a test number. The Notifications tab should show **Sent**, then **Delivered** or **Read** as the webhooks arrive.
+
+**Consent.** Students opt in on their profile ("Placement drive alerts"). The number is stored in E.164 form with the consent time and the version of the wording they agreed to. Students who have not opted in, or whose number is missing or invalid, are listed as **Not sent** with the reason. A student can opt out on the profile or by replying **STOP**, which the webhook applies at once. Webhook callbacks are accepted only with a valid `X-Hub-Signature-256` signature.
+
+**Throughput.** New WhatsApp numbers start with a messaging limit (business-initiated conversations per 24 hours) that Meta raises over time based on quality and volume. Rate-limit responses pause the channel and are retried automatically.
+
+### 10.4 Database changes
+
+All changes are additive: a new `notificationdeliveries` collection (unique `idempotencyKey`), an optional `whatsapp` sub-document on students (absent means "not opted in"), and drive details in the `metadata` of new drive notifications. Mongoose builds the indexes at start-up. To create them explicitly first:
+
+```
+cd server
+node migrations/notificationDelivery.js           # dry run, changes nothing
+node migrations/notificationDelivery.js --apply
+```
+
+### 10.5 Scaling
+
+- **Many students, many drives at once.** Each channel has its own worker loop and pool (`DELIVERY_EMAIL_CONCURRENCY`, `DELIVERY_WHATSAPP_CONCURRENCY`, default `DELIVERY_CONCURRENCY`=4 and the SMTP pool size), so a slow or failing provider never slows the other channel. Rows are claimed in small atomic batches, and each batch's student, account and eligibility data is read in four queries.
+- **More capacity = more processes.** Every API process and cluster worker (`WEB_CONCURRENCY`) drains the same queue safely; claims are atomic, so adding processes adds throughput without duplicates.
+- **Provider limits are the real ceiling.** Email uses a pooled SMTP connection (`SMTP_MAX_CONNECTIONS`, optional `SMTP_RATE_LIMIT_PER_SECOND`); WhatsApp rate-limit responses pause only the WhatsApp channel and are retried.
+- **Deploys.** On SIGTERM the worker stops claiming, finishes in-flight sends and records them; the rest stays queued for the next start.
+- **Measured** (`test/notifications.scale.test.js`, in-memory MongoDB on a laptop, mocked providers adding 20–80 ms per message): 10,000 students and 3 drives published simultaneously produced 10,659 in-app notifications and 17,765 email/WhatsApp messages, each delivered exactly once, at about 205 messages/s with one process's worth of capacity per worker. Publishing is linear in the number of students (about 5–7 s per 3,000 eligible students on that machine, most of it the eligibility calculation and in-app writes); a production database is typically faster. Run a bigger check with `SCALE_STUDENTS=20000 node --test test/notifications.scale.test.js`.
+
+### 10.6 Limitations
+
+- Email bounces and spam complaints are not fed back (that needs the email provider's event webhooks). "Sent" means accepted by the SMTP server.
+- The Drive model has no "required skills" field, so the email shows the description, eligibility criteria, package and location, but no skills list.
+- Render's free plan sleeps when idle, which also pauses the delivery worker. Queued messages are sent when it wakes.

@@ -9,7 +9,9 @@ import {
   MANAGED_DRIVE_STATUS,
 } from "../config/constants.js";
 import { audit, httpError } from "./auditService.js";
-import { notifyOnceMany } from "./notificationService.js";
+import { notifyOnceMany, dedupeKeyFilter } from "./notificationService.js";
+import Notification from "../models/Notification.js";
+import { queueDriveOpportunityDeliveries } from "./notificationDeliveryService.js";
 
 /**
  * CareerCore — Drive eligibility
@@ -273,6 +275,20 @@ export const opportunityMessage = (drive) => {
 /**
  * Notify every eligible, not-yet-notified student of an open managed drive.
  * Idempotent: the dedupe key is per drive and student.
+ *
+ * Runs on publish and whenever a recalculation makes more students eligible
+ * on an open drive. In order:
+ *   1. the in-app notification (the bell and the website notification
+ *      centre both read this one record), created here, in the request;
+ *   2. the email and WhatsApp copies, queued as delivery rows and sent by
+ *      the background worker, so the request never waits on SMTP or Meta;
+ *   3. the candidates are marked notified.
+ * A crash between steps leaves notifiedAt unset, so the next publish or
+ * recalculation repeats them — and every step skips what already exists.
+ *
+ * Policy for a drive reopened after closing registration: students already
+ * notified are never notified again on any channel; only students who have
+ * become eligible since are.
  */
 export const notifyEligibleStudents = async (drive) => {
   const candidates = await DriveCandidate.find({
@@ -297,8 +313,30 @@ export const notifyEligibleStudents = async (drive) => {
       title,
       body,
       link: `/student/drives/${drive._id}`,
-      metadata: { driveId: drive._id, kind: "opportunity" },
+      // Structured copy of the drive details, so the notification centre
+      // can show company, role and deadline without parsing the body.
+      metadata: {
+        driveId: drive._id,
+        kind: "opportunity",
+        companyName: drive.companyName,
+        role: drive.role,
+        registrationDeadline: drive.registrationDeadline,
+        driveDate: drive.driveDate,
+        ctc: drive.ctc,
+        location: drive.location,
+      },
     })),
+  );
+
+  // Notification ids for every candidate, including those whose key already
+  // existed (an earlier, interrupted run), so each delivery row links to it.
+  const keys = candidates.map(keyOf);
+  const existing = await Notification.find(dedupeKeyFilter(keys)).select("_id dedupeKey").lean();
+  const notificationIdOf = new Map(existing.map((n) => [n.dedupeKey, n._id]));
+
+  await queueDriveOpportunityDeliveries(
+    drive,
+    candidates.map((c) => ({ studentId: c.studentId, userId: c.userId, notificationId: notificationIdOf.get(keyOf(c)) })),
   );
 
   // Every candidate here is now notified — either by this call or, if the

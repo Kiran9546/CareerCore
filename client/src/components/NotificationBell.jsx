@@ -1,8 +1,10 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import Icon from "./ui/Icon";
 import usePresence from "../motion/usePresence";
+import { useAuth } from "../context/useAuth";
+import { announceUnread, onUnreadChange } from "../utils/notifications";
 
 // Icons from the app's own set (components/ui/Icon), one per notification type.
 const TYPE_ICON = {
@@ -36,6 +38,9 @@ export default function NotificationBell() {
   const [now, setNow] = useState(() => Date.now());
   const ref = useRef(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  // The full notification centre lives in the student workspace.
+  const centrePath = user?.role === "student" ? "/student/notifications" : null;
   // Ring the bell once whenever the unread count goes up (including on
   // arrival with unread notifications). Adjusted during render, React's
   // pattern for state derived from a changing value.
@@ -61,7 +66,15 @@ export default function NotificationBell() {
         .then((r) => setUnread(r.data.unread))
         .catch(() => {});
     }, 60000);
-    return () => clearInterval(t);
+    // The notification centre changed read state: refresh the badge and list.
+    const off = onUnreadChange((n) => {
+      if (typeof n === "number") setUnread(n);
+      load();
+    });
+    return () => {
+      clearInterval(t);
+      off();
+    };
   }, []);
 
   useEffect(() => {
@@ -82,7 +95,8 @@ export default function NotificationBell() {
 
   const markAllRead = async () => {
     try {
-      await api.patch("/notifications/read", {});
+      const r = await api.patch("/notifications/read", {});
+      announceUnread(r.data.unread);
     } catch { /* the reload below will resync the badge */ }
     load();
   };
@@ -90,7 +104,9 @@ export default function NotificationBell() {
   const openItem = async (n) => {
     if (!n.isRead) {
       try {
-        await api.patch("/notifications/read", { ids: [n._id] });
+        const r = await api.patch("/notifications/read", { ids: [n._id] });
+        setUnread(r.data.unread);
+        announceUnread(r.data.unread);
       } catch { /* navigating away anyway */ }
     }
     setOpen(false);
@@ -154,6 +170,12 @@ export default function NotificationBell() {
               <p className="px-4 py-8 text-sm text-slate-400 text-center">No notifications yet.</p>
             )}
           </div>
+          {centrePath && (
+            <Link to={centrePath} onClick={() => setOpen(false)}
+              className="block px-4 py-2.5 border-t border-slate-100 text-center text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+              View all notifications
+            </Link>
+          )}
         </div>
       )}
     </div>

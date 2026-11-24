@@ -54,6 +54,23 @@ services:
       # created). The API still works if this is unreachable.
       - key: ML_SERVICE_URL
         sync: false
+      # Placement drive notifications (see DEPLOYMENT.md, section 10).
+      # Email needs the SMTP_* values; WhatsApp stays off until its template
+      # is approved and the WHATSAPP_* secrets are entered in the dashboard.
+      - key: NOTIFICATION_DELIVERY_MODE
+        value: live
+      - key: PUBLIC_APP_URL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM_ADDRESS
+        sync: false
+      - key: NOTIFY_WHATSAPP_ENABLED
+        value: "false"
     # Persistent storage for uploaded resume photos (paid plans only).
     # Uncomment together with a paid `plan`, and add UPLOAD_DIR=/var/data/uploads
     # to envVars.

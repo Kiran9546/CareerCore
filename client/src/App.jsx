@@ -38,6 +38,7 @@ const PlacementDriveDetail = lazy(() => import("./pages/placement/DriveDetail"))
 const PlacementDriveForm = lazy(() => import("./pages/placement/DriveForm"));
 const StudentDrives = lazy(() => import("./pages/student/Drives"));
 const StudentDriveView = lazy(() => import("./pages/student/DriveView"));
+const StudentNotifications = lazy(() => import("./pages/student/Notifications"));
 const PlacementStudents = lazy(() => import("./pages/placement/Students"));
 const PlacementProfile = lazy(() => import("./pages/placement/PlacementProfile"));
 const PlacementCompare = lazy(() => import("./pages/placement/Compare"));
@@ -105,6 +106,7 @@ export function AppRoutes() {
                 <Route path="placement" element={<StudentPlacement />} />
                 <Route path="drives" element={<StudentDrives />} />
                 <Route path="drives/:id" element={<StudentDriveView />} />
+                <Route path="notifications" element={<StudentNotifications />} />
               </Route>
 
               <Route

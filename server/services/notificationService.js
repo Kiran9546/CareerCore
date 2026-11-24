@@ -3,33 +3,62 @@ import Notification from "../models/Notification.js";
 import User from "../models/User.js";
 
 let transporter = null;
+let transporterKey = "";
 
-const getTransporter = () => {
-  if (transporter) return transporter;
+/**
+ * The one SMTP transport every email in CareerCore goes through — the
+ * existing per-notification copies, contact-form forwarding and the drive
+ * announcement worker. Null when SMTP is not configured. Rebuilt if the
+ * settings change (a test, or an operator rotating the password).
+ */
+export const getTransporter = () => {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) return null;
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const port = Number(process.env.SMTP_PORT) || 587;
+  // Port 465 is implicit TLS; 587/25 upgrade with STARTTLS.
+  const secure = process.env.SMTP_SECURE ? process.env.SMTP_SECURE === "true" : port === 465;
+  const maxConnections = Math.min(Math.max(parseInt(process.env.SMTP_MAX_CONNECTIONS, 10) || 5, 1), 50);
+  const rateLimit = parseInt(process.env.SMTP_RATE_LIMIT_PER_SECOND, 10) || 0;
+  const key = [host, port, secure, process.env.SMTP_USER, process.env.SMTP_PASS, maxConnections, rateLimit].join("|");
+  if (transporter && transporterKey === key) return transporter;
+  transporter?.close?.();
 
   transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: false,
+    host,
+    port,
+    secure,
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    // A pool of reused, authenticated connections: a drive announcement to
+    // thousands of students does not open a new TLS session per message.
+    pool: true,
+    maxConnections,
+    maxMessages: 100,
+    // Optional cap for providers with a per-second sending limit.
+    ...(rateLimit > 0 ? { rateDelta: 1000, rateLimit } : {}),
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 30000,
   });
-
+  transporterKey = key;
   return transporter;
 };
+
+/** The From header: EMAIL_FROM_* when set, otherwise the SMTP account. */
+export const mailFrom = (name = process.env.EMAIL_FROM_NAME || "CareerCore") => ({
+  name,
+  address: process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER,
+});
 
 const sendEmail = async (to, subject, html) => {
   const tx = getTransporter();
   if (!tx) return false;
 
   try {
-    await tx.sendMail({
-      from: `"CareerCore" <${process.env.SMTP_USER}>`,
-      to, subject, html,
-    });
+    await tx.sendMail({ from: mailFrom(), to, subject, html });
     return true;
   } catch (err) {
-    console.error(`Email failed to ${to}: ${err.message}`);
+    // The recipient's address is personal data; it is not written to logs.
+    console.error(`Email failed (${err.code || err.responseCode || "error"}): ${err.message}`.replace(/[^\s<>@]+@[^\s<>@]+/g, "[address]"));
     return false;
   }
 };
@@ -86,15 +115,54 @@ export const onlyDuplicateKeyErrors = (err) => {
   return Array.isArray(errors) && errors.length > 0 && errors.every((e) => (e.code ?? e.err?.code) === 11000);
 };
 
+/**
+ * A dedupeKey condition the partial unique index can serve. `match` is a
+ * key, a list of keys, or a RegExp prefix.
+ */
+export const dedupeKeyFilter = (match) => ({
+  dedupeKey: {
+    ...(Array.isArray(match) ? { $in: match } : match instanceof RegExp ? { $regex: match } : { $eq: match }),
+    $type: "string",
+  },
+});
+
+const NOTIFY_CHUNK = 1000;
+const NOTIFY_PARALLEL_CHUNKS = 4;
+
+/**
+ * Large announcements are written in independent chunks, a few at a time,
+ * so a cohort of thousands is not one long sequential write.
+ */
 export const notifyOnceMany = async (items) => {
+  if (items.length <= NOTIFY_CHUNK) return notifyOnceChunk(items);
+  const chunks = [];
+  for (let i = 0; i < items.length; i += NOTIFY_CHUNK) chunks.push(items.slice(i, i + NOTIFY_CHUNK));
+  const ids = new Map();
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(NOTIFY_PARALLEL_CHUNKS, chunks.length) }, async () => {
+      while (next < chunks.length) {
+        const r = await notifyOnceChunk(chunks[next++]);
+        for (const [k, v] of r.ids) ids.set(k, v);
+      }
+    }),
+  );
+  return { created: ids.size, ids };
+};
+
+const notifyOnceChunk = async (items) => {
   if (!items.length) return { created: 0, ids: new Map() };
 
   const ops = items.map(({ dedupeKey, userId, type, title, body, link, metadata }) => ({
     updateOne: {
-      filter: { dedupeKey },
+      // The `$type` clause is what lets MongoDB use the partial unique index
+      // on dedupeKey (its filter is `$type: "string"`). A bare equality falls
+      // back to a collection scan per notification, which made a drive
+      // announcement to thousands of students quadratic.
+      filter: dedupeKeyFilter(dedupeKey),
       update: {
         // Timestamps are added by Mongoose's bulkWrite casting.
-        $setOnInsert: { userId, type, title, body, link, metadata, isRead: false, emailSent: false },
+        $setOnInsert: { dedupeKey, userId, type, title, body, link, metadata, isRead: false, emailSent: false },
       },
       upsert: true,
     },
@@ -138,10 +206,10 @@ export const sendTextEmail = async ({ to, subject, text, replyTo }) => {
   const tx = getTransporter();
   if (!tx || !to) return false;
   try {
-    await tx.sendMail({ from: `"CareerCore" <${process.env.SMTP_USER}>`, to, subject, text, replyTo });
+    await tx.sendMail({ from: mailFrom(), to, subject, text, replyTo });
     return true;
   } catch (err) {
-    console.error(`Email failed to ${to}: ${err.message}`);
+    console.error(`Email failed (${err.code || err.responseCode || "error"}): ${err.message}`.replace(/[^\s<>@]+@[^\s<>@]+/g, "[address]"));
     return false;
   }
 };

@@ -24,6 +24,7 @@ export const ROLE_META = {
       { to: "/student/learn", label: "Learning", icon: "book" },
       { to: "/student/drives", label: "Drives", icon: "briefcase" },
       { to: "/student/placement", label: "My placement", icon: "award" },
+      { to: "/student/notifications", label: "Notifications", icon: "bell" },
     ],
   },
   faculty: {
