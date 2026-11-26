@@ -55,6 +55,8 @@ export const deliveryConfig = (env = process.env) => {
 
   return {
     mode,
+    /** What NOTIFICATION_DELIVERY_MODE says (normalised), for the start-up warnings. */
+    requestedMode: requested,
     appUrl: appBaseUrl(env),
     timeZone: env.APP_TIMEZONE || "Asia/Kolkata",
     defaultCountryCode: env.DEFAULT_PHONE_COUNTRY_CODE || "91",
@@ -67,6 +69,9 @@ export const deliveryConfig = (env = process.env) => {
       fromAddress: env.EMAIL_FROM_ADDRESS || env.SMTP_USER || "",
       fromName: env.EMAIL_FROM_NAME || "CareerCore Placement Cell",
       replyTo: env.EMAIL_REPLY_TO || "",
+      // Off by default: every registered address receives drive emails, and
+      // verification is offered. On: only verified addresses receive them.
+      requireVerified: env.NOTIFY_EMAIL_REQUIRE_VERIFIED === "true",
     },
 
     whatsapp: {
@@ -84,6 +89,11 @@ export const deliveryConfig = (env = process.env) => {
       // The approved template has a "Visit website" URL button whose URL
       // ends in {{1}}; we pass the drive id as that suffix.
       urlButton: env.WHATSAPP_TEMPLATE_URL_BUTTON !== "false",
+      // Approved AUTHENTICATION template carrying the 6-digit code that
+      // proves a student owns their WhatsApp number (body {{1}} = code,
+      // with Meta's "copy code" button).
+      otpTemplateName: env.WHATSAPP_OTP_TEMPLATE_NAME || "",
+      otpTemplateLanguage: env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || env.WHATSAPP_TEMPLATE_LANGUAGE || "en",
       appSecret: env.WHATSAPP_APP_SECRET || "",
       verifyToken: env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || "",
       requestTimeoutMs: int(env.WHATSAPP_TIMEOUT_MS, 15000, { min: 1000 }),
@@ -112,9 +122,49 @@ export const deliveryConfig = (env = process.env) => {
 /** What the officer's dashboard may know about the configuration: no secrets. */
 export const publicDeliveryStatus = (cfg = deliveryConfig()) => ({
   mode: cfg.mode,
-  email: { enabled: cfg.email.enabled, configured: cfg.mode === "sandbox" || cfg.email.configured },
-  whatsapp: { enabled: cfg.whatsapp.enabled, configured: cfg.mode === "sandbox" || cfg.whatsapp.configured },
+  email: {
+    enabled: cfg.email.enabled,
+    configured: cfg.mode === "sandbox" || cfg.email.configured,
+    requireVerified: cfg.email.requireVerified,
+  },
+  whatsapp: {
+    enabled: cfg.whatsapp.enabled,
+    configured: cfg.mode === "sandbox" || cfg.whatsapp.configured,
+    verificationConfigured: cfg.mode === "sandbox" || Boolean(cfg.whatsapp.configured && cfg.whatsapp.otpTemplateName),
+  },
 });
+
+/**
+ * Plain-language warnings about the provider setup, for the start-up log and
+ * the officer's dashboard. Empty when everything that is switched on works.
+ */
+export const deliveryWarnings = (cfg = deliveryConfig()) => {
+  const w = [];
+  if (cfg.requestedMode && !DELIVERY_MODES.includes(cfg.requestedMode)) {
+    w.push(`NOTIFICATION_DELIVERY_MODE="${cfg.requestedMode}" is not one of ${DELIVERY_MODES.join(", ")}; using "${cfg.mode}" instead.`);
+  }
+  if (cfg.mode === "sandbox") {
+    w.push(
+      cfg.requestedMode === "sandbox"
+        ? "Sandbox mode (NOTIFICATION_DELIVERY_MODE=sandbox): emails are only simulated; nothing reaches students. Set it to live and restart to send."
+        : "Sandbox mode (NOTIFICATION_DELIVERY_MODE is not set, the default outside production): emails are only simulated; nothing reaches students. Set NOTIFICATION_DELIVERY_MODE=live and restart to send.",
+    );
+    return w;
+  }
+  if (cfg.mode === "off") return ["External delivery is off: students are notified in CareerCore only."];
+  if (!cfg.email.configured) {
+    w.push("Email is not configured (SMTP_USER / SMTP_PASS): drive emails and email verification links cannot be sent.");
+  }
+  // WhatsApp switched off is a supported setup (in-app + email only), not
+  // a problem to warn about.
+  if (cfg.whatsapp.enabled) {
+    if (!cfg.whatsapp.configured) w.push("WhatsApp is on but WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_TEMPLATE_NAME are missing.");
+    if (!cfg.whatsapp.otpTemplateName) w.push("WHATSAPP_OTP_TEMPLATE_NAME is not set: students cannot verify their WhatsApp numbers, so no one can receive WhatsApp alerts.");
+    if (!cfg.whatsapp.appSecret) w.push("WHATSAPP_APP_SECRET is not set: delivery-status webhooks and STOP replies are refused.");
+  }
+  if (!cfg.appUrl) w.push("PUBLIC_APP_URL (or CLIENT_URL) is not set: no registration or verification links can be built.");
+  return w;
+};
 
 /**
  * Problems that must stop a production start. Only explicit choices are
@@ -132,7 +182,7 @@ export const deliveryEnvProblems = (env) => {
     problems.push(`PUBLIC_APP_URL "${url}" is not an https origin.`);
   }
   if (env.NOTIFY_WHATSAPP_ENABLED === "true") {
-    for (const key of ["WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_TEMPLATE_NAME", "WHATSAPP_APP_SECRET", "WHATSAPP_WEBHOOK_VERIFY_TOKEN"]) {
+    for (const key of ["WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_TEMPLATE_NAME", "WHATSAPP_OTP_TEMPLATE_NAME", "WHATSAPP_APP_SECRET", "WHATSAPP_WEBHOOK_VERIFY_TOKEN"]) {
       if (!env[key]) problems.push(`NOTIFY_WHATSAPP_ENABLED is true but ${key} is not set.`);
     }
   }

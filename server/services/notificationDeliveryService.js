@@ -12,12 +12,12 @@ import DriveCandidate from "../models/DriveCandidate.js";
 import Student from "../models/Student.js";
 import User from "../models/User.js";
 import { MANAGED_DRIVE_STATUS, MAX_PAGE_SIZE } from "../config/constants.js";
-import { deliveryConfig, driveRegistrationUrl, publicDeliveryStatus } from "../config/notifications.js";
+import { deliveryConfig, driveRegistrationUrl, publicDeliveryStatus, deliveryWarnings } from "../config/notifications.js";
 import { INSTANCE_ID } from "../jobs/jobLock.js";
 import { normalizePhone, maskEmail, maskPhone } from "../utils/phone.js";
 import { escapeRegex } from "../utils/escapeRegex.js";
 import { audit, httpError } from "./auditService.js";
-import { onlyDuplicateKeyErrors, mailFrom, dedupeKeyFilter } from "./notificationService.js";
+import { onlyDuplicateKeyErrors, mailFrom, dedupeKeyFilter, getTransporter } from "./notificationService.js";
 // eligibilityService imports this module too. The cycle is safe: neither
 // side uses the other's exports until a function is called at runtime.
 import { describeEligibility } from "./eligibilityService.js";
@@ -27,7 +27,7 @@ import {
   whatsappTemplateParams,
   buildWhatsAppTemplatePayload,
 } from "./delivery/driveOpportunityMessages.js";
-import { DeliveryError, liveProviders, sandboxProviders, redact } from "./delivery/providers.js";
+import { DeliveryError, liveProviders, sandboxProviders, redact, classifySmtpError } from "./delivery/providers.js";
 
 /**
  * CareerCore — external notification delivery (email and WhatsApp)
@@ -60,13 +60,28 @@ export const setDeliveryProviders = (overrides) => {
   providerOverrides = overrides || {};
 };
 
-const providerFor = (channel, cfg) =>
+/** The provider a channel uses right now (also used for verification messages). */
+export const providerFor = (channel, cfg) =>
   providerOverrides[channel] || (cfg.mode === "sandbox" ? sandboxProviders[channel] : liveProviders[channel]);
+
+/** Account fields the recipient checks need. */
+export const CONTACT_FIELDS = "name email isActive emailVerifiedAt emailAlerts phone phoneVerifiedAt whatsapp";
 
 export const deliveryKey = (driveId, studentId, channel) => `drive:${driveId}:eligible:${studentId}:${channel}`;
 
 const CHUNK = 500;
 const QUEUE_PARALLEL_CHUNKS = 4;
+
+/** Skip reasons a student can fix themselves; retry looks at these again. */
+const RECHECKABLE_SKIPS = [
+  SKIP_REASONS.NO_EMAIL,
+  SKIP_REASONS.NO_PHONE,
+  SKIP_REASONS.INVALID_PHONE,
+  SKIP_REASONS.NO_CONSENT,
+  SKIP_REASONS.UNVERIFIED_PHONE,
+  SKIP_REASONS.EMAIL_UNVERIFIED,
+  SKIP_REASONS.EMAIL_OPT_OUT,
+];
 
 /** Run `fn` over `items` with at most `limit` in flight. */
 const runPool = async (items, limit, fn) => {
@@ -84,19 +99,27 @@ const runPool = async (items, limit, fn) => {
  * Can this student be reached on this channel right now? Evaluated when the
  * row is queued (so the report shows skips immediately) and again just
  * before sending (so a revoked consent or a removed account is respected).
+ *
+ * Recipients come only from the student's own account (`user`): the email
+ * they registered with and the WhatsApp number they verified. Nobody types
+ * a recipient anywhere else.
  */
-export const evaluateRecipient = (channel, user, student, cfg = deliveryConfig()) => {
+export const evaluateRecipient = (channel, user, _student, cfg = deliveryConfig()) => {
   if (!user || user.isActive === false) return { ok: false, skipReason: SKIP_REASONS.ACCOUNT_INACTIVE };
   if (channel === "email") {
     if (!user.email) return { ok: false, skipReason: SKIP_REASONS.NO_EMAIL };
+    // The student turned placement emails off (absent means on: accounts
+    // created before the setting existed keep receiving them).
+    if (user.emailAlerts?.optIn === false) return { ok: false, skipReason: SKIP_REASONS.EMAIL_OPT_OUT };
+    if (cfg.email.requireVerified && !user.emailVerifiedAt) return { ok: false, skipReason: SKIP_REASONS.EMAIL_UNVERIFIED };
     return { ok: true, address: user.email, masked: maskEmail(user.email) };
   }
-  // WhatsApp: explicit consent first, then a usable number.
-  if (!student?.whatsapp?.optIn) return { ok: false, skipReason: SKIP_REASONS.NO_CONSENT };
-  const raw = student.whatsapp.number || student.phone;
-  if (!raw) return { ok: false, skipReason: SKIP_REASONS.NO_PHONE };
-  const e164 = normalizePhone(raw, cfg.defaultCountryCode);
+  // WhatsApp: explicit consent, a valid number, and proof the number is theirs.
+  if (!user.whatsapp?.optIn) return { ok: false, skipReason: SKIP_REASONS.NO_CONSENT };
+  if (!user.phone) return { ok: false, skipReason: SKIP_REASONS.NO_PHONE };
+  const e164 = normalizePhone(user.phone, cfg.defaultCountryCode);
   if (!e164) return { ok: false, skipReason: SKIP_REASONS.INVALID_PHONE };
+  if (!user.phoneVerifiedAt) return { ok: false, skipReason: SKIP_REASONS.UNVERIFIED_PHONE };
   return { ok: true, address: e164, masked: maskPhone(e164) };
 };
 
@@ -122,8 +145,8 @@ export const queueDriveOpportunityDeliveries = async (drive, candidates) => {
   // roughly a quarter of the sequential time without flooding the pool.
   await runPool(chunks, QUEUE_PARALLEL_CHUNKS, async (slice) => {
     const [users, students] = await Promise.all([
-      User.find({ _id: { $in: slice.map((c) => c.userId) } }).select("email isActive").lean(),
-      Student.find({ _id: { $in: slice.map((c) => c.studentId) } }).select("phone whatsapp").lean(),
+      User.find({ _id: { $in: slice.map((c) => c.userId) } }).select(CONTACT_FIELDS).lean(),
+      Student.find({ _id: { $in: slice.map((c) => c.studentId) } }).select("_id").lean(),
     ]);
     const userById = new Map(users.map((u) => [String(u._id), u]));
     const studentById = new Map(students.map((s) => [String(s._id), s]));
@@ -185,6 +208,52 @@ const backoffMs = (attempt, cfg) => {
 
 /** Channels paused by a provider rate limit, in this process. */
 const pausedUntil = new Map();
+
+/**
+ * The latest credential problem per channel (expired WhatsApp token, wrong
+ * SMTP password), shown on the officer dashboard and logged once, so the
+ * administrator learns about it without reading logs. Cleared by the next
+ * successful send on that channel.
+ */
+const providerAlerts = new Map();
+const CREDENTIAL_HELP = {
+  whatsapp: "The WhatsApp access token was refused (expired or missing permission). Update WHATSAPP_ACCESS_TOKEN; queued messages are kept and go out automatically afterwards.",
+  email: "The mail server refused the login. Check SMTP_USER / SMTP_PASS (for Gmail, an App Password); queued emails are kept and go out automatically afterwards.",
+};
+const QUOTA_HELP =
+  "The mail account reached its sending limit (Gmail allows about 500 emails a day, Google Workspace about 2,000). " +
+  "Remaining emails are kept in the queue and the worker tries again every hour until they go out.";
+const noteProviderAlert = (channel, err, at) => {
+  const message = err.quota ? QUOTA_HELP : CREDENTIAL_HELP[channel];
+  if (providerAlerts.get(channel)?.code !== err.code) {
+    console.error(`[delivery] ${channel} paused: ${err.code}. ${message}`);
+  }
+  providerAlerts.set(channel, { code: err.code, message, at });
+};
+export const currentProviderAlerts = () => Object.fromEntries(providerAlerts);
+
+/**
+ * Live mode, at start-up: log in to the mail server (nothing is sent) and
+ * say plainly whether email works. A refused login is shown on the
+ * officer's Notifications tab straight away, not only after the first
+ * student's email fails. Never throws; returns { ok, code?, message? }.
+ */
+export const checkEmailLogin = async (cfg = deliveryConfig()) => {
+  if (cfg.mode !== "live" || !cfg.email.enabled) return { ok: true, skipped: true };
+  if (!cfg.email.configured) {
+    return { ok: false, code: "CHANNEL_NOT_CONFIGURED", message: "SMTP_USER / SMTP_PASS are not set: no email can be sent." };
+  }
+  const tx = getTransporter();
+  try {
+    await tx.verify();
+    return { ok: true, host: `${tx.options?.host}:${tx.options?.port}` };
+  } catch (raw) {
+    const err = classifySmtpError(raw);
+    if (err.credential) noteProviderAlert("email", err, new Date());
+    return { ok: false, code: err.code, credential: err.credential, message: err.message };
+  }
+};
+
 const isPaused = (channel, now = new Date()) => (pausedUntil.get(channel) || 0) > now;
 
 /**
@@ -238,8 +307,8 @@ const prefetch = async (rows, cache) => {
   const studentIds = uniq(rows.map((r) => r.studentId));
   const missingDrives = uniq(rows.map((r) => r.driveId)).filter((id) => !cache.drives.has(String(id)));
   const [students, users, candidates, drives] = await Promise.all([
-    Student.find({ _id: { $in: studentIds } }).select("phone whatsapp").lean(),
-    User.find({ _id: { $in: uniq(rows.map((r) => r.userId)) } }).select("name email isActive").lean(),
+    Student.find({ _id: { $in: studentIds } }).select("_id").lean(),
+    User.find({ _id: { $in: uniq(rows.map((r) => r.userId)) } }).select(CONTACT_FIELDS).lean(),
     DriveCandidate.find({ driveId: { $in: uniq(rows.map((r) => r.driveId)) }, studentId: { $in: studentIds } })
       .select("driveId studentId eligible")
       .lean(),
@@ -364,8 +433,25 @@ const deliverOne = async (row, cfg, ctx) => {
     masked = recipient.masked;
   } catch (raw) {
     const err = raw instanceof DeliveryError ? raw : new DeliveryError("UNEXPECTED", redact(raw?.message || "Unexpected error"));
-    const lastError = { code: err.code, message: redact(err.message), permanent: err.permanent, at: now };
+    const lastError = { code: err.code, message: redact(err.message), permanent: err.permanent, credential: err.credential, at: now };
     const maxAttempts = cfg.worker.maxAttempts;
+    if (err.credential || err.quota) {
+      // Expired token / rejected login / sending quota used up: not this
+      // message's fault. Keep it queued without spending an attempt; the
+      // channel pauses, and sending resumes by itself once an administrator
+      // fixes the credential or the provider's quota frees up.
+      const retryAt = new Date(now.getTime() + (err.retryAfterMs || 600000));
+      noteProviderAlert(row.channel, err, now);
+      await NotificationDelivery.updateOne(
+        { _id: row._id, status: DELIVERY_STATUS.PROCESSING, lockedBy: row.lockedBy },
+        {
+          $set: { status: DELIVERY_STATUS.PENDING, nextAttemptAt: retryAt, lastError },
+          $inc: { attempts: -1 },
+          $unset: { lockedUntil: "", lockedBy: "" },
+        },
+      );
+      return { result: "retrying", rateLimited: true, retryAt };
+    }
     if (!err.permanent && row.attempts < maxAttempts) {
       const wait = Math.max(err.retryAfterMs || 0, backoffMs(row.attempts, cfg));
       const retryAt = new Date(now.getTime() + wait);
@@ -380,6 +466,9 @@ const deliverOne = async (row, cfg, ctx) => {
 
   // From here the provider has the message.
   row.handedOver = true;
+  // Only a send that started after the alert proves the problem is over: one
+  // already in flight when the quota ran out may still succeed.
+  if (providerAlerts.get(row.channel)?.at < now) providerAlerts.delete(row.channel);
   const success = {
     status: sent.simulated ? DELIVERY_STATUS.SIMULATED : DELIVERY_STATUS.SENT,
     provider: sent.provider,
@@ -479,8 +568,20 @@ export const processDueDeliveries = async ({ channels = DELIVERY_CHANNELS } = {}
 /** Clear rate-limit pauses (tests, or after an operator raises a limit). */
 export const resetDeliveryPauses = () => {
   pausedUntil.clear();
+  providerAlerts.clear();
   stopping = false;
 };
+
+/**
+ * On start-up (after an administrator fixed a token or password and
+ * restarted), messages held back by a credential error are due at once
+ * rather than at the end of their pause.
+ */
+export const releaseCredentialHolds = () =>
+  NotificationDelivery.updateMany(
+    { status: DELIVERY_STATUS.PENDING, "lastError.credential": true },
+    { $set: { nextAttemptAt: new Date() } },
+  );
 
 /** One background loop per channel, so channels never wait for each other. */
 const loops = Object.fromEntries(DELIVERY_CHANNELS.map((c) => [c, { running: null, again: false }]));
@@ -566,12 +667,25 @@ export const retryDriveDeliveries = async (drive, { channel, ids } = {}, actor) 
   }
 
   const now = new Date();
+  const cfg = deliveryConfig();
+  // Re-queued: rows that FAILED, plus rows that were never sent to anyone
+  // and may now be sendable —
+  //   - "simulated" in sandbox mode, once the server is live;
+  //   - skipped for a missing address, number or consent, which the
+  //     student may since have fixed (re-checked at send time; still
+  //     unreachable means skipped again).
+  // Nothing sent, delivered or read is ever touched.
+  const resendable = [
+    { status: DELIVERY_STATUS.FAILED },
+    { status: DELIVERY_STATUS.SKIPPED, skipReason: { $in: RECHECKABLE_SKIPS } },
+    ...(cfg.mode === "live" ? [{ status: DELIVERY_STATUS.SIMULATED }] : []),
+  ];
   const { modifiedCount } = await NotificationDelivery.updateMany(
-    { driveId: drive._id, status: DELIVERY_STATUS.FAILED, ...(channel ? { channel } : {}), ...idFilter },
+    { driveId: drive._id, $or: resendable, ...(channel ? { channel } : {}), ...idFilter },
     {
       $set: { status: DELIVERY_STATUS.PENDING, attempts: 0, nextAttemptAt: now },
       $inc: { manualRetries: 1 },
-      $unset: { failedAt: "" },
+      $unset: { failedAt: "", skipReason: "", provider: "", providerMessageId: "" },
     },
   );
 
@@ -595,6 +709,79 @@ export const retryDriveDeliveries = async (drive, { channel, ids } = {}, actor) 
   await audit(actor, "notification.retry", { drive, to: { channel: channel || "all", retried: modifiedCount, backfilled } });
   if (modifiedCount) kickDeliveryWorker();
   return { retried: modifiedCount, backfilled };
+};
+
+/**
+ * A student has just given (or changed) their WhatsApp number: send them
+ * the alert for every drive that is open right now, that they are eligible
+ * for, and that they have not yet received on WhatsApp.
+ *
+ * Duplicate-safe like everything else here: rows already sent, delivered or
+ * read are untouched; rows skipped for missing consent or number are put
+ * back in the queue; drives with no row yet get one (unique key). Drives
+ * that are closed, or where the student is not eligible, are ignored.
+ */
+export const catchUpWhatsAppForStudent = (studentId) => catchUpForStudent(studentId, ["whatsapp"]);
+
+/**
+ * Same for any channels: the student's contact details just changed (a
+ * phone verified, an email verified), so re-check the open drives they were
+ * already told about in the app.
+ */
+export const catchUpForStudent = async (studentId, channels = DELIVERY_CHANNELS) => {
+  const cfg = deliveryConfig();
+  const active = channels.filter((c) => cfg[c].enabled);
+  if (!active.length) return { queued: 0, drives: 0 };
+  const now = new Date();
+
+  const open = await Drive.find({
+    workflow: "managed",
+    status: MANAGED_DRIVE_STATUS.OPEN,
+    registrationDeadline: { $gt: now },
+  })
+    .select("_id")
+    .lean();
+  if (!open.length) return { queued: 0, drives: 0 };
+
+  const candidates = await DriveCandidate.find({
+    studentId,
+    driveId: { $in: open.map((d) => d._id) },
+    eligible: true,
+    // Only drives the student has been told about in the app: a drive
+    // they become eligible for later is announced on every channel then.
+    notifiedAt: { $exists: true },
+    userId: { $exists: true },
+  })
+    .select("driveId studentId userId notificationId")
+    .lean();
+  if (!candidates.length) return { queued: 0, drives: 0 };
+  const driveIds = candidates.map((c) => c.driveId);
+
+  const { modifiedCount } = await NotificationDelivery.updateMany(
+    {
+      studentId,
+      channel: { $in: active },
+      driveId: { $in: driveIds },
+      $or: [
+        { status: DELIVERY_STATUS.SKIPPED, skipReason: { $in: RECHECKABLE_SKIPS } },
+        ...(cfg.mode === "live" ? [{ status: DELIVERY_STATUS.SIMULATED }] : []),
+      ],
+    },
+    {
+      $set: { status: DELIVERY_STATUS.PENDING, attempts: 0, nextAttemptAt: now },
+      $unset: { skipReason: "", provider: "", providerMessageId: "" },
+    },
+  );
+
+  let created = 0;
+  for (const c of candidates) {
+    const q = await queueDriveOpportunityDeliveries({ _id: c.driveId }, [
+      { studentId: c.studentId, userId: c.userId, notificationId: c.notificationId },
+    ]);
+    created += q.queued;
+  }
+  if (modifiedCount) kickDeliveryWorker();
+  return { queued: modifiedCount + created, drives: candidates.length };
 };
 
 const inAppKeyPrefix = (driveId) => new RegExp(`^${escapeRegex(`drive:${driveId}:eligible:`)}`);
@@ -634,7 +821,7 @@ export const driveDeliverySummary = async (drive) => {
   }
   const w = channels.whatsapp.skippedBy;
   return {
-    config: publicDeliveryStatus(),
+    config: { ...publicDeliveryStatus(), warnings: deliveryWarnings(), alerts: currentProviderAlerts() },
     eligible,
     notified,
     // The bell and the notification centre read the same stored record, so
@@ -769,8 +956,8 @@ export const applyWhatsAppInbound = async (messages = []) => {
     const body = m?.text?.body ?? m?.button?.text ?? "";
     if (!m?.from || !OPT_OUT.test(String(body))) continue;
     const number = `+${String(m.from).replace(/\D/g, "")}`;
-    const r = await Student.updateMany(
-      { "whatsapp.number": number, "whatsapp.optIn": true },
+    const r = await User.updateMany(
+      { phone: number, "whatsapp.optIn": true },
       { $set: { "whatsapp.optIn": false, "whatsapp.optOutAt": new Date(), "whatsapp.consentSource": "whatsapp_reply" } },
     );
     optedOut += r.modifiedCount;

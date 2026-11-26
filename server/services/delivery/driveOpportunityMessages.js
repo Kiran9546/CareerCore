@@ -85,6 +85,10 @@ export const renderOpportunityEmail = ({ studentName, facts, brand = {} }) => {
 
   const e = escapeHtml;
   const url = facts.registrationUrl;
+  // Where the student turns placement emails off (their contact settings).
+  const settingsUrl = /\/student\/drives\/[^/?#]+$/.test(url || "")
+    ? url.replace(/\/student\/drives\/[^/?#]+$/, "/student/profile#contact")
+    : "";
 
   const rowHtml = rows
     .map(
@@ -170,7 +174,7 @@ export const renderOpportunityEmail = ({ studentName, facts, brand = {} }) => {
         </td></tr>
       </table>
       <p style="max-width:600px;margin:16px auto 0;font-size:11px;line-height:1.5;color:#94a3b8;text-align:center">
-        You are receiving this because you are a registered CareerCore student and meet the eligibility criteria for this drive.<br>${e(institution)}
+        You are receiving this because you are a registered CareerCore student and meet the eligibility criteria for this drive.${settingsUrl ? ` <a href="${e(settingsUrl)}" target="_blank" rel="noopener" style="color:#64748b">Manage email alerts</a>` : ""}<br>${e(institution)}
       </p>
     </td></tr>
   </table>
@@ -194,6 +198,7 @@ export const renderOpportunityEmail = ({ studentName, facts, brand = {} }) => {
     "Best Regards,",
     "CareerCore Placement Team",
     "",
+    ...(settingsUrl ? [`Manage email alerts: ${settingsUrl}`] : []),
     institution,
   ].join("\n");
 

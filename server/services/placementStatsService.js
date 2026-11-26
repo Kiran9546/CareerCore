@@ -292,7 +292,7 @@ export const overallStatistics = async (query = {}) => {
 
   const [students, drives] = await Promise.all([
     Student.find(studentFilter).select("_id branch").lean(),
-    Drive.find(driveFilter).select("_id companyId companyName role status workflow ctc driveDate rounds").lean(),
+    Drive.find(driveFilter).select("_id companyId companyName role status workflow ctc driveDate registrationDeadline rounds").lean(),
   ]);
   const branchOf = new Map(students.map((s) => [String(s._id), s.branch]));
   const driveIds = drives.map((d) => d._id);
@@ -384,7 +384,17 @@ export const overallStatistics = async (query = {}) => {
       .sort((a, b) => b.selections - a.selections || a.company.localeCompare(b.company)),
     activeDrives: drives
       .filter((d) => ACTIVE_DRIVE_STATUSES.includes(d.status))
-      .map((d) => ({ _id: d._id, companyName: d.companyName, role: d.role, status: d.status, driveDate: d.driveDate, workflow: d.workflow || DRIVE_WORKFLOW.RECORDED })),
+      .map((d) => ({
+        _id: d._id,
+        companyName: d.companyName,
+        role: d.role,
+        status: d.status,
+        driveDate: d.driveDate,
+        workflow: d.workflow || DRIVE_WORKFLOW.RECORDED,
+        // For the Overview list; absent on drives that never recorded them.
+        ctc: typeof d.ctc === "number" ? d.ctc : null,
+        registrationDeadline: d.registrationDeadline || null,
+      })),
   };
 };
 

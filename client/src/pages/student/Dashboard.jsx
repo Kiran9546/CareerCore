@@ -8,6 +8,7 @@ import SkillNetwork from "../../components/SkillNetwork";
 import CareerSuggestions from "../../components/CareerSuggestions";
 import ErrorState from "../../components/ui/ErrorState";
 import { PageSkeleton } from "../../components/ui/Skeleton";
+import ContactBanner from "../../components/ContactBanner";
 import TiltCard from "../../motion/TiltCard";
 import AnimatedNumber from "../../motion/AnimatedNumber";
 import { useReducedMotion } from "../../motion/motion";
@@ -122,6 +123,7 @@ export default function Dashboard() {
 
   return (
     <div>
+      <ContactBanner />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           ["CGPA", profile.cgpa],

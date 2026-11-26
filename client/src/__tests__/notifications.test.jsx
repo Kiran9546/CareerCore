@@ -217,7 +217,7 @@ describe("placement officer delivery report", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Retry 7 failed" }));
     await waitFor(() => expect(api.post).toHaveBeenCalledWith(`/placement/drives/${DRIVE_ID}/notifications/retry`, { channel: "email" }));
-    await waitFor(() => expect(onNotice).toHaveBeenCalledWith("7 failed Email message(s) queued for another attempt."));
+    await waitFor(() => expect(onNotice).toHaveBeenCalledWith("7 Email message(s) queued to be sent."));
   });
 
   test("sandbox and unconfigured channels are stated plainly, and closed drives offer no retry", async () => {

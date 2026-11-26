@@ -27,6 +27,9 @@ export const getTransporter = () => {
     host,
     port,
     secure,
+    // On the submission port the password must never cross in plain text:
+    // refuse to log in if the server does not upgrade to TLS (Gmail always does).
+    requireTLS: !secure && port === 587,
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
     // A pool of reused, authenticated connections: a drive announcement to
     // thousands of students does not open a new TLS session per message.

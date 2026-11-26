@@ -94,22 +94,13 @@ const studentSchema = new mongoose.Schema(
     branch: { type: String, required: true }, // "ISE"
     cgpa: { type: Number, required: true, min: 0, max: 10 },
     backlogs: { type: Number, default: 0, min: 0 },
+    /**
+     * A copy of the account's mobile number (User.phone) for the readers
+     * that show it with the academic record (resume, placement profile,
+     * export). The account is the source: contactService keeps this equal.
+     * WhatsApp consent and verification live on the account only.
+     */
     phone: String,
-
-    // ── WhatsApp alerts (opt-in) ──
-    // Business-initiated WhatsApp messages need the recipient's explicit
-    // consent, so nothing is sent until the student opts in on their profile.
-    // `number` is stored already normalised to E.164; when the student leaves
-    // it blank, their phone above is normalised and used instead.
-    whatsapp: {
-      number: String,
-      optIn: { type: Boolean, default: false },
-      consentAt: Date,
-      /** Which consent wording they agreed to (see notificationPreferences). */
-      consentVersion: String,
-      consentSource: { type: String, enum: ["profile", "whatsapp_reply"] },
-      optOutAt: Date,
-    },
 
     // ── Profile content ──
     resumeUrl: String,
@@ -156,8 +147,6 @@ studentSchema.index({ batch: 1, branch: 1 }); // faculty batch analytics
 studentSchema.index({ currentPRS: -1 }); // recruiter ranking, leaderboard
 studentSchema.index({ "skills.skillId": 1 }); // candidate search by skill
 studentSchema.index({ updatedAt: -1 }); // "recently active students" queries
-studentSchema.index({ "whatsapp.number": 1 }, { sparse: true }); // WhatsApp "STOP" replies
-
 // ─── Methods ─────────────────────────────────────────────────
 
 /**

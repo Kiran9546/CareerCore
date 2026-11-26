@@ -15,7 +15,8 @@
     "admin:create": "node seed/createAdmin.js",
     "db:clean": "node seed/cleanDatabase.js",
     "db:clean:dry": "node seed/cleanDatabase.js --dry-run",
-    "test": "node --test --test-concurrency=1 \"test/*.test.js\""
+    "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
+    "notify:test": "node scripts/notifyTest.js"
   },
   "keywords": [
     "placement",

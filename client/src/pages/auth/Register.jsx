@@ -7,6 +7,7 @@ import AuthFrame, { ErrorNote, PasswordInput } from "./AuthFrame";
 import { fieldClass, labelClass, primaryButton } from "./authStyles";
 import FieldError from "../../components/ui/FieldError";
 import Icon from "../../components/ui/Icon";
+import { useAlertChannels } from "../../utils/alertChannels";
 
 /** Categories open to self-registration; administrators are provisioned. */
 const ROLES = Object.entries(ROLE_META)
@@ -30,6 +31,8 @@ export default function Register() {
     confirm: "",
     role: "student",
     department: "",
+    phone: "",
+    whatsappConsent: false,
   });
   const [error, setError] = useState("");
   const [errors, setErrors] = useState({});
@@ -38,6 +41,7 @@ export default function Register() {
   // Fetched rather than hardcoded: a duplicated list had already drifted out
   // of step with the server, leaving whole departments unable to register.
   const [departments, setDepartments] = useState([]);
+  const channels = useAlertChannels();
 
   useEffect(() => {
     api
@@ -68,6 +72,15 @@ export default function Register() {
     if (form.name.trim().length < 2) found.name = "Enter your full name.";
     if (!form.email.trim()) found.email = "Enter your email address.";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) found.email = "Enter a valid email address, like name@college.edu.";
+    // Students give a mobile number: it is kept on their account as contact
+    // details (and is where WhatsApp alerts go, when those are in use).
+    if (form.role === "student") {
+      const digits = form.phone.replace(/\D/g, "");
+      if (!form.phone.trim()) found.phone = "Enter your mobile number.";
+      else if (!/^[+\d\s().-]+$/.test(form.phone.trim()) || digits.length < 10 || digits.length > 15) {
+        found.phone = "Enter a valid mobile number, like +91 98765 43210.";
+      }
+    }
     if (form.password.length < 8) found.password = "Use at least 8 characters.";
     if (!form.confirm) found.confirm = "Type the password again.";
     else if (form.password !== form.confirm) found.confirm = "The passwords do not match.";
@@ -84,8 +97,17 @@ export default function Register() {
         password: form.password,
         role: form.role,
         ...(form.role === "faculty" ? { department: form.department } : {}),
+        ...(form.role === "student"
+          ? { phone: form.phone.trim(), whatsappConsent: channels.whatsapp && form.whatsappConsent }
+          : {}),
       });
-      navigate(workspacePath(user.role), { replace: true });
+      // Students continue to their profile, where the academic details are
+      // filled in (and, when WhatsApp is in use, the code they were sent).
+      if (user.role === "student") {
+        navigate("/student/profile", { replace: true, state: { verification: user.verification } });
+      } else {
+        navigate(workspacePath(user.role), { replace: true });
+      }
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -181,6 +203,37 @@ export default function Register() {
           />
           <FieldError id="email-error">{errors.email}</FieldError>
         </div>
+
+        {form.role === "student" && (
+          <div>
+            <label htmlFor="phone" className={labelClass}>Mobile number</label>
+            <input
+              id="phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              value={form.phone}
+              onChange={set("phone")}
+              {...fieldProps("phone")}
+              placeholder="+91 98765 43210"
+            />
+            <FieldError id="phone-error">{errors.phone}</FieldError>
+            <p className="mt-1.5 text-xs text-slate-500">Include the country code if you are outside India.</p>
+            {channels.whatsapp && (
+              <label className="mt-3 flex items-start gap-2.5 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                  checked={form.whatsappConsent}
+                  onChange={(e) => setForm({ ...form, whatsappConsent: e.target.checked })}
+                />
+                <span>
+                  Send me placement drive alerts on WhatsApp at this number. I'll confirm it with a code sent on WhatsApp, and can stop any time by replying STOP.
+                </span>
+              </label>
+            )}
+          </div>
+        )}
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div>

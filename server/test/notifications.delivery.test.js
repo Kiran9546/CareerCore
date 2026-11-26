@@ -43,6 +43,7 @@ const BASE_ENV = {
   WHATSAPP_ACCESS_TOKEN: "test-token",
   WHATSAPP_PHONE_NUMBER_ID: "1234567890",
   WHATSAPP_TEMPLATE_NAME: "placement_drive_alert",
+  WHATSAPP_OTP_TEMPLATE_NAME: "careercore_verification",
   WHATSAPP_API_VERSION: "v21.0",
   WHATSAPP_APP_SECRET: WA_SECRET,
   WHATSAPP_WEBHOOK_VERIFY_TOKEN: WA_VERIFY,
@@ -114,25 +115,51 @@ const draftDrive = async (extra = {}) => {
 
 const publish = (O, driveId) => O.patch(`/placement/drives/${driveId}/status`, { status: "open" });
 
+/**
+ * Contact details as they sit on an account after registration: a number,
+ * whether its WhatsApp code was entered, and WhatsApp consent.
+ */
+const contact = (phone, { verified = true, optIn = true } = {}) => ({
+  ...(phone ? { phone } : {}),
+  ...(verified && phone ? { phoneVerifiedAt: new Date() } : {}),
+  whatsapp: { optIn, ...(optIn ? { consentAt: new Date() } : {}) },
+});
+
 /** A small cohort covering every eligibility and reachability case. */
-const cohort = async () => {
-  const optIn = (number) => ({ whatsapp: { optIn: true, number, consentAt: new Date() } });
-  return {
-    // Eligible, reachable on every channel.
-    a: await createStudent({ branch: "CSE", cgpa: 8.2, phone: "98765 43210", ...optIn("+919876543210") }, { name: "Asha Rao" }),
-    // Eligible; opted in with only a profile phone, typed loosely.
-    b: await createStudent({ branch: "ISE", cgpa: 7.5, phone: "091234-56789", whatsapp: { optIn: true } }, { name: "Bilal K" }),
-    // Eligible; no WhatsApp consent.
-    c: await createStudent({ branch: "CSE", cgpa: 9.1, phone: "9988776655" }, { name: "Chen L" }),
-    // Eligible; opted in but the number is not a number.
-    d: await createStudent({ branch: "ISE", cgpa: 8.0, phone: "call me", whatsapp: { optIn: true } }, { name: "Divya S" }),
-    // Eligible; opted in with no number at all.
-    e: await createStudent({ branch: "CSE", cgpa: 7.9, whatsapp: { optIn: true } }, { name: "Eshan P" }),
-    // Ineligible: CGPA, backlogs, branch.
-    lowCgpa: await createStudent({ branch: "CSE", cgpa: 6.5, ...optIn("+919811111111") }),
-    backlog: await createStudent({ branch: "CSE", cgpa: 8.5, backlogs: 2, ...optIn("+919822222222") }),
-    mech: await createStudent({ branch: "ME", cgpa: 9.5, ...optIn("+919833333333") }),
-  };
+const cohort = async () => ({
+  // Eligible, reachable on every channel.
+  a: await createStudent({ branch: "CSE", cgpa: 8.2 }, { name: "Asha Rao", ...contact("+919876543210") }),
+  // Eligible, reachable.
+  b: await createStudent({ branch: "ISE", cgpa: 7.5 }, { name: "Bilal K", ...contact("+919123456789") }),
+  // Eligible; has a number but no WhatsApp consent.
+  c: await createStudent({ branch: "CSE", cgpa: 9.1 }, { name: "Chen L", ...contact("+919988776655", { optIn: false, verified: false }) }),
+  // Eligible; consented, but the stored number is not a number (legacy data).
+  d: await createStudent({ branch: "ISE", cgpa: 8.0 }, { name: "Divya S", ...contact("call me") }),
+  // Eligible; consented with no number at all.
+  e: await createStudent({ branch: "CSE", cgpa: 7.9 }, { name: "Eshan P", ...contact(null) }),
+  // Ineligible: CGPA, backlogs, branch — all reachable, none may be messaged.
+  lowCgpa: await createStudent({ branch: "CSE", cgpa: 6.5 }, contact("+919811111111")),
+  backlog: await createStudent({ branch: "CSE", cgpa: 8.5, backlogs: 2 }, contact("+919822222222")),
+  mech: await createStudent({ branch: "ME", cgpa: 9.5 }, contact("+919833333333")),
+});
+
+/** Drive alerts only (verification codes use a different template). */
+const alerts = () => whatsapp.calls.filter((m) => m.template.name === "placement_drive_alert");
+/** The code in the latest verification message sent to `e164`. */
+const codeSentTo = (e164) => {
+  const m = [...whatsapp.calls].reverse().find((x) => x.template.name === "careercore_verification" && x.to === e164.replace(/^\+/, ""));
+  return m?.template.components[0].parameters[0].text;
+};
+/** Verify a number through the API exactly as a student does. */
+const verifyNumber = async (token, number) => {
+  const S = api(token);
+  const sent = await S.post("/auth/phone/send-code", { phone: number, consent: true });
+  assert.equal(sent.status, 200, JSON.stringify(sent.body));
+  const code = codeSentTo(normalizePhone(number));
+  assert.ok(code, "a code was sent on WhatsApp");
+  const ok = await S.post("/auth/phone/verify", { code });
+  assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  return ok.body;
 };
 
 const ELIGIBLE = ["a", "b", "c", "d", "e"];
@@ -358,7 +385,7 @@ test("retries stop at the attempt limit, and permanent errors are not retried", 
     })),
   });
   const { O, driveId } = await draftDrive({ branches: ["CSE"], minCgpa: 9 }); // c only (no WhatsApp)
-  await Student.updateOne({ cgpa: 9.1 }, { $set: { whatsapp: { optIn: true, number: "+919988776655" } } });
+  await User.updateOne({ _id: (await Student.findOne({ cgpa: 9.1 })).userId }, { $set: { phone: "+919988776655", phoneVerifiedAt: new Date(), whatsapp: { optIn: true, consentAt: new Date() } } });
   await publish(O, driveId);
 
   await processDueDeliveries();
@@ -414,8 +441,8 @@ test("real WhatsApp client against a fake Graph API: success, undeliverable, ser
     configure({ WHATSAPP_API_BASE_URL: `http://127.0.0.1:${fake.address().port}` });
     setDeliveryProviders({ email }); // WhatsApp uses the real provider
     const s = await cohort();
-    await Student.updateOne({ _id: s.c.student._id }, { $set: { whatsapp: { optIn: true, number: "+919988776655" } } });
-    await Student.updateOne({ _id: s.d.student._id }, { $set: { whatsapp: { optIn: true, number: "+919900000001" } } });
+    await User.updateOne({ _id: s.c.user._id }, { $set: { phone: "+919988776655", phoneVerifiedAt: new Date(), whatsapp: { optIn: true, consentAt: new Date() } } });
+    await User.updateOne({ _id: s.d.user._id }, { $set: { phone: "+919900000001", phoneVerifiedAt: new Date(), whatsapp: { optIn: true, consentAt: new Date() } } });
     const { O, driveId } = await draftDrive();
     await publish(O, driveId);
     await processDueDeliveries();
@@ -610,7 +637,7 @@ test("missing email, deactivated accounts and unusable numbers are skipped with 
   assert.equal(reasons[s.b.student._id], "pending");
 
   // Consent withdrawn after queueing is respected at send time.
-  await Student.updateOne({ _id: s.b.student._id }, { $set: { "whatsapp.optIn": false } });
+  await User.updateOne({ _id: s.b.user._id }, { $set: { "whatsapp.optIn": false } });
   await processDueDeliveries();
   const b = await NotificationDelivery.findOne({ channel: "whatsapp", studentId: s.b.student._id }).lean();
   assert.equal(b.status, "skipped");
@@ -681,11 +708,15 @@ test("officer retry re-queues only failed messages and never resends delivered o
   const entry = await AuditLog.findOne({ action: "notification.retry" }).lean();
   assert.equal(String(entry.actor), String(officer.user._id));
 
-  // A second retry finds nothing to resend.
+  // A second retry resends nothing that was sent; it only re-checks the
+  // three WhatsApp rows skipped for consent/number, which stay skipped.
+  const waBefore = whatsapp.calls.length;
   const again = await O.post(`/placement/drives/${driveId}/notifications/retry`, {});
-  assert.equal(again.body.retried, 0);
+  assert.equal(again.body.retried, 3);
   await processDueDeliveries();
   assert.equal(email.calls.length - callsBefore, failedBefore);
+  assert.equal(whatsapp.calls.length, waBefore);
+  assert.equal(await NotificationDelivery.countDocuments({ channel: "whatsapp", status: "skipped" }), 3);
 
   // Channel-wise list: masked addresses, filterable.
   const list = await O.get(`/placement/drives/${driveId}/notifications/deliveries?channel=whatsapp&status=skipped`);
@@ -696,6 +727,36 @@ test("officer retry re-queues only failed messages and never resends delivered o
   // Closed registration: retry is refused.
   await O.patch(`/placement/drives/${driveId}/status`, { status: "registration_closed" });
   assert.equal((await O.post(`/placement/drives/${driveId}/notifications/retry`, {})).status, 409);
+});
+
+test("going live after sandbox, and opting in after publication, still deliver — once", async () => {
+  const s = await cohort();
+  configure({ NOTIFICATION_DELIVERY_MODE: "sandbox" });
+  setDeliveryProviders({}); // sandbox: nothing leaves the server
+  const { O, driveId } = await draftDrive();
+  await publish(O, driveId);
+  await processDueDeliveries();
+  assert.equal(await NotificationDelivery.countDocuments({ status: "simulated" }), 7);
+
+  // In sandbox mode, retry does not touch simulated rows.
+  assert.equal((await O.post(`/placement/drives/${driveId}/notifications/retry`, { channel: "email" })).body.retried, 0);
+
+  // The operator switches to live; student c verifies a WhatsApp number afterwards.
+  configure();
+  setDeliveryProviders({ email, whatsapp });
+  await verifyNumber(s.c.token, "99887 76655");
+
+  const r = await O.post(`/placement/drives/${driveId}/notifications/retry`, {});
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  await processDueDeliveries();
+  assert.equal(email.calls.length, 5, "every simulated email really sent");
+  assert.deepEqual(alerts().map((m) => m.to).sort(), ["919123456789", "919876543210", "919988776655"]);
+
+  // And it is not repeatable: everything is now really sent.
+  await O.post(`/placement/drives/${driveId}/notifications/retry`, {});
+  await processDueDeliveries();
+  assert.equal(email.calls.length, 5);
+  assert.equal(alerts().length, 3);
 });
 
 test("admins can read the report", async () => {
@@ -759,35 +820,6 @@ test("notification centre: own notifications only, paginated, read and unread pe
   assert.equal(r.body.unread, 0);
 });
 
-test("WhatsApp consent: opt-in needs a valid number, is stored normalised, and can be withdrawn", async () => {
-  const me = await createStudent({ branch: "CSE", cgpa: 8, phone: "" });
-  const M = api(me.token);
-  let r = await M.get("/student/notification-preferences");
-  assert.equal(r.status, 200);
-  assert.equal(r.body.whatsapp.optIn, false);
-  assert.ok(r.body.whatsapp.consentText.includes("STOP"));
-
-  assert.equal((await M.put("/student/notification-preferences", { whatsappOptIn: true })).status, 400);
-  assert.equal((await M.put("/student/notification-preferences", { whatsappOptIn: true, whatsappNumber: "12" })).status, 400);
-  assert.equal((await M.put("/student/notification-preferences", { whatsappOptIn: "yes" })).status, 400);
-
-  r = await M.put("/student/notification-preferences", { whatsappOptIn: true, whatsappNumber: "98765 43210" });
-  assert.equal(r.status, 200, JSON.stringify(r.body));
-  let s = await Student.findById(me.student._id).lean();
-  assert.equal(s.whatsapp.number, "+919876543210");
-  assert.equal(s.whatsapp.optIn, true);
-  assert.ok(s.whatsapp.consentAt);
-  assert.ok(s.whatsapp.consentVersion);
-
-  r = await M.put("/student/notification-preferences", { whatsappOptIn: false });
-  s = await Student.findById(me.student._id).lean();
-  assert.equal(s.whatsapp.optIn, false);
-  assert.ok(s.whatsapp.optOutAt);
-
-  const officer = await createUser("placement_officer");
-  assert.equal((await api(officer.token).get("/student/notification-preferences")).status, 403);
-});
-
 // ─── Webhooks ───────────────────────────────────────────────────────
 
 const signedPost = (body, secret = WA_SECRET) => {
@@ -846,7 +878,7 @@ test("WhatsApp webhooks: verified handshake, signed status updates, STOP opt-out
     entry: [{ changes: [{ value: { messages: [{ from: "919876543210", type: "text", text: { body: "STOP" } }] } }] }],
   });
   assert.equal(stop.status, 200);
-  const a = await Student.findById(s.a.student._id).lean();
+  const a = await User.findById(s.a.user._id).lean();
   assert.equal(a.whatsapp.optIn, false);
   assert.equal(a.whatsapp.consentSource, "whatsapp_reply");
 
@@ -890,7 +922,7 @@ test("production refuses WhatsApp switched on without its credentials", () => {
     CLIENT_URL: "https://careercore.example.edu",
   };
   assert.deepEqual(productionEnvProblems(good), []);
-  assert.equal(productionEnvProblems({ ...good, NOTIFY_WHATSAPP_ENABLED: "true" }).length, 5);
+  assert.equal(productionEnvProblems({ ...good, NOTIFY_WHATSAPP_ENABLED: "true" }).length, 6);
   assert.equal(productionEnvProblems({ ...good, NOTIFICATION_DELIVERY_MODE: "loud" }).length, 1);
   assert.equal(productionEnvProblems({ ...good, PUBLIC_APP_URL: "http://localhost:5173" }).length, 1);
 });

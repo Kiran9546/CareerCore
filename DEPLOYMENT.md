@@ -307,6 +307,12 @@ When an officer publishes a managed drive (or a recalculation makes more student
 2. **Email and WhatsApp**: one row per student and channel in `notificationdeliveries`, a durable queue. The background worker (`server/jobs/deliveryWorker.js`) sends them, retries transient failures with exponential backoff (`DELIVERY_MAX_ATTEMPTS`, default 5) and records every outcome. The publish request never waits on SMTP or Meta.
 3. Officers see channel-wise figures and per-student detail on the drive's **Notifications** tab, and can retry failed messages. Retry only re-queues rows whose status is `failed`; anything already sent is never resent.
 
+**Current setup: in-app + email (Gmail SMTP) only.** WhatsApp stays switched off (`NOTIFY_WHATSAPP_ENABLED=false`, the default). While it is off, no WhatsApp row is ever queued, the sign-up form and the profile show no WhatsApp options, the verification-code endpoint answers 503 in every mode (sandbox included), and the officer's Notifications tab shows the email channel only. There is no SMS or browser push channel. Section 10.3 applies only if WhatsApp is turned on later.
+
+**Students' email setting.** Under **Contact & placement alerts** on their profile, students can turn placement drive emails off and on (`PUT /api/auth/contact/email { optIn }`). In-app notifications always continue. Turning emails back on sends, once, the open drives they missed while off. Every drive email links to this setting.
+
+**Gmail's daily limit.** A personal Gmail account sends about 500 emails a day (Google Workspace about 2,000). When Gmail answers `550 5.4.5` (daily limit), the remaining emails are **not** marked failed. They stay queued, the email channel pauses for an hour at a time, the Notifications tab shows the reason, and sending resumes by itself. For cohorts larger than the limit, expect a large announcement to take more than a day, or move to a transactional provider (10.2).
+
 **Duplicate policy:** a student receives **one** announcement per drive per channel, ever. Republishing, reopening registration, recalculating, concurrent clicks and worker restarts cannot send a second one (unique `idempotencyKey`, atomic claims). Reopening a closed drive only notifies students who have become eligible since. A message whose worker stopped mid-send is marked failed with code `INTERRUPTED` instead of being resent automatically, because the provider may already have accepted it.
 
 ### 10.1 Modes
@@ -316,6 +322,22 @@ When an officer publishes a managed drive (or a recalculation makes more student
 | `sandbox` (default outside production) | Messages are rendered and recorded as **simulated**. Nothing leaves the server, and the officer dashboard says so. |
 | `live` (default in production) | Real delivery. A channel without credentials fails with `CHANNEL_NOT_CONFIGURED` and is never reported as sent. |
 | `off` | In-app notifications only; nothing is queued. |
+
+### 10.1a Check your setup in one command
+
+```
+cd server
+npm run notify:test -- --check                      # log in to Gmail only; sends nothing
+npm run notify:test -- --student 4MT23IS039         # one sample email to that student's registered address
+npm run notify:test -- --email you@gmail.com --whatsapp "+91 98765 43210"
+npm run notify:test -- --whatsapp "+91 98765 43210" --hello-world   # before your template is approved
+```
+
+This sends one sample message to the address and number you give, using the same templates and providers as drive announcements. Nothing is written to the database and nobody else is contacted. Each failure is printed with the exact fix (Gmail App Password, expired token, recipient not allowed on a test number, template name or language mismatch, and so on).
+
+**Drives published before going live.** Messages recorded as "simulated" in sandbox mode, and students skipped for missing consent or number who have since fixed it, are sent by **Send unsent** on the drive's Notifications tab once the server is live. Rows already sent are never sent again.
+
+**Your own inbox and phone.** Seeded demo students use placeholder `@mite.ac.in` addresses. To receive a test announcement yourself, register a student account with your own Gmail, opt in to WhatsApp on its profile, and publish a drive it is eligible for.
 
 ### 10.2 Activate email
 
@@ -359,17 +381,25 @@ Only the official WhatsApp Business Platform is used: no WhatsApp Web automation
    - Footer: `- CareerCore Placement Team`
    - Button: **Visit website**, type **Dynamic**, URL `https://<your website>/student/drives/{{1}}` (the API passes the drive id as `{{1}}`). If you leave the button out, set `WHATSAPP_TEMPLATE_URL_BUTTON=false`.
    - Sample values for the review: `Asha`, `Acme Systems`, `Graduate Engineer`, `₹8.5 LPA`, `Mangaluru`, `30 November 2026, 5:00 pm IST`, `https://<your website>/student/drives/abc123`.
-5. In the app's **Webhooks** settings, subscribe the WhatsApp Business Account to the `messages` field with callback URL `https://<api-host>/api/webhooks/whatsapp` and a verify token you choose. Copy the **App secret** from App settings → Basic.
-6. On the API host set `NOTIFY_WHATSAPP_ENABLED=true`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_TEMPLATE_NAME` (`placement_drive_alert`), `WHATSAPP_TEMPLATE_LANGUAGE` (`en`, matching the approved template), `WHATSAPP_API_VERSION` (the current Graph API version), `WHATSAPP_APP_SECRET` and `WHATSAPP_WEBHOOK_VERIFY_TOKEN`. In production the API refuses to start if WhatsApp is enabled and any of the secrets is missing.
-7. Redeploy, then publish a staging drive aimed at a test student who has opted in with a test number. The Notifications tab should show **Sent**, then **Delivered** or **Read** as the webhooks arrive.
+5. Create a second template for number verification and submit it: name `careercore_verification`, category **Authentication**, language English (`en`), with Meta's standard authentication body (`{{1}} is your verification code.`), the security disclaimer, a 10-minute expiry note, and a **Copy code** button. CareerCore sends the code as `{{1}}` and as the button's value.
+6. In the app's **Webhooks** settings, subscribe the WhatsApp Business Account to the `messages` field with callback URL `https://<api-host>/api/webhooks/whatsapp` and a verify token you choose. Copy the **App secret** from App settings → Basic.
+7. On the API host set `NOTIFY_WHATSAPP_ENABLED=true`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_TEMPLATE_NAME` (`placement_drive_alert`), `WHATSAPP_TEMPLATE_LANGUAGE` (`en`, matching the approved template), `WHATSAPP_OTP_TEMPLATE_NAME` (`careercore_verification`), `WHATSAPP_API_VERSION` (the current Graph API version), `WHATSAPP_APP_SECRET` and `WHATSAPP_WEBHOOK_VERIFY_TOKEN`. In production the API refuses to start if WhatsApp is enabled and any required setting is missing; in any mode the start-up log lists what is missing.
+8. Redeploy, sign up as a test student with a test number, enter the WhatsApp code, then publish a staging drive the student is eligible for. The Notifications tab should show **Sent**, then **Delivered** or **Read** as the webhooks arrive.
 
-**Consent.** Students opt in on their profile ("Placement drive alerts"). The number is stored in E.164 form with the consent time and the version of the wording they agreed to. Students who have not opted in, or whose number is missing or invalid, are listed as **Not sent** with the reason. A student can opt out on the profile or by replying **STOP**, which the webhook applies at once. Webhook callbacks are accepted only with a valid `X-Hub-Signature-256` signature.
+**How students are supported automatically.** No officer or administrator ever enters a student's email or number:
+- **Sign-up** asks students for their mobile number (with country code) and, optionally, WhatsApp alerts. The email they register with is where drive emails go. The number is stored on their account in E.164 form, *unverified*.
+- **Verification.** A link is emailed to the address (`/verify-email`, single use, 48 h). If they agreed to WhatsApp alerts, a 6-digit code is sent to the number on WhatsApp (10 min, one a minute, five an hour, five wrong guesses). Entering it proves the number is theirs; only then does WhatsApp receive drive alerts. Their consent, its time and the wording version are recorded. They can verify or change the number later under **Profile → Contact & placement alerts**; a changed number must be verified again.
+- **Joining after a drive was published.** When a student creates their academic profile, or their academic details change, the eligibility engine checks them against every drive open for registration, and they are notified of each one they qualify for, once, on every channel. Verifying WhatsApp afterwards sends them the alerts of open drives they were already told about in the app.
+- **Opting out:** **Stop WhatsApp alerts** on the profile, or reply **STOP**. Webhook callbacks are accepted only with a valid `X-Hub-Signature-256` signature.
+- `NOTIFY_EMAIL_REQUIRE_VERIFIED=true` limits drive emails to verified addresses (off by default, so existing accounts keep receiving them).
+
+**Expired token or wrong password.** If WhatsApp refuses the access token (expired or missing permission) or the mail server refuses the login, that channel pauses for 10 minutes, its messages stay queued without using up their retries, the other channel carries on, and the drive's Notifications tab shows the problem. After you fix the setting and restart, the held messages go out straight away.
 
 **Throughput.** New WhatsApp numbers start with a messaging limit (business-initiated conversations per 24 hours) that Meta raises over time based on quality and volume. Rate-limit responses pause the channel and are retried automatically.
 
 ### 10.4 Database changes
 
-All changes are additive: a new `notificationdeliveries` collection (unique `idempotencyKey`), an optional `whatsapp` sub-document on students (absent means "not opted in"), and drive details in the `metadata` of new drive notifications. Mongoose builds the indexes at start-up. To create them explicitly first:
+All changes are additive: a new `notificationdeliveries` collection (unique `idempotencyKey`); contact fields on accounts (`users`: `phone`, `phoneVerifiedAt`, `emailVerifiedAt`, `whatsapp` consent, and hashed pending verifications that are never returned by the API); and drive details in the `metadata` of new drive notifications. Mongoose builds the indexes at start-up. The migration also copies any mobile number held on a student record to its account when the account has none — **unverified**, so that student enters a WhatsApp code once. To run it explicitly:
 
 ```
 cd server

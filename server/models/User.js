@@ -45,6 +45,55 @@ const userSchema = new mongoose.Schema(
       ],
     },
 
+    // ── Contact details (collected at registration, kept by the user) ──
+    // The account is where contact details live: they are known at sign-up,
+    // before any academic profile exists, and they belong to the person.
+    /** Mobile number in E.164 ("+919876543210"). Not trusted until verified. */
+    phone: { type: String, trim: true },
+    /** Set only after the user entered the code sent to `phone` on WhatsApp. */
+    phoneVerifiedAt: Date,
+    /** Set only after the user opened the link sent to `email`. */
+    emailVerifiedAt: Date,
+    /**
+     * Placement drive emails. On by default (and for accounts created before
+     * this setting existed); the student can turn them off in their profile.
+     * In-app notifications are not affected.
+     */
+    emailAlerts: {
+      optIn: { type: Boolean, default: true },
+      changedAt: Date,
+    },
+    /**
+     * WhatsApp alerts. Messages go only when optIn is true AND the phone is
+     * verified: consent alone is not proof the number is theirs.
+     */
+    whatsapp: {
+      optIn: { type: Boolean, default: false },
+      consentAt: Date,
+      /** Which consent wording they agreed to (contactService). */
+      consentVersion: String,
+      consentSource: { type: String, enum: ["registration", "profile", "whatsapp_reply", "migration"] },
+      optOutAt: Date,
+    },
+    // Pending verifications. Only hashes are stored; never returned.
+    emailVerification: {
+      type: { tokenHash: String, expiresAt: Date, sentAt: Date },
+      select: false,
+    },
+    phoneVerification: {
+      type: {
+        phone: String,
+        codeHash: String,
+        expiresAt: Date,
+        attempts: Number,
+        sentAt: Date,
+        windowStart: Date,
+        windowCount: Number,
+        consentSource: String,
+      },
+      select: false,
+    },
+
     isActive: { type: Boolean, default: true },
 
     // Recruiters need admin approval before posting jobs
@@ -73,7 +122,13 @@ userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.passwordHash;
   delete obj.__v;
+  delete obj.emailVerification;
+  delete obj.phoneVerification;
   return obj;
 };
+
+// WhatsApp "STOP" replies and opt-out find the account by number.
+userSchema.index({ phone: 1 }, { sparse: true });
+userSchema.index({ "emailVerification.tokenHash": 1 }, { sparse: true });
 
 export default mongoose.model("User", userSchema);

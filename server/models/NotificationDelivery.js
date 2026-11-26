@@ -47,6 +47,12 @@ export const SKIP_REASONS = {
   NO_PHONE: "no_phone",
   INVALID_PHONE: "invalid_phone",
   NO_CONSENT: "no_consent",
+  /** Has a number and consent, but has not entered the WhatsApp code yet. */
+  UNVERIFIED_PHONE: "unverified_phone",
+  /** Only when NOTIFY_EMAIL_REQUIRE_VERIFIED=true. */
+  EMAIL_UNVERIFIED: "email_unverified",
+  /** The student turned placement emails off in their profile. */
+  EMAIL_OPT_OUT: "email_opt_out",
   ACCOUNT_INACTIVE: "account_inactive",
   NO_LONGER_ELIGIBLE: "no_longer_eligible",
   REGISTRATION_CLOSED: "registration_closed",
@@ -99,6 +105,8 @@ const notificationDeliverySchema = new mongoose.Schema(
       code: String,
       message: String,
       permanent: Boolean,
+      /** The provider refused our credentials; held, not failed. */
+      credential: Boolean,
       at: Date,
     },
   },

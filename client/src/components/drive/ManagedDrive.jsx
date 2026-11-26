@@ -40,7 +40,7 @@ const TABS = [
 
 /** What each status change does, shown in the confirmation. */
 const CONFIRM = {
-  open: "Publish this drive? Eligibility is recalculated and every eligible student is notified automatically: in CareerCore, by email, and on WhatsApp where they have opted in.",
+  open: "Publish this drive? Eligibility is recalculated and every eligible student is notified automatically in CareerCore and by email.",
   registration_closed: "Close registration now? Students will no longer be able to register or re-register.",
   in_progress: "Start the drive? Registered students enter round 1 and the participant list is fixed.",
   completed: "Complete the drive? All rounds are finalized; results are stored permanently.",
@@ -110,8 +110,9 @@ export default function ManagedDrive({ id }) {
     setBusy(true);
     try {
       const r = await api.patch(`/placement/drives/${id}/status`, { status: to, reason });
+      const notified = Number(r.data.notified) || 0;
       const extra =
-        to === "open" ? ` ${r.data.notified} student(s) notified in CareerCore; email and WhatsApp are being sent in the background (see the Notifications tab).` :
+        to === "open" ? ` ${notified} ${notified === 1 ? "student" : "students"} notified.` :
         to === "in_progress" ? ` ${r.data.roundOneParticipants} student(s) entered round 1.` : "";
       flash(`Drive is now ${DRIVE_STATUS_LABEL[to].toLowerCase()}.${extra}`);
       load();

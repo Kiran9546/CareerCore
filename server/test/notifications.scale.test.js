@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { setup, teardown, reset, createUser, createStudents, api, days } from "./helpers.js";
 import Notification from "../models/Notification.js";
 import NotificationDelivery from "../models/NotificationDelivery.js";
-import Student from "../models/Student.js";
+import User from "../models/User.js";
 import {
   setDeliveryProviders,
   processDueDeliveries,
@@ -110,13 +110,14 @@ const buildCohort = async () => {
   }));
   const cohort = await createStudents(rows);
   // Two in three students opt in to WhatsApp, each with a distinct number.
-  await Student.bulkWrite(
+  // Two in three verified their number and agreed to WhatsApp alerts.
+  await User.bulkWrite(
     cohort
       .filter((_, i) => i % 3 !== 0)
       .map((c, i) => ({
         updateOne: {
-          filter: { _id: c.student._id },
-          update: { $set: { whatsapp: { optIn: true, number: `+9198${String(i).padStart(8, "0")}`, consentAt: new Date() } } },
+          filter: { _id: c.user._id },
+          update: { $set: { phone: `+9198${String(i).padStart(8, "0")}`, phoneVerifiedAt: new Date(), whatsapp: { optIn: true, consentAt: new Date() } } },
         },
       })),
   );

@@ -34,6 +34,9 @@ const SKIP_LABEL = {
   no_phone: "No WhatsApp number",
   invalid_phone: "Invalid WhatsApp number",
   no_consent: "No WhatsApp consent",
+  unverified_phone: "WhatsApp number not verified yet",
+  email_unverified: "Email not verified yet",
+  email_opt_out: "Student turned placement emails off",
   account_inactive: "Account deactivated",
   no_longer_eligible: "No longer eligible",
   registration_closed: "Registration closed before sending",
@@ -57,19 +60,33 @@ function Figure({ label, value, tone = "text-slate-900", onClick, hint }) {
 function ChannelState({ config }) {
   const notes = [];
   if (config.mode === "sandbox") {
-    notes.push("Sandbox mode: email and WhatsApp messages are rendered and recorded as simulated. Nothing is sent to students.");
+    notes.push(`Sandbox mode: ${config.whatsapp.enabled ? "email and WhatsApp messages are" : "emails are"} rendered and recorded as simulated. Nothing is sent to students.`);
   }
   if (config.mode === "off") notes.push("External delivery is turned off on the server. Students are notified in CareerCore only.");
   for (const c of ["email", "whatsapp"]) {
     const s = config[c];
     if (config.mode === "off") continue;
+    // WhatsApp switched off is the normal setup (in-app + email only).
+    if (!s.enabled && c === "whatsapp") continue;
     if (!s.enabled) notes.push(`${CHANNEL_LABEL[c]} notifications are switched off on the server.`);
     else if (!s.configured) notes.push(`${CHANNEL_LABEL[c]} is switched on but its credentials are not configured, so messages fail as "not configured" until they are.`);
   }
-  if (!notes.length) return null;
+  // Live problems found while sending (an expired WhatsApp token, a rejected
+  // email login): the channel is paused and its messages are kept.
+  const alerts = Object.entries(config.alerts || {});
+  if (!notes.length && !alerts.length) return null;
   return (
-    <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 space-y-1" role="status">
-      {notes.map((n) => <p key={n}>{n}</p>)}
+    <div className="space-y-2">
+      {alerts.map(([c, a]) => (
+        <div key={c} className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800" role="alert">
+          <strong>{CHANNEL_LABEL[c]} paused:</strong> {a.message}
+        </div>
+      ))}
+      {notes.length > 0 && (
+        <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 space-y-1" role="status">
+          {notes.map((n) => <p key={n}>{n}</p>)}
+        </div>
+      )}
     </div>
   );
 }
@@ -131,16 +148,29 @@ export default function NotificationDeliveryPanel({ drive, canRetry, onError, on
     setFilter((f) => ({ ...f, channel, status }));
   };
 
+  /** Rows the server will re-queue: failed, never-really-sent, or fixable skips. */
+  const resendable = (channel) => {
+    const s = summary[channel];
+    const fixable = ["no_email", "no_phone", "invalid_phone", "no_consent", "unverified_phone", "email_unverified", "email_opt_out"]
+      .reduce((n, k) => n + (s.skippedBy[k] || 0), 0);
+    return { failed: s.failed, simulated: summary.config.mode === "live" ? s.simulated : 0, fixable };
+  };
+
   const retry = async (channel) => {
-    const failed = summary[channel].failed;
-    const message = failed
-      ? `Retry ${failed} failed ${CHANNEL_LABEL[channel]} message(s)? Messages already sent are never sent again.`
+    const r0 = resendable(channel);
+    const parts = [
+      r0.failed && `${r0.failed} failed`,
+      r0.simulated && `${r0.simulated} only simulated in sandbox mode`,
+      r0.fixable && `${r0.fixable} not sent for a missing address, number or consent (checked again)`,
+    ].filter(Boolean);
+    const message = parts.length
+      ? `Send ${CHANNEL_LABEL[channel]} again for: ${parts.join("; ")}? Messages already sent are never sent again.`
       : `Queue ${CHANNEL_LABEL[channel]} messages for eligible students who have none yet? Messages already sent are never sent again.`;
     if (!(await confirmAction(message))) return;
     setBusy(channel);
     try {
       const r = await api.post(`/placement/drives/${drive._id}/notifications/retry`, { channel });
-      onNotice(`${r.data.retried} failed ${CHANNEL_LABEL[channel]} message(s) queued for another attempt.`);
+      onNotice(`${r.data.retried} ${CHANNEL_LABEL[channel]} message(s) queued to be sent.`);
       await Promise.all([loadSummary(), loadList()]);
     } catch (e) {
       onError(e, "Could not retry the notifications");
@@ -152,16 +182,20 @@ export default function NotificationDeliveryPanel({ drive, canRetry, onError, on
   if (!summary) return <CardSkeleton rows={5} />;
   const open = drive.status === "open";
   const notPublished = drive.status === "draft";
+  // WhatsApp appears only when the server uses it, or this drive has WhatsApp history.
+  const showWhatsApp = summary.config.whatsapp.enabled || summary.whatsapp.total > 0;
 
   const channelCard = (c) => {
     const s = summary[c];
+    const r = resendable(c);
+    const unsent = r.failed + r.simulated + r.fixable;
     return (
       <div className={ui.card} key={c}>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h3 className="font-semibold text-slate-900">{CHANNEL_LABEL[c]}</h3>
           {canRetry && open && summary.config[c].enabled && (
             <button className={ui.secondary} disabled={busy === c} onClick={() => retry(c)}>
-              {busy === c ? "Queuing…" : s.failed ? `Retry ${s.failed} failed` : "Queue missing"}
+              {busy === c ? "Queuing…" : r.failed && r.failed === unsent ? `Retry ${r.failed} failed` : unsent ? `Send ${unsent} unsent` : "Queue missing"}
             </button>
           )}
         </div>
@@ -209,9 +243,9 @@ export default function NotificationDeliveryPanel({ drive, canRetry, onError, on
         <Figure label="Opened in CareerCore" value={summary.inApp.read} hint="Marked read by the student" />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className={`grid gap-4 ${showWhatsApp ? "lg:grid-cols-2" : ""}`}>
         {channelCard("email")}
-        {channelCard("whatsapp")}
+        {showWhatsApp && channelCard("whatsapp")}
       </div>
 
       <div className={ui.card}>
@@ -221,7 +255,7 @@ export default function NotificationDeliveryPanel({ drive, canRetry, onError, on
             onChange={(e) => show(e.target.value, filter.status)}>
             <option value="">All channels</option>
             <option value="email">Email</option>
-            <option value="whatsapp">WhatsApp</option>
+            {showWhatsApp && <option value="whatsapp">WhatsApp</option>}
           </select>
           <select className={ui.select} aria-label="Status" value={filter.status}
             onChange={(e) => show(filter.channel, e.target.value)}>

@@ -1,5 +1,6 @@
-import { deliveryConfig } from "../config/notifications.js";
-import { kickDeliveryWorker, stopDeliveryLoops } from "../services/notificationDeliveryService.js";
+import { deliveryConfig, deliveryWarnings } from "../config/notifications.js";
+import { kickDeliveryWorker, stopDeliveryLoops, releaseCredentialHolds, checkEmailLogin } from "../services/notificationDeliveryService.js";
+import { maskEmail } from "../utils/phone.js";
 
 /**
  * Background sender for email and WhatsApp notifications.
@@ -24,7 +25,25 @@ export const startDeliveryWorker = () => {
   }
   if (timer) return;
   console.log(`[delivery] worker polling every ${Math.round(cfg.worker.pollMs / 1000)}s (mode: ${cfg.mode})`);
-  kickDeliveryWorker();
+  // Say plainly, at start-up, whether students will really receive anything.
+  const warnings = deliveryWarnings(cfg);
+  for (const w of warnings) console.warn(`[delivery] WARNING: ${w}`);
+  if (cfg.mode === "live") {
+    const channels = ["email", ...(cfg.whatsapp.enabled ? ["WhatsApp"] : [])].join(" + ");
+    console.log(`[delivery] LIVE: real ${channels} delivery; links use ${cfg.appUrl || "(no PUBLIC_APP_URL)"}`);
+    // Log in to the mail server once (sends nothing), so a wrong App
+    // Password shows up now rather than on the first student's email.
+    checkEmailLogin(cfg).then((r) => {
+      if (r.skipped) return;
+      if (r.ok) console.log(`[delivery] email: logged in to ${r.host} as ${maskEmail(process.env.SMTP_USER)}`);
+      else console.error(`[delivery] EMAIL NOT WORKING (${r.code}): ${r.message}${r.credential ? " Check SMTP_USER / SMTP_PASS (a Google App Password)." : ""}`);
+    });
+  }
+  // Messages held by a credential error go first: the fix is usually why
+  // the server was just restarted.
+  releaseCredentialHolds()
+    .catch((err) => console.error(`[delivery] could not release held messages: ${err.message}`))
+    .finally(kickDeliveryWorker);
   timer = setInterval(kickDeliveryWorker, cfg.worker.pollMs);
   timer.unref();
 };

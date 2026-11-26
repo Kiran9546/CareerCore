@@ -45,7 +45,41 @@ const run = async () => {
   await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 10000 });
   console.log(`Connected to ${mongoose.connection.name}${APPLY ? "" : " (dry run — nothing will change)"}`);
 
-  for (const model of [NotificationDelivery, Student, Notification]) {
+  // ── Contact details move from the student record to the account ──
+  // Earlier builds kept the WhatsApp number/consent on students. The account
+  // (User) is now the single home. Copied only where the account has no
+  // number yet; nothing on the student is deleted. A copied number is NOT
+  // verified: the student enters a WhatsApp code once before alerts go there.
+  const { normalizePhone } = await import("../utils/phone.js");
+  const { default: User } = await import("../models/User.js");
+  const legacy = await Student.collection
+    .find({ $or: [{ "whatsapp.number": { $type: "string" } }, { phone: { $nin: [null, ""] } }] })
+    .project({ userId: 1, phone: 1, whatsapp: 1 })
+    .toArray();
+  let moved = 0;
+  for (const s of legacy) {
+    const number = normalizePhone(s.whatsapp?.number || s.phone);
+    if (!number || !s.userId) continue;
+    const user = await User.collection.findOne({ _id: s.userId }, { projection: { phone: 1 } });
+    if (!user || user.phone) continue;
+    moved++;
+    if (APPLY) {
+      await User.collection.updateOne(
+        { _id: s.userId, phone: { $exists: false } },
+        {
+          $set: {
+            phone: number,
+            ...(s.whatsapp?.optIn
+              ? { whatsapp: { optIn: true, consentAt: s.whatsapp.consentAt || new Date(), consentVersion: s.whatsapp.consentVersion, consentSource: "migration" } }
+              : {}),
+          },
+        },
+      );
+    }
+  }
+  console.log(`accounts: ${APPLY ? "copied" : "would copy"} a mobile number from the student record for ${moved} account(s) (unverified)`);
+
+  for (const model of [NotificationDelivery, Student, Notification, User]) {
     const missing = await missingIndexes(model);
     if (!missing.length) {
       console.log(`${model.collection.name}: indexes up to date`);

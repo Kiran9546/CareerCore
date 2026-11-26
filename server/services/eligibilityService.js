@@ -1,4 +1,5 @@
 import Student from "../models/Student.js";
+import Drive from "../models/Drive.js";
 import DriveCandidate from "../models/DriveCandidate.js";
 import DriveParticipation from "../models/DriveParticipation.js";
 import "../models/User.js";
@@ -128,6 +129,36 @@ export const parseEligibilityInput = (body = {}) => {
 const CHUNK = 1000;
 
 /**
+ * The stored verdict for one student on one drive — the same document
+ * whether it comes from a whole-drive calculation or from one student
+ * joining or updating their record. `s.userId` is populated with `name`.
+ */
+const candidateUpsert = (drive, s, v, eligibility, now) => ({
+  updateOne: {
+    filter: { driveId: drive._id, studentId: s._id },
+    update: {
+      $set: {
+        userId: s.userId?._id,
+        eligible: v.eligible,
+        reasons: v.reasons,
+        missingData: v.missingData,
+        academic: {
+          name: s.userId?.name,
+          usn: s.usn,
+          branch: s.branch,
+          batch: s.batch,
+          cgpa: s.cgpa,
+          backlogs: s.backlogs,
+        },
+        criteriaVersion: eligibility.version ?? 1,
+        evaluatedAt: now,
+      },
+    },
+    upsert: true,
+  },
+});
+
+/**
  * Calculate eligibility for every student against a managed drive's current
  * criteria and persist the result on `drivecandidates`.
  *
@@ -155,30 +186,7 @@ export const calculateEligibility = async (drive, actor, { notify = true } = {})
     verdicts.set(String(s._id), v);
     if (v.eligible) eligibleCount++;
     if (v.missingData) missingCount++;
-    ops.push({
-      updateOne: {
-        filter: { driveId: drive._id, studentId: s._id },
-        update: {
-          $set: {
-            userId: s.userId?._id,
-            eligible: v.eligible,
-            reasons: v.reasons,
-            missingData: v.missingData,
-            academic: {
-              name: s.userId?.name,
-              usn: s.usn,
-              branch: s.branch,
-              batch: s.batch,
-              cgpa: s.cgpa,
-              backlogs: s.backlogs,
-            },
-            criteriaVersion: eligibility.version ?? 1,
-            evaluatedAt: now,
-          },
-        },
-        upsert: true,
-      },
-    });
+    ops.push(candidateUpsert(drive, s, v, eligibility, now));
   }
 
   for (let i = 0; i < ops.length; i += CHUNK) {
@@ -272,6 +280,12 @@ export const opportunityMessage = (drive) => {
   };
 };
 
+/** True for a drive that may announce itself: open, before its deadline. */
+export const isAnnounceable = (drive, now = new Date()) =>
+  drive?.status === MANAGED_DRIVE_STATUS.OPEN &&
+  Boolean(drive.registrationDeadline) &&
+  new Date(drive.registrationDeadline) > now;
+
 /**
  * Notify every eligible, not-yet-notified student of an open managed drive.
  * Idempotent: the dedupe key is per drive and student.
@@ -290,12 +304,19 @@ export const opportunityMessage = (drive) => {
  * notified are never notified again on any channel; only students who have
  * become eligible since are.
  */
-export const notifyEligibleStudents = async (drive) => {
+export const notifyEligibleStudents = async (drive, { studentIds } = {}) => {
+  // Only a drive open for registration, before its deadline, is announced.
+  // Every caller already checks this; repeating it here means no future
+  // caller can announce a draft, a closed drive, or one whose deadline
+  // passed before the scheduled job moved it to Registration Closed.
+  if (!isAnnounceable(drive)) return 0;
+
   const candidates = await DriveCandidate.find({
     driveId: drive._id,
     eligible: true,
     notifiedAt: { $exists: false },
     userId: { $exists: true },
+    ...(studentIds ? { studentId: { $in: studentIds } } : {}),
   })
     .select("_id userId studentId")
     .lean();
@@ -353,4 +374,55 @@ export const notifyEligibleStudents = async (drive) => {
   );
 
   return ids.size;
+};
+
+/**
+ * A student joined (created their profile) or their academic record
+ * changed: evaluate them, with the same criteria engine, against every
+ * drive that is open for registration right now, and notify them of each
+ * drive they are eligible for and have not been told about — in the app,
+ * by email and on WhatsApp, through notifyEligibleStudents and its
+ * duplicate guards.
+ *
+ * Drives that are drafts, closed or past their deadline are not touched:
+ * a draft is evaluated when it is published, and a closed drive is not
+ * announced. A student who stops being eligible for a drive they had
+ * registered for is flagged, exactly as a full recalculation would.
+ */
+export const evaluateStudentForOpenDrives = async (studentId, now = new Date()) => {
+  const s = await Student.findById(studentId).select("userId usn branch batch cgpa backlogs").populate("userId", "name").lean();
+  if (!s) return { drives: 0, eligible: 0, notified: 0 };
+
+  const drives = await Drive.find({
+    workflow: "managed",
+    status: MANAGED_DRIVE_STATUS.OPEN,
+    registrationDeadline: { $gt: now },
+  });
+  let eligible = 0;
+  let notified = 0;
+  for (const drive of drives) {
+    const criteria = drive.eligibility?.toObject?.() ?? drive.eligibility ?? {};
+    const v = evaluateStudent(s, criteria);
+    await DriveCandidate.bulkWrite([candidateUpsert(drive, s, v, criteria, now)]);
+
+    const reg = await DriveParticipation.findOne({
+      driveId: drive._id,
+      studentId: s._id,
+      registrationStatus: REGISTRATION_STATUS.REGISTERED,
+    }).select("eligibilityFlag");
+    if (reg) {
+      const flagged = Boolean(reg.eligibilityFlag?.ineligibleSince);
+      if (!v.eligible && !flagged) {
+        await DriveParticipation.updateOne({ _id: reg._id }, { $set: { "eligibilityFlag.ineligibleSince": now, "eligibilityFlag.reasons": v.reasons } });
+      } else if (v.eligible && flagged) {
+        await DriveParticipation.updateOne({ _id: reg._id }, { $unset: { "eligibilityFlag.ineligibleSince": "", "eligibilityFlag.reasons": "" } });
+      }
+    }
+
+    if (v.eligible) {
+      eligible++;
+      notified += await notifyEligibleStudents(drive, { studentIds: [s._id] });
+    }
+  }
+  return { drives: drives.length, eligible, notified };
 };

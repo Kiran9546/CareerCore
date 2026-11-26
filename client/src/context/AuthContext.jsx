@@ -41,10 +41,22 @@ export function AuthProvider({ children, deferSession = false }) {
     return res.data.user;
   };
 
+  /**
+   * Returns the new user, with `verification` describing the email link and
+   * WhatsApp code that sign-up sent (or simulated, in sandbox mode).
+   */
   const register = async (payload) => {
     const res = await api.post("/auth/register", payload);
     saveSession(res.data.token, res.data.user);
     setUser(res.data.user);
+    return { ...res.data.user, verification: res.data.verification };
+  };
+
+  /** Re-read the account, e.g. after a contact detail was verified. */
+  const refreshUser = async () => {
+    const res = await api.get("/auth/me");
+    setUser(res.data.user);
+    updateUser(res.data.user);
     return res.data.user;
   };
 
@@ -54,7 +66,7 @@ export function AuthProvider({ children, deferSession = false }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

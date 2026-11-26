@@ -10,9 +10,22 @@ import {
   computePRSAllSchemes,
 } from "../services/prsService.js";
 import { predictCareer } from "../services/mlClient.js";
+import { setContactPhone, savePhoneChange } from "../services/contactService.js";
+import { evaluateStudentForOpenDrives } from "../services/eligibilityService.js";
 import AptitudeAttempt from "../models/AptitudeAttempt.js";
 import { getRecommendations } from "../services/recommendationService.js";
 import { buildPlacementProfile } from "../services/placementProfileService.js";
+/**
+ * Run the student through the eligibility engine for open drives and
+ * notify them of the ones they qualify for. Never fails the request that
+ * triggered it: the next drive calculation would catch them anyway.
+ */
+const announceOpenDrives = (studentId) =>
+  evaluateStudentForOpenDrives(studentId).catch((err) => {
+    console.error(`[eligibility] open-drive check for a new/updated student failed: ${err.message}`);
+    return { drives: 0, eligible: 0, notified: 0 };
+  });
+
 /** GET /api/student/profile */
 export const getProfile = async (req, res, next) => {
   try {
@@ -62,6 +75,10 @@ export const createProfile = async (req, res, next) => {
         .json({ message: "This USN is already registered" });
     }
 
+    // A phone given here is the account's contact number (unverified until
+    // its WhatsApp code is entered); the profile keeps a copy of it.
+    const phoneChanged = phone ? await setContactPhone(req.user, phone) : false;
+
     const student = await Student.create({
       userId: req.user._id,
       usn,
@@ -69,13 +86,18 @@ export const createProfile = async (req, res, next) => {
       branch,
       cgpa,
       backlogs: backlogs ?? 0,
-      phone,
+      phone: req.user.phone,
     });
+    if (phoneChanged) await savePhoneChange(req.user);
 
     student.profileCompleteness = student.computeCompleteness();
     await student.save();
 
-    res.status(201).json({ student });
+    // A student who joins after drives were published hears about every
+    // open drive they are eligible for, on every channel, at once.
+    const openDrives = await announceOpenDrives(student._id);
+
+    res.status(201).json({ student, openDrives });
   } catch (err) {
     next(err);
   }
@@ -96,10 +118,21 @@ export const updateProfile = async (req, res, next) => {
       "githubUsername",
       "linkedinUrl",
     ];
+    const ACADEMIC = ["batch", "branch", "cgpa", "backlogs"];
+    const academicBefore = ACADEMIC.map((f) => String(student[f]));
     for (const f of allowed) {
+      if (f === "phone") continue; // the account owns the number; see below
       if (req.body[f] !== undefined && req.body[f] !== null && req.body[f] !== "") {
         student[f] = req.body[f];
       }
+    }
+
+    // A changed phone updates the account's number, which then needs its
+    // WhatsApp code again before alerts go there (never trusted unverified).
+    let phoneChanged = false;
+    if (req.body.phone !== undefined && req.body.phone !== null && String(req.body.phone).trim() !== "") {
+      phoneChanged = await setContactPhone(req.user, req.body.phone);
+      if (phoneChanged) student.phone = req.user.phone;
     }
 
     if (req.body.careerInterest) {
@@ -111,8 +144,17 @@ export const updateProfile = async (req, res, next) => {
 
     student.profileCompleteness = student.computeCompleteness();
     await student.save();
+    if (phoneChanged) await savePhoneChange(req.user);
 
-    res.json({ student });
+    // New academic details may make the student eligible for open drives.
+    const academicChanged = ACADEMIC.some((f, i) => String(student[f]) !== academicBefore[i]);
+    const openDrives = academicChanged ? await announceOpenDrives(student._id) : undefined;
+
+    res.json({
+      student,
+      ...(phoneChanged ? { phoneVerificationRequired: true } : {}),
+      ...(openDrives ? { openDrives } : {}),
+    });
   } catch (err) {
     next(err);
   }

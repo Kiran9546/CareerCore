@@ -1,5 +1,4 @@
 import crypto from "crypto";
-import Student from "../models/Student.js";
 import { asyncHandler as handle } from "../utils/asyncHandler.js";
 import { httpError } from "../services/auditService.js";
 import { loadManagedDrive } from "../services/recruitmentService.js";
@@ -10,7 +9,7 @@ import {
   handleWhatsAppWebhook,
 } from "../services/notificationDeliveryService.js";
 import { deliveryConfig } from "../config/notifications.js";
-import { normalizePhone, maskPhone } from "../utils/phone.js";
+import { contactView, setContactPhone, savePhoneChange, setWhatsAppOptIn, setEmailAlerts } from "../services/contactService.js";
 
 // ─── Placement officer: delivery report (routes in placement.routes.js) ──
 
@@ -30,75 +29,48 @@ export const retryDeliveries = handle(async (req, res) => {
   res.json(out);
 });
 
-// ─── Student: WhatsApp consent (routes in student.routes.js) ─────────
+// ─── Student: alert settings (routes in student.routes.js) ──────────
+//
+// Kept for the profile screen; contact details live on the account and are
+// managed by services/contactService.js (also exposed under /api/auth).
 
-/** Bump when the wording shown next to the checkbox changes. */
-export const WHATSAPP_CONSENT_VERSION = "2026-11-placement-alerts-v1";
-export const WHATSAPP_CONSENT_TEXT =
-  "I agree to receive placement drive alerts from the CareerCore placement cell on WhatsApp at this number. " +
-  "I can withdraw at any time here or by replying STOP.";
-
-const preferencesView = (student, user) => {
-  const cfg = deliveryConfig();
-  const wa = student.whatsapp || {};
-  return {
-    email: { address: user.email, enabled: cfg.email.enabled },
-    whatsapp: {
-      available: cfg.whatsapp.enabled,
-      number: wa.number || "",
-      optIn: Boolean(wa.optIn),
-      consentAt: wa.consentAt || null,
-      optOutAt: wa.optOutAt || null,
-      consentText: WHATSAPP_CONSENT_TEXT,
-      consentVersion: WHATSAPP_CONSENT_VERSION,
-    },
-    phone: student.phone || "",
-  };
-};
+export { WHATSAPP_CONSENT_VERSION, WHATSAPP_CONSENT_TEXT } from "../services/contactService.js";
 
 export const getNotificationPreferences = handle(async (req, res) => {
-  const student = await Student.findOne({ userId: req.user._id }).select("phone whatsapp");
-  if (!student) throw httpError(404, "Profile not found");
-  res.json(preferencesView(student, req.user));
+  res.json(contactView(req.user));
 });
 
-/** PUT { whatsappNumber?, whatsappOptIn: boolean } */
+/**
+ * PUT { emailOptIn?, whatsappOptIn?, whatsappNumber? }
+ *
+ * emailOptIn turns placement drive emails on or off (in-app notifications
+ * always stay on). A new number is saved unverified (WhatsApp waits for its
+ * code; see POST /api/auth/phone/send-code). whatsappOptIn turns alerts on
+ * — only for a verified number — or off.
+ */
 export const updateNotificationPreferences = handle(async (req, res) => {
-  const student = await Student.findOne({ userId: req.user._id }).select("phone whatsapp");
-  if (!student) throw httpError(404, "Profile not found");
-
-  const { whatsappNumber, whatsappOptIn } = req.body || {};
-  if (typeof whatsappOptIn !== "boolean") throw httpError(400, "whatsappOptIn must be true or false");
+  const { emailOptIn, whatsappOptIn, whatsappNumber } = req.body || {};
+  if (emailOptIn !== undefined && typeof emailOptIn !== "boolean") {
+    throw httpError(400, "emailOptIn must be true or false");
+  }
   if (whatsappNumber !== undefined && whatsappNumber !== null && typeof whatsappNumber !== "string") {
     throw httpError(400, "whatsappNumber must be text");
   }
+  if (whatsappOptIn !== undefined && typeof whatsappOptIn !== "boolean") {
+    throw httpError(400, "whatsappOptIn must be true or false");
+  }
+  if (emailOptIn === undefined && whatsappOptIn === undefined && !whatsappNumber) throw httpError(400, "Nothing to change");
 
-  const cfg = deliveryConfig();
-  const raw = (whatsappNumber ?? "").trim() || student.whatsapp?.number || student.phone || "";
-  const number = raw ? normalizePhone(raw, cfg.defaultCountryCode) : null;
-  if ((whatsappNumber ?? "").trim() && !number) {
-    throw httpError(400, "Enter a valid mobile number, for example +91 98765 43210");
-  }
-  if (whatsappOptIn && !number) {
-    throw httpError(400, "Add a valid WhatsApp number before turning on WhatsApp alerts");
-  }
-
-  const wasOptedIn = Boolean(student.whatsapp?.optIn);
-  const now = new Date();
-  // Stored normalised, so a "STOP" reply can find the student by number.
-  if (number) student.set("whatsapp.number", number);
-  if (whatsappOptIn && !wasOptedIn) {
-    student.set("whatsapp.optIn", true);
-    student.set("whatsapp.consentAt", now);
-    student.set("whatsapp.consentVersion", WHATSAPP_CONSENT_VERSION);
-    student.set("whatsapp.consentSource", "profile");
-    student.set("whatsapp.optOutAt", undefined);
-  } else if (!whatsappOptIn && wasOptedIn) {
-    student.set("whatsapp.optIn", false);
-    student.set("whatsapp.optOutAt", now);
-  }
-  await student.save();
-  res.json({ ...preferencesView(student, req.user), maskedNumber: maskPhone(student.whatsapp?.number) });
+  const user = req.user;
+  if (whatsappNumber && (await setContactPhone(user, whatsappNumber))) await savePhoneChange(user);
+  const catchUp = { queued: 0, drives: 0 };
+  const add = (c) => {
+    catchUp.queued += c.queued;
+    catchUp.drives = Math.max(catchUp.drives, c.drives);
+  };
+  if (emailOptIn !== undefined) add((await setEmailAlerts(user, emailOptIn)).catchUp);
+  if (whatsappOptIn !== undefined) add((await setWhatsAppOptIn(user, whatsappOptIn)).catchUp);
+  res.json({ ...contactView(user), catchUp });
 });
 
 // ─── WhatsApp Cloud API webhook (routes in webhook.routes.js) ────────

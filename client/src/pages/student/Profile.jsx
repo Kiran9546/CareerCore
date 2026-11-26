@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { toast } from "../../components/ui/toast";
 import { PageSkeleton } from "../../components/ui/Skeleton";
 import { confirmAction } from "../../components/ui/confirm";
@@ -12,6 +13,8 @@ const inputCls = "w-full px-3 py-2 rounded-lg border border-slate-300 focus:outl
 const labelCls = "block text-sm font-medium text-slate-700 mb-1";
 
 export default function Profile() {
+  // Set by the sign-up form: the verification it started (email link, WhatsApp code).
+  const signupVerification = useLocation().state?.verification;
   const [loading, setLoading] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
   const [paths, setPaths] = useState([]);
@@ -30,7 +33,7 @@ export default function Profile() {
 
   // New profile
   const [createForm, setCreateForm] = useState({
-    usn: "", batch: "", branch: "", cgpa: "", backlogs: 0, phone: "",
+    usn: "", batch: "", branch: "", cgpa: "", backlogs: 0,
   });
   const [createError, setCreateError] = useState("");
 
@@ -45,7 +48,7 @@ export default function Profile() {
       const s = p.data.student;
       setForm({
         usn: s.usn, batch: s.batch, branch: s.branch,
-        cgpa: s.cgpa, backlogs: s.backlogs, phone: s.phone || "",
+        cgpa: s.cgpa, backlogs: s.backlogs,
         githubUsername: s.githubUsername || "",
         careerInterest: s.careerInterest?._id || "",
       });
@@ -93,14 +96,16 @@ export default function Profile() {
 
     setBusy(true);
     try {
-      await api.post("/student/profile", {
+      const r = await api.post("/student/profile", {
         usn: createForm.usn.trim().toUpperCase(),
         batch: createForm.batch.trim(),
         branch: createForm.branch.trim().toUpperCase(),
         cgpa,
         backlogs: Number(createForm.backlogs) || 0,
-        phone: createForm.phone.trim(),
       });
+      // Drives already open that this student qualifies for are announced now.
+      const n = r.data.openDrives?.notified || 0;
+      if (n) toast(`You are eligible for ${n} open placement drive${n === 1 ? "" : "s"}. Check your notifications.`);
       await loadProfile();
     } catch (err) {
       setCreateError(err.response?.data?.message || "Could not create profile");
@@ -116,13 +121,13 @@ export default function Profile() {
     if (form.cgpa === "" || Number.isNaN(cgpa) || cgpa < 0 || cgpa > 10) return setMsg("CGPA must be a number from 0 to 10.");
     const backlogs = Number(form.backlogs);
     if (!Number.isInteger(backlogs) || backlogs < 0) return setMsg("Backlogs must be a whole number of 0 or more.");
-    if (form.phone && !/^[+\d][\d\s-]{6,19}$/.test(form.phone.trim())) return setMsg("Enter the phone number using digits, spaces or dashes.");
 
     setBusy(true);
     try {
       const r = await api.put("/student/profile", form);
       setUpdatedAt(r.data.student?.updatedAt || new Date().toISOString());
-      toast("Profile saved");
+      const n = r.data.openDrives?.notified || 0;
+      toast(n ? `Profile saved. You are now eligible for ${n} open drive${n === 1 ? "" : "s"}; check your notifications.` : "Profile saved");
     } catch (e) {
       setMsg(e.response?.data?.message || "Save failed");
     } finally { setBusy(false); }
@@ -196,7 +201,8 @@ export default function Profile() {
   // ─── No profile yet — show create form ───
   if (!hasProfile) {
     return (
-      <div className="max-w-2xl">
+      <div className="max-w-2xl space-y-6">
+        <NotificationPreferences pending={signupVerification} />
         <div className="bg-white rounded-xl border border-slate-200 p-6">
           <h2 className="font-semibold text-slate-900 mb-1">Create your profile</h2>
           <p className="text-sm text-slate-500 mb-5">
@@ -228,12 +234,6 @@ export default function Profile() {
               <input id="cp-branch" value={createForm.branch}
                 onChange={(e) => setCreateForm({ ...createForm, branch: e.target.value })}
                 className={inputCls} placeholder="ISE" />
-            </div>
-            <div>
-              <label className={labelCls} htmlFor="cp-phone">Phone</label>
-              <input id="cp-phone" value={createForm.phone}
-                onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
-                className={inputCls} placeholder="Optional" />
             </div>
             <div>
               <label className={labelCls} htmlFor="cp-cgpa">CGPA</label>
@@ -288,10 +288,6 @@ export default function Profile() {
               onChange={(e) => setForm({ ...form, backlogs: Number(e.target.value) })} className={inputCls} />
           </div>
           <div>
-            <label className={labelCls} htmlFor="pf-phone">Phone</label>
-            <input id="pf-phone" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputCls} />
-          </div>
-          <div>
             <label className={labelCls} htmlFor="pf-github">GitHub Username</label>
             <input id="pf-github" value={form.githubUsername} onChange={(e) => setForm({ ...form, githubUsername: e.target.value })} className={inputCls} />
           </div>
@@ -319,7 +315,7 @@ export default function Profile() {
         </div>
       </section>
 
-      <NotificationPreferences />
+      <NotificationPreferences pending={signupVerification} />
 
       <section className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="font-semibold text-slate-900 mb-1">Projects</h2>

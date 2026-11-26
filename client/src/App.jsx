@@ -49,6 +49,7 @@ const Privacy = lazy(() => import("./pages/legal/Privacy"));
 const Terms = lazy(() => import("./pages/legal/Terms"));
 const Contact = lazy(() => import("./pages/Contact"));
 const AdminMessages = lazy(() => import("./pages/admin/Messages"));
+const VerifyEmail = lazy(() => import("./pages/auth/VerifyEmail"));
 
 function PageLoader() {
   return (
@@ -88,6 +89,7 @@ export function AppRoutes() {
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
 
               <Route
                 path="/student"

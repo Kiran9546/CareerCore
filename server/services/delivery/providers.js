@@ -14,13 +14,29 @@ import { getTransporter } from "../notificationService.js";
  */
 
 export class DeliveryError extends Error {
-  constructor(code, message, { permanent = false, rateLimited = false, retryAfterMs } = {}) {
+  constructor(code, message, { permanent = false, rateLimited = false, retryAfterMs, credential = false, quota = false } = {}) {
     super(message);
     this.name = "DeliveryError";
     this.code = code;
     this.permanent = permanent;
     this.rateLimited = rateLimited;
     this.retryAfterMs = retryAfterMs;
+    /**
+     * The provider refused our credentials (expired WhatsApp token, wrong
+     * SMTP password). Every message on the channel would fail the same way,
+     * so the worker pauses the channel and keeps the messages queued for
+     * when an administrator fixes the setting, instead of using up their
+     * retries.
+     */
+    this.credential = credential;
+    /**
+     * The account hit its sending quota (Gmail: about 500 messages a day
+     * for a personal account, 2,000 for Google Workspace). Like a
+     * credential error it is not this message's fault: the channel pauses
+     * and the message stays queued, without using up a retry, until the
+     * quota frees up.
+     */
+    this.quota = quota;
   }
 }
 
@@ -37,7 +53,20 @@ export const redact = (text) =>
 
 // ─── Email (SMTP, through the existing nodemailer transport) ──────────
 
-const TRANSIENT_SMTP_CODES = new Set(["ECONNECTION", "ETIMEDOUT", "ESOCKET", "EDNS", "ECONNRESET", "ECONNREFUSED", "EAUTH", "ETLS", "EPROTOCOL"]);
+const TRANSIENT_SMTP_CODES = new Set(["ECONNECTION", "ETIMEDOUT", "ESOCKET", "EDNS", "ECONNRESET", "ECONNREFUSED", "ETLS", "EPROTOCOL"]);
+
+/** How long a channel waits after a credential error before trying again. */
+export const CREDENTIAL_PAUSE_MS = 10 * 60 * 1000;
+/** How long a channel waits after the provider reports its sending quota is used up. */
+export const QUOTA_PAUSE_MS = 60 * 60 * 1000;
+
+/**
+ * Gmail's "Daily user sending limit exceeded" (550 5.4.5) and similar
+ * replies from other providers. They arrive as 4xx or 5xx, but they are
+ * about the sending account, not the recipient, so they must not mark the
+ * student's email as permanently failed.
+ */
+const SMTP_QUOTA_PATTERN = /\b5\.4\.5\b|\b4\.7\.28\b|sending (limit|quota)|quota exceeded|daily (user )?sending|too many (messages|emails)/i;
 
 export const classifySmtpError = (err) => {
   const response = Number(err.responseCode);
@@ -46,7 +75,13 @@ export const classifySmtpError = (err) => {
   // 5xx on the envelope is the server refusing this recipient for good
   // (no such mailbox, domain does not exist). Authentication (535) is a
   // configuration problem and is retried with backoff until fixed.
-  if (response >= 500 && response < 600 && response !== 535) {
+  if (err.code === "EAUTH" || response === 535 || response === 534) {
+    return new DeliveryError(code, message, { credential: true, retryAfterMs: CREDENTIAL_PAUSE_MS });
+  }
+  if (response >= 400 && SMTP_QUOTA_PATTERN.test(`${err.response || ""} ${err.message || ""}`)) {
+    return new DeliveryError("SMTP_QUOTA", message, { quota: true, rateLimited: true, retryAfterMs: QUOTA_PAUSE_MS });
+  }
+  if (response >= 500 && response < 600) {
     return new DeliveryError(code, message, { permanent: true });
   }
   if (response >= 400 && response < 500) {
@@ -93,7 +128,9 @@ export const smtpEmailProvider = {
  * listed falls back on the HTTP status: 4xx permanent, 5xx transient.
  */
 const WA_RATE_LIMIT = new Set([4, 80007, 130429, 131048, 131056]);
-const WA_TRANSIENT = new Set([1, 2, 131000, 131016, 190, 133004]);
+const WA_TRANSIENT = new Set([1, 2, 131000, 131016, 133004]);
+/** Token expired/invalid (190) or lacking permission (10, 200): credentials. */
+const WA_CREDENTIAL = new Set([190, 10, 200]);
 const WA_PERMANENT = new Set([
   100, 131008, 131009, 131021, 131026, 131030, 131031, 131045, 131047, 131051, 131052, 131053,
   132000, 132001, 132005, 132007, 132012, 132015, 132016, 132068, 132069, 368,
@@ -116,6 +153,9 @@ export const classifyWhatsAppError = (err) => {
 
   if (status === 429 || WA_RATE_LIMIT.has(code)) {
     return new DeliveryError(label, message, { rateLimited: true, retryAfterMs: retryAfterMs ?? 60000 });
+  }
+  if (WA_CREDENTIAL.has(code) || status === 401) {
+    return new DeliveryError(label, message, { credential: true, retryAfterMs: CREDENTIAL_PAUSE_MS });
   }
   if (WA_PERMANENT.has(code)) return new DeliveryError(label, message, { permanent: true });
   if (WA_TRANSIENT.has(code) || status >= 500) return new DeliveryError(label, message);
