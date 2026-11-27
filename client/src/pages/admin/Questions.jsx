@@ -67,7 +67,7 @@ export default function Questions() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {SECTIONS.map((s) => {
           const count = bySection.find((b) => b.section === s)?.count || 0;
           return (
@@ -147,8 +147,8 @@ export default function Questions() {
           {questions.map((q) => (
             <div key={q._id} className="px-4 py-3 rounded-lg border border-slate-100">
               <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     <span className="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-500 capitalize">
                       {q.section}
                     </span>
@@ -164,13 +164,13 @@ export default function Questions() {
                     Answer: {q.correctOption} · {q.options.find((o) => o.label === q.correctOption)?.text}
                   </p>
                 </div>
-                <div className="flex gap-2 ml-4">
+                <div className="flex shrink-0 gap-1 ml-2 sm:ml-4">
                   <button onClick={() => toggle(q._id)}
-                    className="text-xs text-slate-400 hover:text-slate-900 underline">
+                    className="px-1 py-1.5 text-xs text-slate-400 hover:text-slate-900 underline">
                     {q.isActive ? "Disable" : "Enable"}
                   </button>
                   <button onClick={() => remove(q._id)}
-                    className="text-xs text-slate-400 hover:text-red-600 underline">
+                    className="px-1 py-1.5 text-xs text-slate-400 hover:text-red-600 underline">
                     Delete
                   </button>
                 </div>

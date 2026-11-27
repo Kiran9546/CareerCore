@@ -58,9 +58,10 @@ export default function CompanyPicker({ value, onChange, disabled }) {
 
   return (
     <div ref={ref} className="relative">
-      <div className="flex gap-2">
+      {/* Stacked on phones so the search box gets the full width. */}
+      <div className="flex flex-col gap-2 sm:flex-row">
         <input
-          className={ui.input}
+          className={`${ui.input} min-w-0`}
           placeholder="Search companies…"
           value={query}
           disabled={disabled}
@@ -103,7 +104,7 @@ export default function CompanyPicker({ value, onChange, disabled }) {
         <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
           <p className="text-sm font-medium text-slate-800">New company</p>
           {error && <p className="text-sm text-red-700">{error}</p>}
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input className={ui.input} placeholder="Company name *" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
             <input className={ui.input} placeholder="Industry" value={draft.industry} onChange={(e) => setDraft({ ...draft, industry: e.target.value })} />
             <input className={ui.input} placeholder="Location" value={draft.location} onChange={(e) => setDraft({ ...draft, location: e.target.value })} />

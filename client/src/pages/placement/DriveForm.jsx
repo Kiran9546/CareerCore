@@ -125,7 +125,7 @@ export default function DriveForm() {
 
       <section className={ui.card}>
         <h3 className="font-semibold text-slate-900 mb-3">Drive details</h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label className={ui.label} htmlFor="role">Job role *</label>
             <input id="role" className={ui.input} value={form.role} disabled={started} onChange={(e) => set("role", e.target.value)} />

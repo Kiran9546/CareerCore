@@ -217,7 +217,7 @@ export default function PlacementProfileView({ profile, showIdentity = true }) {
         {(insights.strengths.length > 0 ||
           insights.weakAreas.length > 0 ||
           insights.observations.length > 0) && (
-          <div className="grid md:grid-cols-2 gap-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div className="space-y-2">
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
                 Strengths
@@ -262,7 +262,7 @@ export default function PlacementProfileView({ profile, showIdentity = true }) {
       </Card>
 
       {/* ── Stage breakdown & funnel ───────────────────────── */}
-      <div className="grid lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Card
           title="Stage record"
           subtitle="Rounds never reached are counted separately. They are not failures"

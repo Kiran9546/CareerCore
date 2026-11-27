@@ -71,7 +71,7 @@ export default function CareerSuggestions({ initial = [], target }) {
       {note && <p className="feedback-in mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">{note}</p>}
 
       {items.length > 0 ? (
-        <ol key={round} className="mt-5 grid gap-3 sm:grid-cols-3">
+        <ol key={round} className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {items.map((p, i) => {
             const value = pct(p.confidence);
             const isTarget = target && p.name === target;

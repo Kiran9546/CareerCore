@@ -33,7 +33,7 @@ export function PageSkeleton({ label = "Loading" }) {
           </div>
         ))}
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {Array.from({ length: 2 }, (_, i) => (
           <div key={i} className="rounded-xl border border-slate-200 bg-white p-6">
             <Skeleton className="h-4 w-40" />
@@ -72,7 +72,7 @@ export function DetailSkeleton({ label = "Loading", stats = 4, className = "" })
           </div>
           <Skeleton className="h-5 w-20" />
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {Array.from({ length: 4 }, (_, i) => (
             <div key={i}>
               <Skeleton className="h-3 w-24" />
@@ -126,7 +126,7 @@ export function ListSkeleton({ label = "Loading", items = 4 }) {
 export function FormSkeleton({ label = "Loading", fields = 8 }) {
   return (
     <div role="status" aria-label={label} className="rounded-xl border border-slate-200 bg-white p-5">
-      <div className="grid gap-4 sm:grid-cols-2" aria-hidden="true">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2" aria-hidden="true">
         {Array.from({ length: fields }, (_, i) => (
           <div key={i}>
             <Skeleton className="h-3 w-24" />
@@ -142,7 +142,7 @@ export function FormSkeleton({ label = "Loading", fields = 8 }) {
 /** The resume editor: form sections on the left, the paper preview on the right. */
 export function ResumeSkeleton({ label = "Loading your resume" }) {
   return (
-    <div role="status" aria-label={label} className="grid gap-6 lg:grid-cols-2">
+    <div role="status" aria-label={label} className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <div className="space-y-4" aria-hidden="true">
         {Array.from({ length: 3 }, (_, i) => <CardSkeleton key={i} rows={3} />)}
       </div>

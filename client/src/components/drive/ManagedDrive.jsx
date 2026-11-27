@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../api/axios";
 import { useAuth } from "../../context/useAuth";
@@ -84,6 +84,21 @@ export default function ManagedDrive({ id }) {
   }, [id]);
 
   useEffect(load, [load]);
+
+  // On phones the tab bar scrolls sideways: bring the selected tab into view
+  // when it changes (a deep link, or a statistic that opens another tab).
+  // Only the bar scrolls, never the page.
+  const tabBar = useRef(null);
+  const loaded = Boolean(data);
+  useEffect(() => {
+    const bar = tabBar.current;
+    const el = bar?.querySelector('[aria-current="page"]');
+    if (!bar || !el || bar.scrollWidth <= bar.clientWidth) return;
+    const left = el.offsetLeft - bar.offsetLeft;
+    if (left < bar.scrollLeft || left + el.offsetWidth > bar.scrollLeft + bar.clientWidth) {
+      bar.scrollLeft = left - (bar.clientWidth - el.offsetWidth) / 2;
+    }
+  }, [tab, loaded]);
 
   const go = (next) => setParams(next);
   // Stable identities: the panels list these as effect dependencies.
@@ -176,10 +191,13 @@ export default function ManagedDrive({ id }) {
       <Alerts error={error} notice={notice} />
       {cloning && <CloneDriveDialog drive={drive} onClose={() => setCloning(false)} />}
 
-      <nav className="flex flex-wrap gap-1 border-b border-slate-200">
+      {/* One swipeable row on phones, wrapping from sm up. The baseline is an
+          inset shadow so the active underline is not clipped by the scroll. */}
+      <nav ref={tabBar} aria-label="Drive sections" className="tab-strip -mx-4 px-4 sm:mx-0 sm:px-0 gap-1 shadow-[inset_0_-1px_0_var(--color-slate-200)]">
         {TABS.map(([key, label]) => (
           <button key={key} onClick={() => go({ tab: key })}
-            className={`px-4 py-2 text-sm border-b-2 -mb-px ${tab === key ? "border-slate-900 text-slate-900 font-medium" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
+            aria-current={tab === key ? "page" : undefined}
+            className={`px-4 py-2.5 sm:py-2 text-sm border-b-2 ${tab === key ? "border-slate-900 text-slate-900 font-medium" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
             {label}
           </button>
         ))}

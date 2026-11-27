@@ -40,6 +40,50 @@ const EMPTY = {
  * distinguish "this company had no technical round" from "this student
  * never got that far".
  */
+/** Eligibility rule of a drive in one line. */
+const eligibilityText = (d) =>
+  `CGPA ≥ ${d.eligibility?.minCgpa ?? 0} · backlogs ≤ ${d.eligibility?.maxBacklogs ?? 0} · ${
+    d.eligibility?.branches?.length ? d.eligibility.branches.join(", ") : "All branches"
+  }`;
+
+/** The rounds (managed drives) or stages (recorded drives) in order. */
+const roundsText = (d) =>
+  d.workflow === "managed"
+    ? [...(d.rounds || [])].sort((a, b) => a.order - b.order).map((r) => ROUND_LABEL[r.type]).join(" → ") ||
+      "Not configured"
+    : (d.stages || []).map((s) => STAGE_LABEL[s]).join(" → ");
+
+/** Row actions, shared by the table (desktop) and the cards (phones). */
+function DriveActions({ d, onEdit, onClone, onRemove }) {
+  const link = "text-slate-600 hover:text-slate-900 underline py-1";
+  return (
+    <>
+      {d.workflow === "managed" ? (
+        <Link to={`/placement-officer/drives/${d._id}`} className={link}>
+          Dashboard
+        </Link>
+      ) : (
+        <>
+          <button onClick={() => onEdit(d)} className={link}>
+            Edit
+          </button>
+          <Link to={`/placement-officer/drives/${d._id}`} className={link}>
+            Results
+          </Link>
+        </>
+      )}
+      <button onClick={() => onClone(d)} className={link}>
+        Clone
+      </button>
+      {d.participantCount === 0 && (d.workflow !== "managed" || d.status === "draft") && (
+        <button onClick={() => onRemove(d)} className="text-red-600 hover:text-red-800 underline py-1">
+          Delete
+        </button>
+      )}
+    </>
+  );
+}
+
 export default function Drives() {
   const [drives, setDrives] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
@@ -214,7 +258,7 @@ export default function Drives() {
             {editingId ? "Edit recorded drive" : "Record a past drive"}
           </h3>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className={label}>Company *</label>
               <input
@@ -362,7 +406,59 @@ export default function Drives() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 p-5 overflow-x-auto">
+      {/* Phones: one card per drive with every column of the table. */}
+      <ul className="space-y-3 md:hidden" aria-label="Placement drives">
+        {drives.map((d) => (
+          <li key={d._id} className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <Link
+                  to={`/placement-officer/drives/${d._id}`}
+                  className="font-medium text-slate-900 hover:underline wrap-break-word"
+                >
+                  {d.companyName}
+                </Link>
+                <p className="text-sm text-slate-600 wrap-break-word">
+                  {d.role}
+                  {d.ctc ? ` · ₹${d.ctc} LPA` : ""}
+                </p>
+              </div>
+              <span className={`shrink-0 px-2 py-0.5 rounded text-xs ${DRIVE_STATUS_STYLE[d.status] ?? ""}`}>
+                {DRIVE_STATUS_LABEL[d.status] ?? d.status}
+              </span>
+            </div>
+            <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
+              <div>
+                <dt className="text-slate-400">Date</dt>
+                <dd className="text-slate-700">{formatDate(d.driveDate)}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">Participants</dt>
+                <dd className="text-slate-700">
+                  {d.participantCount}
+                  {d.workflow === "managed" && <span className="text-slate-400"> of {d.eligibleCount}</span>}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-400">Offers</dt>
+                <dd className="font-medium text-slate-900">{d.offerCount}</dd>
+              </div>
+            </dl>
+            <p className="mt-2 text-xs text-slate-500">{eligibilityText(d)}</p>
+            <p className="mt-1 text-xs text-slate-500">{roundsText(d)}</p>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-100 pt-3 text-sm">
+              <DriveActions d={d} onEdit={startEdit} onClone={setCloning} onRemove={remove} />
+            </div>
+          </li>
+        ))}
+        {!drives.length && (
+          <li className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-400">
+            No drives yet. Create one to start recording results.
+          </li>
+        )}
+      </ul>
+
+      <div className="hidden md:block bg-white rounded-xl border border-slate-200 p-5 overflow-x-auto">
         <table className="w-full text-sm min-w-[760px]">
           <thead>
             <tr className="text-left text-slate-500 border-b border-slate-200">
@@ -394,18 +490,11 @@ export default function Drives() {
                 <td className="py-2.5 text-slate-600">{d.role}</td>
                 <td className="py-2.5 text-slate-500 text-xs">{formatDate(d.driveDate)}</td>
                 <td className="py-2.5 text-xs text-slate-500">
-                  CGPA ≥ {d.eligibility?.minCgpa ?? 0} · backlogs ≤{" "}
-                  {d.eligibility?.maxBacklogs ?? 0}
+                  CGPA ≥ {d.eligibility?.minCgpa ?? 0} · backlogs ≤ {d.eligibility?.maxBacklogs ?? 0}
                   <br />
-                  {d.eligibility?.branches?.length
-                    ? d.eligibility.branches.join(", ")
-                    : "All branches"}
+                  {d.eligibility?.branches?.length ? d.eligibility.branches.join(", ") : "All branches"}
                 </td>
-                <td className="py-2.5 text-xs text-slate-500">
-                  {d.workflow === "managed"
-                    ? [...(d.rounds || [])].sort((a, b) => a.order - b.order).map((r) => ROUND_LABEL[r.type]).join(" → ") || "Not configured"
-                    : (d.stages || []).map((s) => STAGE_LABEL[s]).join(" → ")}
-                </td>
+                <td className="py-2.5 text-xs text-slate-500">{roundsText(d)}</td>
                 <td className="py-2.5 text-slate-600">
                   {d.participantCount}
                   {d.workflow === "managed" && (
@@ -415,49 +504,13 @@ export default function Drives() {
                 <td className="py-2.5 font-medium text-slate-900">{d.offerCount}</td>
                 <td className="py-2.5">
                   <span
-                    className={`px-2 py-0.5 rounded text-xs ${DRIVE_STATUS_STYLE[d.status] ?? ""}`}
+                    className={`whitespace-nowrap px-2 py-0.5 rounded text-xs ${DRIVE_STATUS_STYLE[d.status] ?? ""}`}
                   >
                     {DRIVE_STATUS_LABEL[d.status] ?? d.status}
                   </span>
                 </td>
-                <td className="py-2.5 text-right whitespace-nowrap">
-                  {d.workflow === "managed" ? (
-                    <Link
-                      to={`/placement-officer/drives/${d._id}`}
-                      className="text-xs text-slate-600 hover:text-slate-900 underline mr-3"
-                    >
-                      Dashboard
-                    </Link>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => startEdit(d)}
-                        className="text-xs text-slate-600 hover:text-slate-900 underline mr-3"
-                      >
-                        Edit
-                      </button>
-                      <Link
-                        to={`/placement-officer/drives/${d._id}`}
-                        className="text-xs text-slate-600 hover:text-slate-900 underline mr-3"
-                      >
-                        Results
-                      </Link>
-                    </>
-                  )}
-                  <button
-                    onClick={() => setCloning(d)}
-                    className="text-xs text-slate-600 hover:text-slate-900 underline mr-3"
-                  >
-                    Clone
-                  </button>
-                  {d.participantCount === 0 && (d.workflow !== "managed" || d.status === "draft") && (
-                    <button
-                      onClick={() => remove(d)}
-                      className="text-xs text-red-600 hover:text-red-800 underline"
-                    >
-                      Delete
-                    </button>
-                  )}
+                <td className="py-2.5 text-right whitespace-nowrap text-xs [&>*]:mr-3 [&>*:last-child]:mr-0">
+                  <DriveActions d={d} onEdit={startEdit} onClone={setCloning} onRemove={remove} />
                 </td>
               </tr>
             ))}

@@ -393,7 +393,7 @@ export default function ResultsWorkbench() {
             Students can only submit results for a drive you have asked them
             about. Asking is the permission.
           </p>
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={label}>Drive</label>
               <select className={input} value={askDrive} onChange={(e) => setAskDrive(e.target.value)}>
@@ -482,7 +482,7 @@ export default function ResultsWorkbench() {
             Goes straight onto the official record, no review step. Use this
             when you already have the results.
           </p>
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={label}>Student</label>
               <select className={input} value={entryStudent} onChange={(e) => setEntryStudent(e.target.value)}>
@@ -503,7 +503,7 @@ export default function ResultsWorkbench() {
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {STAGES.map((stage) => (
               <div key={stage}>
                 <label className={label}>{STAGE_LABEL[stage]}</label>

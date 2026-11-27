@@ -282,7 +282,7 @@ export default function Compare() {
           </div>
 
           {/* ── Each student's own derived read ─────────────── */}
-          <div className="grid md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {data.profiles.map((p) => (
               <div key={p.studentId} className="bg-white rounded-xl border border-slate-200 p-5">
                 <h3 className="font-semibold text-slate-900">{p.student?.name}</h3>

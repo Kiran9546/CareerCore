@@ -183,6 +183,25 @@ export default function AppShell({ workspace }) {
     document.title = `${current?.label ?? meta.label} · CareerCore`;
   }, [current, meta.label]);
 
+  // While the mobile drawer is open the page behind it stays put, Escape
+  // closes it, and so does growing the window past the drawer breakpoint
+  // (rotating a tablet), where the fixed sidebar takes over.
+  useEffect(() => {
+    if (!drawer) return;
+    const root = document.documentElement;
+    root.classList.add("cc-scroll-lock");
+    const esc = (e) => e.key === "Escape" && setDrawer(false);
+    const wide = window.matchMedia("(min-width: 1024px)");
+    const onWide = (e) => e.matches && setDrawer(false);
+    document.addEventListener("keydown", esc);
+    wide.addEventListener("change", onWide);
+    return () => {
+      root.classList.remove("cc-scroll-lock");
+      document.removeEventListener("keydown", esc);
+      wide.removeEventListener("change", onWide);
+    };
+  }, [drawer]);
+
   const signOut = () => {
     logout();
     navigate("/login");
@@ -224,11 +243,11 @@ export default function AppShell({ workspace }) {
       {drawerPresence.render && (
         <div className="lg:hidden fixed inset-0 z-50 flex" role="dialog" aria-modal="true" inert={drawerPresence.closing}>
           <div className="modal-backdrop fixed inset-0 bg-slate-900/60" data-closing={drawerPresence.closing ? "" : undefined} onClick={() => setDrawer(false)} />
-          <div className="drawer-in relative w-72 max-w-[85%]" data-closing={drawerPresence.closing ? "" : undefined}>
+          <div className="drawer-in relative w-72 max-w-[calc(100%-3.5rem)]" data-closing={drawerPresence.closing ? "" : undefined}>
             {sidebar(() => setDrawer(false))}
             <button
               onClick={() => setDrawer(false)}
-              className="absolute top-4 -right-12 rounded-full p-2 text-white"
+              className="absolute top-3 -right-12 rounded-full p-2 text-white"
               aria-label="Close menu"
             >
               <Icon name="x" className="w-6 h-6" />
@@ -246,6 +265,7 @@ export default function AppShell({ workspace }) {
               onClick={() => setDrawer(true)}
               className="lg:hidden -ml-2 rounded-lg p-2 text-slate-600 hover:bg-slate-100"
               aria-label="Open menu"
+              aria-expanded={drawer}
             >
               <Icon name="menu" className="w-6 h-6" />
             </button>
@@ -254,7 +274,7 @@ export default function AppShell({ workspace }) {
                 {meta.label}
                 {workspace === "faculty" && user?.department ? ` · ${user.department}` : ""}
               </p>
-              <h1 className="text-lg font-semibold text-slate-900 truncate leading-tight">
+              <h1 className="text-base sm:text-lg font-semibold text-slate-900 truncate leading-tight">
                 {current?.label ?? meta.label}
               </h1>
             </div>
@@ -265,7 +285,7 @@ export default function AppShell({ workspace }) {
           </div>
         </header>
 
-        <main id="main" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main id="main" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           {/* Only the page area waits while a page's code loads; the sidebar
               and header stay put. */}
           <Suspense

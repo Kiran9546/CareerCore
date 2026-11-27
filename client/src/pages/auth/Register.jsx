@@ -137,7 +137,7 @@ export default function Register() {
       <form onSubmit={submit} className="space-y-5" noValidate>
         <fieldset>
           <legend className={labelClass}>I am a</legend>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {ROLES.map((r) => {
               const selected = form.role === r.value;
               return (
@@ -235,7 +235,7 @@ export default function Register() {
           </div>
         )}
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
             <label htmlFor="password" className={labelClass}>Password</label>
             <PasswordInput

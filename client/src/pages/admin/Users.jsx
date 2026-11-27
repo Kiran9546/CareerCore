@@ -63,9 +63,34 @@ export default function Users() {
         </select>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
+      <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
         <p className="text-sm text-slate-500 mb-4">{shown.length} users</p>
-        <div className="overflow-x-auto">
+
+        {/* Phones: one row per user with the same details and action. */}
+        <ul className="divide-y divide-slate-100 md:hidden">
+          {shown.slice(0, 100).map((u) => (
+            <li key={u._id} className="flex items-start justify-between gap-3 py-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-slate-800 wrap-break-word">{u.name}</p>
+                <p className="text-xs text-slate-500 break-all">{u.email}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <span className={`px-2 py-0.5 rounded text-xs ${ROLE_STYLE[u.role]}`}>{u.role}</span>
+                  <span className={`px-2 py-0.5 rounded text-xs ${
+                    u.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                  }`}>
+                    {u.isActive ? "active" : "disabled"}
+                  </span>
+                </div>
+              </div>
+              <button onClick={() => toggle(u._id)}
+                className="shrink-0 rounded-lg px-3 py-1.5 text-sm text-slate-600 ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+                {u.isActive ? "Disable" : "Enable"}
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-slate-500 border-b border-slate-200">

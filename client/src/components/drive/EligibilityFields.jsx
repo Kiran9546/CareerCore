@@ -24,7 +24,7 @@ export default function EligibilityFields({ value, onChange, disabled }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid sm:grid-cols-2 gap-4 max-w-md">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
         <div>
           <label className={ui.label} htmlFor="minCgpa">Minimum CGPA</label>
           <input id="minCgpa" type="number" step="0.01" min="0" max="10" className={ui.input} disabled={disabled}

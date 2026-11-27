@@ -65,7 +65,7 @@ export default function ConfirmHost() {
         aria-describedby="confirm-message"
         data-closing={closing ? "" : undefined}
         inert={closing}
-        className="modal-panel relative w-full max-w-md rounded-xl bg-white p-5 shadow-(--cc-shadow-float) ring-1 ring-slate-200"
+        className="modal-panel relative w-full max-w-md max-h-full overflow-y-auto rounded-xl bg-white p-5 shadow-(--cc-shadow-float) ring-1 ring-slate-200"
       >
         <div className="flex gap-3">
           <span

@@ -74,7 +74,7 @@ export default function DriveView() {
           <span className={`${ui.badge} h-fit ${DRIVE_STATUS_STYLE[drive.status] ?? ""}`}>{DRIVE_STATUS_LABEL[drive.status]}</span>
         </div>
         {drive.description && <p className="text-sm text-slate-600 mt-3 whitespace-pre-line">{drive.description}</p>}
-        <dl className="grid sm:grid-cols-2 gap-3 mt-4 text-sm">
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 text-sm">
           <div><dt className="text-xs text-slate-500">Eligibility</dt><dd className="text-slate-800">{drive.criteria.join(" · ")}</dd></div>
           <div><dt className="text-xs text-slate-500">Drive date</dt><dd className="text-slate-800">{formatDate(drive.driveDate)}</dd></div>
           <div><dt className="text-xs text-slate-500">Registration deadline</dt><dd className="text-slate-800">{formatDateTime(drive.registrationDeadline)}</dd></div>

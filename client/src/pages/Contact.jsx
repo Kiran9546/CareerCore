@@ -102,7 +102,7 @@ export default function Contact() {
     <div className="flex min-h-screen flex-col bg-white text-slate-900">
       <PublicHeader />
       <main className="flex-1">
-        <div className="mx-auto grid max-w-5xl gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:px-8 lg:py-20">
+        <div className="mx-auto grid grid-cols-1 max-w-5xl gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:px-8 lg:py-20">
           <div>
             <Breadcrumbs path="/contact" className="mb-6" />
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Contact</h1>
@@ -163,7 +163,7 @@ export default function Contact() {
                   </div>
                 )}
 
-                <div className="grid gap-5 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                   <div>
                     <label htmlFor="c-name" className={labelClass}>Name</label>
                     <input

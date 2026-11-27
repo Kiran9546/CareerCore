@@ -91,7 +91,7 @@ function WorkspaceStack() {
  */
 export default function AuthFrame({ title, subtitle, children, footer }) {
   return (
-    <div className="min-h-screen grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] bg-white">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] bg-white">
       <aside className="keep-palette relative hidden overflow-hidden lg:flex flex-col justify-between bg-slate-950 p-12 text-white">
         <Ambient tone="dark" />
         <Link to="/" className="relative self-start">

@@ -41,7 +41,7 @@ function ScheduleForm({ drive, round, onSaved, onError }) {
         <p className="font-medium text-slate-800">{round.order}. {LABEL[round.type]}</p>
         <span className={`${ui.badge} ${ROUND_STATUS_STYLE[round.status]}`}>{ROUND_STATUS_LABEL[round.status]}</span>
       </div>
-      <fieldset disabled={finalized || busy} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <fieldset disabled={finalized || busy} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div>
           <label className={ui.label}>Date *</label>
           <input type="date" className={ui.input} value={v.date} onChange={(e) => set("date", e.target.value)} />

@@ -800,8 +800,11 @@ export default function Resume() {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
       {/* ─────────────── FORM ─────────────── */}
-      <div className="max-h-[calc(100vh-12rem)] overflow-y-auto pr-2">
-        <div className="sticky top-0 bg-slate-50 pb-3 z-10 flex gap-2">
+      {/* Side by side (xl+) the form scrolls on its own beside the preview.
+          Stacked (phones, tablets) it flows with the page, and the save bar
+          sticks just under the app header so it stays in reach. */}
+      <div className="min-w-0 xl:max-h-[calc(100dvh-12rem)] xl:overflow-y-auto xl:pr-2">
+        <div className="sticky top-16 xl:top-0 bg-slate-50 pt-2 pb-3 xl:pt-0 z-20 flex flex-wrap gap-2">
           <button
             onClick={save}
             disabled={saving}
@@ -1330,7 +1333,7 @@ export default function Resume() {
         <div className="h-2" />
       </div>
       {/* ─────────────── PREVIEW ─────────────── */}
-      <div className="sticky top-24">
+      <div className="min-w-0 xl:sticky xl:top-24">
         <div className="flex items-baseline justify-between mb-2">
           <p className="text-xs text-slate-400 uppercase tracking-wide">
             Live preview · A4
@@ -1343,7 +1346,7 @@ export default function Resume() {
 
         <div
           ref={previewWrapRef}
-          className="overflow-y-auto max-h-[calc(100vh-14rem)] bg-slate-100 rounded-lg p-3"
+          className="overflow-y-auto max-h-[75dvh] xl:max-h-[calc(100dvh-14rem)] bg-slate-100 rounded-lg p-3"
         >
           {/* Spacer carries the scaled height so the scroll area sizes correctly */}
           <div

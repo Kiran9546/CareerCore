@@ -18,13 +18,15 @@ const isNew = (d) => d.createdAt && Date.now() - new Date(d.createdAt).getTime()
 /** One drive as a card. */
 function Card({ d }) {
   return (
-    <Link to={`/student/drives/${d._id}`} className="block rounded-xl border border-slate-200 bg-white p-5 hover:border-slate-400">
-      <div className="flex justify-between gap-3">
-        <div>
-          <p className="font-semibold text-slate-900">{d.companyName}</p>
-          <p className="text-sm text-slate-600">{d.role}{d.ctc ? ` · ₹${d.ctc} LPA` : ""}</p>
+    <Link to={`/student/drives/${d._id}`} className="block min-w-0 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 hover:border-slate-400">
+      {/* On phones the badges sit above the title so the company and role get
+          the full width; from sm up they sit to the right. */}
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between sm:gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-slate-900 wrap-break-word">{d.companyName}</p>
+          <p className="text-sm text-slate-600 wrap-break-word">{d.role}{d.ctc ? ` · ₹${d.ctc} LPA` : ""}</p>
         </div>
-        <div className="flex h-fit shrink-0 gap-1.5">
+        <div className="flex h-fit shrink-0 flex-wrap gap-1.5">
           {isNew(d) && <span className={`${ui.badge} bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200`}>New</span>}
           <span className={`${ui.badge} ${DRIVE_STATUS_STYLE[d.status] ?? ""}`}>{DRIVE_STATUS_LABEL[d.status]}</span>
         </div>
@@ -82,7 +84,7 @@ export default function Drives() {
   if (error) return <div className={`${ui.card} text-center text-slate-500`}>{error}</div>;
   if (!drives)
     return (
-      <div role="status" aria-label="Loading drives" className="grid gap-4 md:grid-cols-2">
+      <div role="status" aria-label="Loading drives" className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="rounded-xl border border-slate-200 bg-white p-5">
             <Skeleton className="h-4 w-40" />
@@ -120,7 +122,7 @@ export default function Drives() {
           )}
         </div>
         {open.length ? (
-          <div className="grid md:grid-cols-2 gap-4">{open.map((d) => <Card key={d._id} d={d} />)}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{open.map((d) => <Card key={d._id} d={d} />)}</div>
         ) : (
           <p className="text-sm text-slate-400">No drives are open for you right now. You will be notified when one is.</p>
         )}
@@ -129,7 +131,7 @@ export default function Drives() {
       <section className="space-y-3">
         <h3 className="font-semibold text-slate-900">My drives</h3>
         {mine.length ? (
-          <div className="grid md:grid-cols-2 gap-4">{mine.map((d) => <Card key={d._id} d={d} />)}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{mine.map((d) => <Card key={d._id} d={d} />)}</div>
         ) : (
           <p className="text-sm text-slate-400">You have not registered for any drive yet.</p>
         )}

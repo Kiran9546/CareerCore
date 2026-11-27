@@ -303,7 +303,7 @@ export default function Profile() {
 
         <div className="flex items-center gap-3 mt-5">
           <button onClick={save} disabled={busy}
-            className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-50">
+            className="shrink-0 whitespace-nowrap px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-50">
             {busy ? "Saving…" : "Save changes"}
           </button>
           {msg && <span role="alert" className="text-sm text-red-700">{msg}</span>}

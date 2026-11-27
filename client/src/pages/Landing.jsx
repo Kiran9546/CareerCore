@@ -320,18 +320,16 @@ export default function Landing() {
     <div className="min-h-screen bg-white text-slate-900">
       <PublicHeader
         progress
-        nav={
-          <nav aria-label="Sections" className="hidden items-center gap-8 text-sm text-slate-600 lg:flex">
-            <a href="#workspaces" className="hover:text-slate-900">Who it is for</a>
-            <a href="#features" className="hover:text-slate-900">Features</a>
-            <a href="#how" className="hover:text-slate-900">How a drive runs</a>
-          </nav>
-        }
+        sections={[
+          { href: "#workspaces", label: "Who it is for" },
+          { href: "#features", label: "Features" },
+          { href: "#how", label: "How a drive runs" },
+        ]}
       />
 
       {/* Hero */}
       <section className="overflow-x-clip">
-        <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8 lg:pb-12 lg:pt-8 xl:pb-16 xl:pt-10">
+        <div className="mx-auto grid grid-cols-1 max-w-7xl items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8 lg:pb-12 lg:pt-8 xl:pb-16 xl:pt-10">
           <div>
             <p className="hero-in text-sm font-semibold text-indigo-700">Placement management for colleges</p>
             <RevealWords
@@ -377,7 +375,7 @@ export default function Landing() {
               while everyone works from the same records.
             </p>
           </div>
-          <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {Object.entries(ROLE_META).map(([key, m]) => (
               <TiltCard key={key} className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
                 <span className={`absolute inset-x-6 top-0 h-0.5 rounded-b ${m.accent}`} />
@@ -407,7 +405,7 @@ export default function Landing() {
             <p className="text-sm font-semibold text-indigo-700">Features</p>
             <RevealWords text="Everything a placement cell needs to run the season." className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl" />
           </div>
-          <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => (
               <TiltCard key={f.title} max={3} className="rounded-2xl bg-white p-6 ring-1 ring-slate-200">
                 <span className="feature-icon flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 ring-1 ring-inset ring-indigo-100">
@@ -429,7 +427,7 @@ export default function Landing() {
       <section id="how" className="keep-palette relative overflow-hidden bg-slate-950 py-24 text-white">
         <Ambient tone="dark" />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid items-center gap-10 lg:grid-cols-2">
+          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
             <div className="max-w-2xl">
               <p className="text-sm font-semibold text-indigo-300">How a drive runs</p>
               <RevealWords text="From announcement to offer letter in four steps." className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl" />
@@ -440,7 +438,7 @@ export default function Landing() {
               </Suspense>
             </div>
           </div>
-          <ol className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <ol className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((s) => (
               <TiltCard as="li" key={s.n} className="rounded-2xl bg-white/3 p-6 ring-1 ring-white/10 hover:ring-white/20">
                 <span className="font-mono text-sm text-indigo-300">{s.n}</span>

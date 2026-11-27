@@ -58,6 +58,74 @@ body {
   }
 }
 
+/* ─── Small screens ───────────────────────────────────────────────────
+   Rules every page follows on phones and tablets, so pages do not each have
+   to remember them. */
+
+/* A long unbroken string (an email, a URL, a company name) wraps instead of
+   pushing the page sideways. Only applies when the word cannot fit. */
+body {
+  overflow-wrap: break-word;
+}
+
+/* Data tables: cells get a gutter so neighbouring columns never run into
+   each other, and on phones headers stay on one line (the table scrolls
+   inside its own container instead of breaking "Placement" mid-word).
+   In the base layer, so a cell that sets its own padding keeps it. */
+@layer base {
+  :where(th, td):not(:last-child) {
+    padding-right: 0.75rem;
+  }
+}
+@media (max-width: 767px) {
+  @layer base {
+    th {
+      white-space: nowrap;
+    }
+  }
+}
+
+/* iPhone Safari zooms the page when a field under 16px gets focus, and does
+   not zoom back out. Phones and touch tablets get 16px fields; desktop keeps
+   the compact size. Unlayered so it wins over text-sm on the field. */
+@media (max-width: 767px), (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Tab bars: one row that scrolls sideways on phones (eight tabs wrapping
+   into four rows push the content off screen), wrapping normally from sm up. */
+.tab-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.tab-strip::-webkit-scrollbar {
+  display: none;
+}
+.tab-strip > * {
+  flex: none;
+  white-space: nowrap;
+}
+@media (min-width: 640px) {
+  .tab-strip {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+}
+
+/* The page behind an open drawer or dialog does not scroll with it. */
+html.cc-scroll-lock,
+html.cc-scroll-lock body {
+  overflow: hidden;
+}
+
 /* Loading placeholders breathe gently; toasts slide in a few pixels. */
 @keyframes cc-skeleton {
   50% { opacity: 0.5; }

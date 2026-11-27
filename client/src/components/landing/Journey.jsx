@@ -328,7 +328,7 @@ export default function Journey() {
           <p className="mt-4 text-lg text-slate-600">What a student does in CareerCore, and what the placement cell sees at each stage.</p>
         </div>
 
-        <div className="mt-14 grid gap-12 md:grid-cols-2 md:gap-16">
+        <div className="mt-14 grid grid-cols-1 gap-12 md:grid-cols-2 md:gap-16">
           <div className="relative">
             {/* Progress rail: fills as the active step advances. */}
             <div className="absolute bottom-0 left-0 top-0 hidden w-px bg-slate-200 md:block" aria-hidden="true">

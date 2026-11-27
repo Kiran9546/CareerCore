@@ -68,7 +68,7 @@ export default function PlacementProfile() {
           picture, shown next to the outcomes so the contrast between a
           strong profile and a weak outcome is visible on one page. */}
       {profile.student && (
-        <div className="grid lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <h3 className="font-semibold text-slate-900 mb-3">Skills</h3>
             {profile.student.skills?.length ? (

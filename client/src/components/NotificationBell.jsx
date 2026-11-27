@@ -138,7 +138,7 @@ export default function NotificationBell() {
       </button>
 
       {panel.render && (
-        <div data-closing={panel.closing ? "" : undefined} inert={panel.closing} className="dropdown-in absolute right-0 mt-2 w-[min(24rem,calc(100vw-2rem))] bg-white border border-slate-200 rounded-xl shadow-(--cc-shadow-raised) z-50 max-h-[28rem] overflow-hidden flex flex-col">
+        <div data-closing={panel.closing ? "" : undefined} inert={panel.closing} className="dropdown-in fixed inset-x-4 top-[4.5rem] sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-96 bg-white border border-slate-200 rounded-xl shadow-(--cc-shadow-raised) z-50 max-h-[min(28rem,calc(100dvh-6rem))] overflow-hidden flex flex-col">
           <div className="flex justify-between items-center px-4 py-3 border-b border-slate-100">
             <span className="font-semibold text-slate-900 text-sm">Notifications</span>
             {unread > 0 && (

@@ -197,7 +197,7 @@ export default function MyResultSubmissions() {
 
             {openId === sub._id && (
               <div className="mt-4 pt-4 border-t border-slate-100 space-y-4">
-                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {["aptitude", "technical", "interview", "final"].map((stage) => {
                     const runs = !sub.drive.stagesRun || sub.drive.stagesRun.includes(stage);
                     if (!runs) return null;
