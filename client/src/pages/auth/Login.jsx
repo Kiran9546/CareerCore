@@ -26,7 +26,8 @@ export default function Login() {
   const [params] = useSearchParams();
   const next = safeNext(params.get("next"));
 
-  const [email, setEmail] = useState("");
+  const justReset = params.get("reset") === "1";
+  const [email, setEmail] = useState(() => params.get("email") || "");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [errors, setErrors] = useState({});
@@ -72,6 +73,12 @@ export default function Login() {
         </>
       }
     >
+      {justReset && !error && (
+        <div role="status" className="feedback-in mb-6 flex gap-2.5 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800 ring-1 ring-inset ring-emerald-200">
+          <Icon name="tick" className="mt-0.5 h-4 w-4 shrink-0" />
+          Your password has been changed. Sign in with the new password.
+        </div>
+      )}
       {params.get("expired") && !error && (
         <div role="status" className="mb-6 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-inset ring-amber-200">
           Your session ended. Sign in again{next ? " to return to the page you were on" : ""}.
@@ -102,13 +109,21 @@ export default function Login() {
             className={fieldClass(errors.email)}
             placeholder="you@college.edu"
             required
-            autoFocus
+            autoFocus={!email}
           />
           <FieldError id="email-error">{errors.email}</FieldError>
         </div>
 
         <div>
-          <label htmlFor="password" className={labelClass}>Password</label>
+          <div className="mb-1.5 flex items-baseline justify-between gap-3">
+            <label htmlFor="password" className="block text-sm font-medium text-slate-700">Password</label>
+            <Link
+              to={`/forgot-password${EMAIL_RX.test(email.trim()) ? `?email=${encodeURIComponent(email.trim())}` : ""}`}
+              className="-my-1 py-1 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+            >
+              Forgot password?
+            </Link>
+          </div>
           <PasswordInput
             id="password"
             autoComplete="current-password"

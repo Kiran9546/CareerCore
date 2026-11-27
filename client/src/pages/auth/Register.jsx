@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import api from "../../api/axios";
 import { ROLE_META, workspacePath } from "../../config/roles";
-import AuthFrame, { ErrorNote, PasswordInput } from "./AuthFrame";
+import AuthFrame, { ErrorNote, PasswordInput, PasswordStrength } from "./AuthFrame";
 import { fieldClass, labelClass, primaryButton } from "./authStyles";
 import FieldError from "../../components/ui/FieldError";
 import Icon from "../../components/ui/Icon";
@@ -248,6 +248,7 @@ export default function Register() {
               describedBy={errors.password ? "password-error" : undefined}
             />
             <FieldError id="password-error">{errors.password}</FieldError>
+            {!errors.password && <PasswordStrength password={form.password} />}
           </div>
           <div>
             <label htmlFor="confirm" className={labelClass}>Confirm password</label>

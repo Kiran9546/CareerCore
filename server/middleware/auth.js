@@ -23,6 +23,10 @@ export const protect = async (req, res, next) => {
     if (!user.isActive) {
       return res.status(403).json({ message: "Account has been deactivated" });
     }
+    // Signed in before the password was changed or reset: sign in again.
+    if (user.tokenPredatesPasswordChange(decoded.iat)) {
+      return res.status(401).json({ message: "Your password was changed. Please sign in again" });
+    }
     // A token issued before the recruiter area was retired is refused too.
     if (user.role === ROLES.RECRUITER) {
       return res.status(403).json({ message: RECRUITER_RETIRED });

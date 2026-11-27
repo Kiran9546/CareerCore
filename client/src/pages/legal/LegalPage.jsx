@@ -83,7 +83,7 @@ export default function LegalPage({ title, intro, sections }) {
 
             <div className="mt-12 space-y-12">
               {sections.map((s, i) => (
-                <section key={s.id} id={s.id} className="scroll-mt-24">
+                <section key={s.id} id={s.id}>
                   <h2 className="text-xl font-semibold tracking-tight text-slate-900">
                     {i + 1}. {s.title}
                   </h2>

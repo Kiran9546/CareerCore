@@ -112,6 +112,27 @@ export const PAGES = [
     type: "WebPage",
     crumbs: [{ name: "Create an account", path: "/register" }],
   },
+  {
+    // Served as real pages (not the 404 page) so the link in the reset email
+    // opens with a normal status. Never indexed or followed: there is
+    // nothing to find, and reset links must not end up in a search index.
+    path: "/forgot-password",
+    file: "forgot-password.html",
+    title: `Forgot password · ${SITE_NAME}`,
+    description: "Ask for a link to reset your CareerCore password.",
+    robots: "noindex, nofollow",
+    type: "WebPage",
+    crumbs: [{ name: "Forgot password", path: "/forgot-password" }],
+  },
+  {
+    path: "/reset-password",
+    file: "reset-password.html",
+    title: `Reset password · ${SITE_NAME}`,
+    description: "Choose a new password for your CareerCore account.",
+    robots: "noindex, nofollow",
+    type: "WebPage",
+    crumbs: [{ name: "Reset password", path: "/reset-password" }],
+  },
 ];
 
 /** Shown for any URL that matches no page. Never indexed. */

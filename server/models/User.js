@@ -80,6 +80,14 @@ const userSchema = new mongoose.Schema(
       type: { tokenHash: String, expiresAt: Date, sentAt: Date },
       select: false,
     },
+    // A pending "forgot password" link. Only the hash is stored; never returned.
+    passwordReset: {
+      type: { tokenHash: String, expiresAt: Date, sentAt: Date },
+      select: false,
+    },
+    // When the password last changed. Sessions signed in before this are
+    // refused (middleware/auth.js), so a reset signs out every device.
+    passwordChangedAt: Date,
     phoneVerification: {
       type: {
         phone: String,
@@ -109,8 +117,19 @@ userSchema.pre("save", async function (next) {
   if (!this.isModified("passwordHash")) return next();
   const salt = await bcrypt.genSalt(10);
   this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
+  if (!this.isNew) this.passwordChangedAt = new Date();
   next();
 });
+
+/**
+ * Whether a session token was issued before the password last changed.
+ * JWT `iat` is in whole seconds, so compare at that precision: a sign-in in
+ * the same second as the change is still accepted.
+ */
+userSchema.methods.tokenPredatesPasswordChange = function (iat) {
+  if (!this.passwordChangedAt || typeof iat !== "number") return false;
+  return iat < Math.floor(this.passwordChangedAt.getTime() / 1000);
+};
 
 /** Compare a plaintext password against the stored hash */
 userSchema.methods.matchPassword = function (plain) {
@@ -123,6 +142,7 @@ userSchema.methods.toJSON = function () {
   delete obj.passwordHash;
   delete obj.__v;
   delete obj.emailVerification;
+  delete obj.passwordReset;
   delete obj.phoneVerification;
   return obj;
 };
@@ -130,5 +150,6 @@ userSchema.methods.toJSON = function () {
 // WhatsApp "STOP" replies and opt-out find the account by number.
 userSchema.index({ phone: 1 }, { sparse: true });
 userSchema.index({ "emailVerification.tokenHash": 1 }, { sparse: true });
+userSchema.index({ "passwordReset.tokenHash": 1 }, { sparse: true });
 
 export default mongoose.model("User", userSchema);

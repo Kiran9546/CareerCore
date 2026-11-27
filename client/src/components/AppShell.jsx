@@ -11,6 +11,24 @@ import { PageSkeleton } from "./ui/Skeleton";
 import usePresence from "../motion/usePresence";
 import ActivityBar from "./ui/ActivityBar";
 
+/**
+ * The page area. Marked as entering for its first moment, so the page's
+ * sections arrive one after another (index.css); anything that appears after
+ * that (a tab, a form, loaded data) rises in at once, without a delay.
+ */
+function PageEnter({ children }) {
+  const [entering, setEntering] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setEntering(false), 700);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div className="page-enter" data-entering={entering ? "" : undefined}>
+      {children}
+    </div>
+  );
+}
+
 const initials = (name = "") =>
   name
     .split(/\s+/)
@@ -301,9 +319,9 @@ export default function AppShell({ workspace }) {
             {/* Keyed by path so each page settles in when you navigate. Every
                 workspace route is its own page (no nested routes), so this
                 remounts nothing that would not remount anyway. */}
-            <div key={pathname} className="page-enter">
+            <PageEnter key={pathname}>
               <Outlet />
-            </div>
+            </PageEnter>
           </Suspense>
         </main>
       </div>

@@ -156,7 +156,7 @@ export default function NotificationPreferences({ pending }) {
   const emailOn = contact.email.optIn !== false;
 
   return (
-    <section id="contact" className="bg-white rounded-xl border border-slate-200 p-6 scroll-mt-20" aria-labelledby="np-heading">
+    <section id="contact" className="bg-white rounded-xl border border-slate-200 p-6" aria-labelledby="np-heading">
       <h2 id="np-heading" className="font-semibold text-slate-900 mb-1">Contact & placement alerts</h2>
       <p className="text-sm text-slate-500 mb-5">
         {wa.available

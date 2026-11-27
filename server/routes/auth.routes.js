@@ -14,6 +14,9 @@ import {
   updateEmailAlerts,
   updateMobileNumber,
   alertChannels,
+  forgotPassword,
+  checkPasswordReset,
+  completePasswordReset,
 } from "../controllers/auth.controller.js";
 import { protect } from "../middleware/auth.js";
 
@@ -74,6 +77,29 @@ const emailLinkLimiter = rateLimit({
 
 router.get("/contact", protect, getContact);
 router.post("/email/verify", emailLinkLimiter, verifyEmail);
+
+// ─── Forgot password ─────────────────────────────────────────
+// Asking for a link: every request counts (successful or not), per address
+// and per email, so nobody can flood one inbox or probe many addresses.
+// The service also allows one email a minute per account.
+const forgotLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: (req) => `${req.ip}|${String(req.body?.email || "").trim().toLowerCase()}`,
+  message: { message: "Too many reset requests. Please try again in 15 minutes" },
+});
+const forgotPerAddress = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { message: "Too many reset requests. Please try again later" },
+});
+router.post("/password/forgot", forgotPerAddress, forgotLimiter, forgotPassword);
+router.post("/password/check", emailLinkLimiter, checkPasswordReset);
+router.post("/password/reset", emailLinkLimiter, completePasswordReset);
 router.post("/email/resend", protect, verificationLimiter, resendEmailVerification);
 router.post("/phone/send-code", protect, verificationLimiter, requestPhoneCode);
 router.post("/phone/verify", protect, verificationLimiter, confirmPhoneCode);

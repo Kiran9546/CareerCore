@@ -68,6 +68,27 @@ body {
   overflow-wrap: break-word;
 }
 
+/* Comfortable on any screen:
+   - headings break into even lines, paragraphs avoid a lone last word;
+   - jumping to #section lands below the sticky header, not under it;
+   - no grey flash on tap (buttons and links show their own press state),
+     and no double-tap-to-zoom delay on controls. */
+@layer base {
+  :where(h1, h2, h3) {
+    text-wrap: balance;
+  }
+  :where(p, li, dd) {
+    text-wrap: pretty;
+  }
+}
+html {
+  scroll-padding-top: 5rem;
+  -webkit-tap-highlight-color: transparent;
+}
+:where(a, button, label, select, summary, [role="button"], [role="tab"]) {
+  touch-action: manipulation;
+}
+
 /* Data tables: cells get a gutter so neighbouring columns never run into
    each other, and on phones headers stay on one line (the table scrolls
    inside its own container instead of breaking "Placement" mid-word).
@@ -256,6 +277,43 @@ html.dark .card-3d[data-tilt="on"]::after,
 .page-enter {
   animation: cc-page-in 280ms var(--cc-ease-out) backwards;
 }
+
+/* Every workspace page: its sections (the children of the page's root) rise
+   in. While the page is entering they arrive one after another; anything
+   added later (a tab, a form, data replacing a loading placeholder) rises in
+   at once. In the base layer, so any element with its own animation class
+   (a skeleton, a toast, a dialog) keeps it. */
+@keyframes cc-section-in {
+  from { opacity: 0; transform: translateY(10px); }
+}
+@layer base {
+  .page-enter > * > * {
+    animation: cc-section-in 380ms var(--cc-ease-out) backwards;
+  }
+  .page-enter[data-entering] > * > :nth-child(2) { animation-delay: 50ms; }
+  .page-enter[data-entering] > * > :nth-child(3) { animation-delay: 100ms; }
+  .page-enter[data-entering] > * > :nth-child(4) { animation-delay: 150ms; }
+  .page-enter[data-entering] > * > :nth-child(n + 5) { animation-delay: 200ms; }
+  /* Overlays that live inside a page are positioned to the viewport. */
+  .page-enter > * > :is(.fixed, [role="dialog"]) {
+    animation: none;
+  }
+}
+
+/* Menus on phones: the items follow the panel in, top to bottom. */
+@keyframes cc-item-in {
+  from { opacity: 0; transform: translateX(-8px); }
+}
+.drawer-in nav li,
+#public-menu li {
+  animation: cc-item-in 320ms var(--cc-ease-out) backwards;
+}
+.drawer-in nav li:nth-child(1), #public-menu li:nth-child(1) { animation-delay: 60ms; }
+.drawer-in nav li:nth-child(2), #public-menu li:nth-child(2) { animation-delay: 95ms; }
+.drawer-in nav li:nth-child(3), #public-menu li:nth-child(3) { animation-delay: 130ms; }
+.drawer-in nav li:nth-child(4), #public-menu li:nth-child(4) { animation-delay: 165ms; }
+.drawer-in nav li:nth-child(5), #public-menu li:nth-child(5) { animation-delay: 200ms; }
+.drawer-in nav li:nth-child(n + 6), #public-menu li:nth-child(n + 6) { animation-delay: 235ms; }
 
 /* Statistic cards rise in one after another; set --i on each. */
 @keyframes cc-rise {
@@ -467,6 +525,28 @@ textarea[aria-invalid="true"] {
 }
 .feedback-in {
   animation: cc-feedback 260ms var(--cc-ease-out) backwards;
+}
+
+/* Something finished (a password changed, an email sent): the circle pops
+   in, then the tick draws itself. */
+@keyframes cc-success-pop {
+  0% { opacity: 0; transform: scale(0.6); }
+  60% { opacity: 1; transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+.success-pop {
+  animation: cc-success-pop 480ms var(--cc-ease-out) backwards;
+}
+.success-draw {
+  stroke-dasharray: 1;
+  animation: cc-draw 420ms var(--cc-ease-out) 260ms backwards;
+}
+/* A view inside a card swapping to its next state (form → confirmation). */
+@keyframes cc-step-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+.step-in {
+  animation: cc-step-in 360ms var(--cc-ease-out) backwards;
 }
 
 /* ─── Design system: depth and feedback shared by every workspace page ───

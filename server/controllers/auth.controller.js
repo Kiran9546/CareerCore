@@ -14,6 +14,7 @@ import {
   WHATSAPP_CONSENT_VERSION,
 } from "../services/contactService.js";
 import { deliveryConfig } from "../config/notifications.js";
+import { requestPasswordReset, checkResetToken, resetPassword } from "../services/passwordResetService.js";
 import { ROLES, DEPARTMENTS, DEPARTMENT_LABEL, RECRUITER_RETIRED } from "../config/constants.js";
 
 /**
@@ -207,6 +208,25 @@ export const getContact = handle(async (req, res) => {
 export const resendEmailVerification = handle(async (req, res) => {
   const out = await sendEmailVerification(req.user);
   res.json(out);
+});
+
+/**
+ * POST /api/auth/password/forgot { email } — public. Same answer whether or
+ * not the account exists; the email is sent after the response.
+ */
+export const forgotPassword = handle(async (req, res) => {
+  res.json(await requestPasswordReset(req.body?.email));
+});
+
+/** POST /api/auth/password/check { token } — public: is this reset link still usable? */
+export const checkPasswordReset = handle(async (req, res) => {
+  res.json(await checkResetToken(req.body?.token));
+});
+
+/** POST /api/auth/password/reset { token, password } — public: sets the new password. */
+export const completePasswordReset = handle(async (req, res) => {
+  const { email } = await resetPassword(req.body?.token, req.body?.password);
+  res.json({ message: "Your password has been changed. Sign in with the new password.", email });
 });
 
 /** POST /api/auth/email/verify { token } — public: the link may be opened signed out. */

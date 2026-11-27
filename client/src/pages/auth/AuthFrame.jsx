@@ -183,3 +183,64 @@ export function PasswordInput({ value, onChange, id, autoComplete, placeholder, 
     </div>
   );
 }
+
+/** 0-4: length first, then a mix of letters, digits and symbols. */
+const passwordScore = (pw = "") => {
+  if (pw.length < 8) return pw.length ? 0 : -1;
+  const kinds = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter((rx) => rx.test(pw)).length;
+  let score = 1;
+  if (pw.length >= 12) score += 1;
+  if (kinds >= 3) score += 1;
+  if (pw.length >= 14 && kinds >= 3) score += 1;
+  return Math.min(score, 4);
+};
+const STRENGTH = [
+  { label: "Too short", bar: "bg-rose-500", text: "text-rose-700" },
+  { label: "Okay", bar: "bg-amber-500", text: "text-amber-700" },
+  { label: "Good", bar: "bg-green-500", text: "text-green-700" },
+  { label: "Strong", bar: "bg-emerald-500", text: "text-emerald-700" },
+  { label: "Very strong", bar: "bg-emerald-600", text: "text-emerald-700" },
+];
+
+/**
+ * A four-segment meter under a new-password field. Segments fill as the
+ * password gets longer and more varied; the label is announced politely.
+ */
+export function PasswordStrength({ password }) {
+  const score = passwordScore(password);
+  if (score < 0) return null;
+  const s = STRENGTH[score];
+  return (
+    <div className="mt-2" aria-live="polite">
+      <div className="flex gap-1" aria-hidden="true">
+        {[1, 2, 3, 4].map((n) => (
+          <span key={n} className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200">
+            <span
+              className={`block h-full rounded-full transition-[transform,background-color] duration-300 ease-out origin-left ${s.bar}`}
+              style={{ transform: `scaleX(${score >= n || (score === 0 && n === 1) ? 1 : 0})` }}
+            />
+          </span>
+        ))}
+      </div>
+      <p className={`mt-1 text-xs ${s.text}`}>
+        {s.label}
+        {score === 0 ? ": use at least 8 characters" : score < 3 ? ". Longer, with numbers or symbols, is stronger" : ""}
+      </p>
+    </div>
+  );
+}
+
+/** A tick that draws itself inside a circle that pops in. Decorative. */
+export function SuccessMark({ icon }) {
+  return (
+    <div className="success-pop mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 ring-8 ring-emerald-50/60" aria-hidden="true">
+      {icon ? (
+        <Icon name={icon} className="h-6 w-6 text-emerald-600" />
+      ) : (
+        <svg viewBox="0 0 24 24" className="h-7 w-7 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path className="success-draw" pathLength="1" d="M5 12.5l4.5 4.5L19 7.5" />
+        </svg>
+      )}
+    </div>
+  );
+}

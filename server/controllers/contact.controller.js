@@ -39,8 +39,11 @@ const optionalUser = async (req) => {
   const header = req.headers.authorization || "";
   if (!header.startsWith("Bearer ")) return null;
   try {
-    const { id } = verifyToken(header.slice(7));
-    return await User.findById(id).select("_id isActive").lean();
+    const { id, iat } = verifyToken(header.slice(7));
+    const user = await User.findById(id);
+    // A session from before a password change counts as signed out.
+    if (!user || user.tokenPredatesPasswordChange(iat)) return null;
+    return { _id: user._id, isActive: user.isActive };
   } catch {
     return null;
   }
